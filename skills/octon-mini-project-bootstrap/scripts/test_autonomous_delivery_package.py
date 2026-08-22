@@ -43,8 +43,10 @@ class AutonomousDeliveryPackageTests(unittest.TestCase):
                     self.assertIsNone(project["autonomous_delivery"]["delivery_profile"])
                     self.assertEqual(project["packages"]["trigger_assessments"]["autonomous_delivery"], "not_assessed")
                     self.assertFalse(registry["packages"])
-                    self.assertTrue((target / ".agent/available-packages/autonomous-delivery/payload/.agent/capabilities/autonomous-delivery/delivery_runtime.py").is_file())
-                    self.assertTrue((target / ".agent/available-packages/long-running-work/payload/.agent/capabilities/long-running-work/long_work.py").is_file())
+                    catalog = json.loads((target / ".agent/available-packages/catalog.json").read_text(encoding="utf-8"))
+                    available = {item["id"]: item for item in catalog["packages"]}
+                    self.assertIn(".agent/capabilities/autonomous-delivery/delivery_runtime.py", {item["path"] for item in available["autonomous-delivery"]["payload_files"]})
+                    self.assertIn(".agent/capabilities/long-running-work/long_work.py", {item["path"] for item in available["long-running-work"]["payload_files"]})
 
     def test_payload_tamper_after_plan_blocks_activation(self) -> None:
         fixture = functional.AutonomousDeliveryTests("test_pre_activation_surfaces_are_read_only_and_hook_free")
@@ -62,8 +64,12 @@ class AutonomousDeliveryPackageTests(unittest.TestCase):
         plan = json.loads(planned.stdout)
         plan_path = fixture.area / "activation-plan.json"
         functional.write_json(plan_path, plan)
-        payload = fixture.target / ".agent/available-packages/autonomous-delivery/payload/.agent/capabilities/autonomous-delivery/README.md"
-        payload.write_text(payload.read_text(encoding="utf-8") + "\nTampered.\n", encoding="utf-8")
+        catalog_path = fixture.target / ".agent/available-packages/catalog.json"
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        autonomous = next(item for item in catalog["packages"] if item["id"] == "autonomous-delivery")
+        encoded = autonomous["payload_files"][0]["content_zlib_base64"]
+        autonomous["payload_files"][0]["content_zlib_base64"] = ("A" if encoded[0] != "A" else "B") + encoded[1:]
+        functional.write_json(catalog_path, catalog)
         applied = fixture.octon(
             "delivery", "activate", "apply",
             "--plan", str(plan_path), "--accept-digest", plan["canonical_plan_digest"],
@@ -72,7 +78,7 @@ class AutonomousDeliveryPackageTests(unittest.TestCase):
             "--cost-enforcement-artifact", str(cost_path),
         )
         self.assertEqual(applied.returncode, 2)
-        self.assertIn("offline package payload digest differs", applied.stderr)
+        self.assertIn("payload content is malformed", applied.stderr)
 
     def test_delivery_profile_is_independent_from_assurance_and_collaboration(self) -> None:
         fixture = functional.AutonomousDeliveryTests("test_profile_recommendation_never_selects_or_activates")

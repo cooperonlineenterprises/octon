@@ -453,59 +453,6 @@
       "reason": "Core templates are generated in every profile after placeholder validation."
     },
     {
-      "id": "autonomous-delivery-offline-payload",
-      "source": "skill:assets/packages/autonomous-delivery/templates",
-      "match": "recursive_suffix",
-      "suffix": ".tmpl",
-      "disposition": "generated",
-      "profiles": [
-        "minimal",
-        "standard",
-        "high-assurance"
-      ],
-      "inventory_paths": [
-        ".agent/capabilities/autonomous-delivery/README.md.tmpl",
-        ".agent/capabilities/autonomous-delivery/delivery_runtime.py.tmpl",
-        ".agent/capabilities/autonomous-delivery/package.json.tmpl",
-        ".agent/capabilities/autonomous-delivery/validate.py.tmpl"
-      ],
-      "inventory_count": 4,
-      "inventory_paths_sha256": "fa4edac6de6f5bf3fafc16cc6aa5ef234c12429b5b72234832019920132d94e8",
-      "output": {
-        "root": ".agent/available-packages/autonomous-delivery/payload",
-        "strip_suffix": ".tmpl"
-      },
-      "reason": "Every independent snapshot carries the exact inert autonomous-delivery payload for network-free activation."
-    },
-    {
-      "id": "long-running-work-offline-payload",
-      "source": "skill:assets/packages/long-running-work/templates",
-      "match": "recursive_suffix",
-      "suffix": ".tmpl",
-      "disposition": "generated",
-      "profiles": [
-        "minimal",
-        "standard",
-        "high-assurance"
-      ],
-      "inventory_paths": [
-        ".agent/capabilities/long-running-work/README.md.tmpl",
-        ".agent/capabilities/long-running-work/checkpoint.schema.json.tmpl",
-        ".agent/capabilities/long-running-work/context.schema.json.tmpl",
-        ".agent/capabilities/long-running-work/long_work.py.tmpl",
-        ".agent/capabilities/long-running-work/package.json.tmpl",
-        ".agent/capabilities/long-running-work/run.schema.json.tmpl",
-        ".agent/capabilities/long-running-work/validate.py.tmpl"
-      ],
-      "inventory_count": 7,
-      "inventory_paths_sha256": "2496d9ed71394744bbedf9169e68d2f9f153c89903cff49febd7c81e745f5346",
-      "output": {
-        "root": ".agent/available-packages/long-running-work/payload",
-        "strip_suffix": ".tmpl"
-      },
-      "reason": "Autonomous-delivery activation can install its existing long-running-work dependency from exact local bytes without a service or network installation."
-    },
-    {
       "id": "templates-standard",
       "source": "skill:assets/templates/standard",
       "match": "recursive_suffix",

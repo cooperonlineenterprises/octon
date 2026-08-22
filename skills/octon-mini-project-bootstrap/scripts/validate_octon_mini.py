@@ -1019,6 +1019,13 @@ def validate_templates(issues: list[str], scaffolder: Any) -> None:
             scaffolder.policy_source_path(scaffolder.package_contract(manifest, "autonomous-delivery")["source"], "autonomous-delivery source"),
             scaffolder.package_contract(manifest, "autonomous-delivery")["inventory_paths"],
         ),
+        "AUTONOMOUS_DELIVERY_PAYLOAD_JSON": json.dumps(
+            scaffolder.package_payload_projection(
+                scaffolder.policy_source_path(scaffolder.package_contract(manifest, "autonomous-delivery")["source"], "autonomous-delivery source"),
+                scaffolder.package_contract(manifest, "autonomous-delivery")["inventory_paths"],
+            ),
+            separators=(",", ":"),
+        ),
         "LONG_RUNNING_WORK_VERSION": str(
             scaffolder.package_contract(manifest, "long-running-work")["version"]
         ),
@@ -1028,6 +1035,13 @@ def validate_templates(issues: list[str], scaffolder: Any) -> None:
         "LONG_RUNNING_WORK_INSTALLED_SHA256": scaffolder.installed_package_content_digest(
             scaffolder.policy_source_path(scaffolder.package_contract(manifest, "long-running-work")["source"], "long-running-work source"),
             scaffolder.package_contract(manifest, "long-running-work")["inventory_paths"],
+        ),
+        "LONG_RUNNING_WORK_PAYLOAD_JSON": json.dumps(
+            scaffolder.package_payload_projection(
+                scaffolder.policy_source_path(scaffolder.package_contract(manifest, "long-running-work")["source"], "long-running-work source"),
+                scaffolder.package_contract(manifest, "long-running-work")["inventory_paths"],
+            ),
+            separators=(",", ":"),
         ),
     }
     templates_root = SKILL_ROOT / "assets/templates"

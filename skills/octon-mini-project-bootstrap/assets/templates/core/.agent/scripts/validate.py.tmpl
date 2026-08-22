@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import zlib
 import stat
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -2716,12 +2718,6 @@ def check_autonomous_delivery_config(root: Path, project: dict[str, Any]) -> lis
     surface = root / ".agent/scripts/octon_autonomous_delivery.py"
     if not surface.is_file() or surface.is_symlink():
         errors.append(".agent/scripts/octon_autonomous_delivery.py: dormant delivery surface is absent or unsafe")
-    payload = root / ".agent/available-packages/autonomous-delivery/payload"
-    if not payload.is_dir() or payload.is_symlink():
-        errors.append(".agent/available-packages/autonomous-delivery/payload: offline activation payload is absent or unsafe")
-    dependency_payload = root / ".agent/available-packages/long-running-work/payload"
-    if not dependency_payload.is_dir() or dependency_payload.is_symlink():
-        errors.append(".agent/available-packages/long-running-work/payload: offline activation dependency is absent or unsafe")
     catalog_path = root / ".agent/available-packages/catalog.json"
     try:
         catalog = load_json(catalog_path)
@@ -2742,6 +2738,8 @@ def check_autonomous_delivery_config(root: Path, project: dict[str, Any]) -> lis
                 item.get("kind") != "workflow_capability"
                 or item.get("status") != "available_not_installed"
                 or item.get("payload_root") != f".agent/available-packages/{package_id}/payload"
+                or not isinstance(item.get("payload_files"), list)
+                or not item["payload_files"]
                 or re.fullmatch(r"[a-f0-9]{64}", str(item.get("source_sha256", ""))) is None
                 or re.fullmatch(r"[a-f0-9]{64}", str(item.get("installed_paths_sha256", ""))) is None
                 for package_id, item in packages.items()
@@ -2750,15 +2748,26 @@ def check_autonomous_delivery_config(root: Path, project: dict[str, Any]) -> lis
             errors.append(".agent/available-packages/catalog.json: offline package projection is malformed")
         else:
             for package_id, item in packages.items():
-                payload_root = root / item["payload_root"]
                 value = hashlib.sha256()
-                for path in sorted(payload_root.rglob("*")):
-                    if path.is_file() and not path.is_symlink():
-                        relative_path = path.relative_to(payload_root).as_posix()
-                        value.update(relative_path.encode("utf-8"))
-                        value.update(b"\0")
-                        value.update(path.read_bytes())
-                        value.update(b"\0")
+                observed_paths: set[str] = set()
+                for payload_item in item["payload_files"]:
+                    if not isinstance(payload_item, dict) or set(payload_item) != {"path", "content_zlib_base64", "mode"}:
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload entry is malformed")
+                        continue
+                    relative_path = payload_item.get("path")
+                    if not isinstance(relative_path, str) or not relative_path.startswith(f".agent/capabilities/{package_id}/") or relative_path in observed_paths or payload_item.get("mode") not in {420, 493}:
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload path is unsafe or duplicated")
+                        continue
+                    observed_paths.add(relative_path)
+                    try:
+                        content = zlib.decompress(base64.b64decode(payload_item.get("content_zlib_base64"), validate=True))
+                    except (TypeError, ValueError, zlib.error):
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload content is malformed")
+                        continue
+                    value.update(relative_path.encode("utf-8"))
+                    value.update(b"\0")
+                    value.update(content)
+                    value.update(b"\0")
                 if value.hexdigest() != item["installed_paths_sha256"]:
                     errors.append(f".agent/available-packages/catalog.json: {package_id} offline payload digest is stale")
     return errors

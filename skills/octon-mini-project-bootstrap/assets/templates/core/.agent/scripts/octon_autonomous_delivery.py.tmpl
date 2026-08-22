@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import fnmatch
 import hashlib
 import importlib.util
@@ -11,6 +12,7 @@ import json
 import os
 import re
 import sys
+import zlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -422,7 +424,7 @@ def context_manifest(root: Path, max_bytes: int, task_ref: str | None) -> dict[s
 
 def applicability(root: Path) -> dict[str, Any]:
     config = delivery_config(root)
-    available = confined(root, ".agent/available-packages/autonomous-delivery/payload")
+    available = confined(root, ".agent/available-packages/catalog.json")
     source_available = (
         root / "skills/octon-mini-project-bootstrap/assets/packages/autonomous-delivery/templates"
     ).is_dir()
@@ -432,7 +434,7 @@ def applicability(root: Path) -> dict[str, Any]:
         "permission_grant": False,
         "read_only": True,
         "status": config.get("status", STATUS_AVAILABLE),
-        "offline_payload_available": (available.is_dir() and not available.is_symlink()) or source_available,
+        "offline_payload_available": (available.is_file() and not available.is_symlink()) or source_available,
         "repository_observed": (root / ".git").exists(),
         "provider": "unknown",
         "credential": "unknown",
@@ -697,20 +699,25 @@ def validate_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, An
 def package_inventory(root: Path, package_id: str) -> tuple[dict[str, bytes], str]:
     if package_id not in {"autonomous-delivery", "long-running-work"}:
         raise DeliveryError("offline package identity is outside the closed activation dependency set")
-    payload = confined(root, f".agent/available-packages/{package_id}/payload")
-    if not payload.is_dir() or payload.is_symlink():
-        raise DeliveryError(f"offline {package_id} package payload is absent or unsafe")
+    catalog = available_package_catalog(root)
+    payload = catalog[package_id].get("payload_files")
+    if not isinstance(payload, list) or not payload:
+        raise DeliveryError(f"offline {package_id} package payload is absent or malformed")
     files: dict[str, bytes] = {}
-    for path in sorted(payload.rglob("*")):
-        if path.is_symlink():
-            raise DeliveryError("offline autonomous-delivery payload contains a symlink")
-        if path.is_file():
-            relative = path.relative_to(payload).as_posix()
-            if not relative.startswith(f".agent/capabilities/{package_id}/"):
-                raise DeliveryError(f"offline package path is outside the closed payload: {relative}")
-            files[relative] = path.read_bytes()
-    if not files:
-        raise DeliveryError(f"offline {package_id} package payload is empty")
+    for item in payload:
+        if not isinstance(item, dict) or set(item) != {"path", "content_zlib_base64", "mode"}:
+            raise DeliveryError(f"offline {package_id} payload entry is malformed")
+        relative = item.get("path")
+        pure = PurePosixPath(relative) if isinstance(relative, str) else None
+        if pure is None or pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts) or not relative.startswith(f".agent/capabilities/{package_id}/") or item.get("mode") not in {420, 493}:
+            raise DeliveryError(f"offline package path is outside the closed payload: {relative}")
+        try:
+            content = zlib.decompress(base64.b64decode(item["content_zlib_base64"], validate=True))
+        except (ValueError, TypeError, zlib.error) as error:
+            raise DeliveryError(f"offline {package_id} payload content is malformed") from error
+        if relative in files:
+            raise DeliveryError(f"offline {package_id} payload path is duplicated")
+        files[relative] = content
     value = hashlib.sha256()
     for relative, content in sorted(files.items()):
         value.update(relative.encode("utf-8"))
@@ -732,7 +739,7 @@ def available_package_catalog(root: Path) -> dict[str, dict[str, Any]]:
     if set(packages) != {"autonomous-delivery", "long-running-work"}:
         raise DeliveryError("offline available-package catalog differs from the closed dependency set")
     for package_id, item in packages.items():
-        if item.get("kind") != "workflow_capability" or item.get("status") != "available_not_installed" or item.get("payload_root") != f".agent/available-packages/{package_id}/payload" or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("source_sha256", ""))) or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("installed_paths_sha256", ""))):
+        if item.get("kind") != "workflow_capability" or item.get("status") != "available_not_installed" or item.get("payload_root") != f".agent/available-packages/{package_id}/payload" or not isinstance(item.get("payload_files"), list) or not item["payload_files"] or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("source_sha256", ""))) or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("installed_paths_sha256", ""))):
             raise DeliveryError(f"offline available-package contract is invalid: {package_id}")
     return packages
 
