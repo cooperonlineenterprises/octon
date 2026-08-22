@@ -63,6 +63,23 @@ and authority preservation explicitly. Apply refuses every existing-path
 overwrite, stages the complete release tier, preserves project bytes, and
 leaves adoption `in_progress`.
 
+## Autonomous-delivery availability
+
+Every generated 4.2 snapshot exposes `octon delivery` in
+`available_not_activated`. Research, context, applicability, planning, status,
+explanation, and activation preview are read-only and execute no hooks. Exact
+inert autonomous-delivery and long-running-work payloads are stored under
+`.agent/available-packages/` for network-free activation, but are not installed
+or adopted.
+
+Activation first drafts and displays a complete non-authorizing contract. A
+human must independently confirm its exact digest; a flag, setup answer,
+profile, plan, or record cannot do so. The accepted record and confirmation
+stay outside the repository. Activation binds them, current host cost-
+enforcement evidence, an accepted project adoption decision, target bytes, and
+package digests into the existing transaction system. Upgrade advertises but
+never activates, renews, or broadens this state.
+
 ## Routine work and maintenance
 
 Generated commands use plan/apply receipts:

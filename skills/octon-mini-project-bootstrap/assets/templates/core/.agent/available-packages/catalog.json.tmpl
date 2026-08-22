@@ -1,0 +1,29 @@
+{
+  "schema_version": "harness.available-package-catalog.v1",
+  "document_role": "generated_non_authorizing_offline_package_projection",
+  "permission_grant": false,
+  "packages": [
+    {
+      "id": "autonomous-delivery",
+      "kind": "workflow_capability",
+      "version": "{{AUTONOMOUS_DELIVERY_VERSION}}",
+      "source_sha256": "{{AUTONOMOUS_DELIVERY_SHA256}}",
+      "installed_paths_sha256": "{{AUTONOMOUS_DELIVERY_INSTALLED_SHA256}}",
+      "payload_root": ".agent/available-packages/autonomous-delivery/payload",
+      "status": "available_not_installed"
+    },
+    {
+      "id": "long-running-work",
+      "kind": "workflow_capability",
+      "version": "{{LONG_RUNNING_WORK_VERSION}}",
+      "source_sha256": "{{LONG_RUNNING_WORK_SHA256}}",
+      "installed_paths_sha256": "{{LONG_RUNNING_WORK_INSTALLED_SHA256}}",
+      "payload_root": ".agent/available-packages/long-running-work/payload",
+      "status": "available_not_installed"
+    }
+  ],
+  "limitations": [
+    "Offline package availability is not installation, applicability, adoption, permission, or readiness.",
+    "Only exact locally bundled bytes may be activated without a network installation."
+  ]
+}

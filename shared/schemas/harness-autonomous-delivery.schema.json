@@ -1,0 +1,391 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://octon-mini.local/schemas/harness-autonomous-delivery.schema.json",
+  "title": "Governed Autonomous Delivery",
+  "$defs": {
+    "strings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "delivery_profile": {
+      "enum": ["review_first", "balanced_autonomous", "fast_delivery", "custom"]
+    },
+    "action": {
+      "enum": [
+        "read_research",
+        "build_context",
+        "plan_delivery",
+        "mutate_repository",
+        "create_commit",
+        "push_task_branch",
+        "create_pull_request",
+        "update_pull_request_body",
+        "dispatch_hosted_workflow",
+        "observe_hosted_state",
+        "merge_pull_request",
+        "create_annotated_tag",
+        "push_tag",
+        "create_github_release",
+        "export_evidence",
+        "reconcile_release_records",
+        "delete_merged_task_branch"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_lifetime_days",
+        "delivery_run_duration_days",
+        "work_iterations",
+        "correction_cycles",
+        "commits_per_run",
+        "pull_requests_per_run",
+        "hosted_workflow_dispatches_per_run",
+        "safe_read_only_retries",
+        "proven_no_effect_retries",
+        "unknown_outcome_retries",
+        "covered_releases",
+        "concurrent_write_runs",
+        "warning_percentages"
+      ],
+      "properties": {
+        "authorization_lifetime_days": {"type": "integer", "minimum": 1, "maximum": 365},
+        "delivery_run_duration_days": {"type": "integer", "minimum": 1, "maximum": 30},
+        "work_iterations": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "correction_cycles": {"type": "integer", "minimum": 0, "maximum": 50},
+        "commits_per_run": {"type": "integer", "minimum": 1, "maximum": 200},
+        "pull_requests_per_run": {"type": "integer", "minimum": 0, "maximum": 50},
+        "hosted_workflow_dispatches_per_run": {"type": "integer", "minimum": 0, "maximum": 100},
+        "safe_read_only_retries": {"type": "integer", "minimum": 0, "maximum": 20},
+        "proven_no_effect_retries": {"type": "integer", "minimum": 0, "maximum": 10},
+        "unknown_outcome_retries": {"const": 0},
+        "covered_releases": {"type": "integer", "minimum": 0, "maximum": 50},
+        "concurrent_write_runs": {"const": 1},
+        "warning_percentages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": [70, 85, 95]},
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host_enforcement_required",
+        "ai_provider_usd_per_run",
+        "ai_provider_usd_per_authorization",
+        "unknown_cost_behavior",
+        "direct_external_spending_usd",
+        "purchases_prohibited"
+      ],
+      "properties": {
+        "host_enforcement_required": {"const": true},
+        "ai_provider_usd_per_run": {"type": "number", "minimum": 0},
+        "ai_provider_usd_per_authorization": {"type": "number", "minimum": 0},
+        "unknown_cost_behavior": {"const": "block_activation_or_require_human_approved_custom_treatment"},
+        "direct_external_spending_usd": {"const": 0},
+        "purchases_prohibited": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["services", "subscriptions", "infrastructure", "paid_apis", "domains", "licenses", "marketplace_products", "other_external_goods_or_services"]},
+          "minItems": 8,
+          "maxItems": 8
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "identity", "remote", "default_branch", "task_branch_pattern"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "identity": {"type": "string", "minLength": 1},
+        "remote": {"type": "string", "minLength": 1},
+        "default_branch": {"type": "string", "minLength": 1},
+        "task_branch_pattern": {"type": "string", "minLength": 1}
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorization_path", "confirmation_path", "revocation_path", "emergency_stop_path", "worker_may_write"],
+      "properties": {
+        "authorization_path": {"type": "string", "minLength": 1},
+        "confirmation_path": {"type": "string", "minLength": 1},
+        "revocation_path": {"type": "string", "minLength": 1},
+        "emergency_stop_path": {"type": "string", "minLength": 1},
+        "worker_may_write": {"const": false}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "raw_retention_days", "release_manifests", "failed_evidence_retained", "hash_algorithm"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "raw_retention_days": {"type": "integer", "minimum": 365},
+        "release_manifests": {"const": "indefinite"},
+        "failed_evidence_retained": {"const": true},
+        "hash_algorithm": {"const": "sha256"}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_kind",
+        "permission_grant",
+        "authorization_id",
+        "status",
+        "delivery_profile",
+        "priority_authority_required",
+        "architecture_authority_required",
+        "release_policy_ref",
+        "repository",
+        "permitted_actions",
+        "release_types",
+        "merge_method",
+        "limits",
+        "costs",
+        "evidence",
+        "controls",
+        "valid_from",
+        "valid_until",
+        "human_stop_conditions",
+        "limitations",
+        "canonical_contract_digest"
+      ],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-standing-authorization.v1"},
+        "artifact_kind": {"const": "standing_authorization_contract"},
+        "permission_grant": {"const": false},
+        "authorization_id": {"type": "string", "pattern": "^SAC-[0-9]{2}$"},
+        "status": {"const": "proposed_unconfirmed"},
+        "delivery_profile": {"$ref": "#/$defs/delivery_profile"},
+        "priority_authority_required": {"const": true},
+        "architecture_authority_required": {"const": true},
+        "release_policy_ref": {"const": "SRC-DEC-0020"},
+        "repository": {"$ref": "#/$defs/repository"},
+        "permitted_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "release_types": {"type": "array", "uniqueItems": true, "items": {"enum": ["patch", "minor"]}},
+        "merge_method": {"const": "merge_commit"},
+        "limits": {"$ref": "#/$defs/limits"},
+        "costs": {"$ref": "#/$defs/costs"},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "controls": {"$ref": "#/$defs/controls"},
+        "valid_from": {"type": "string", "format": "date-time"},
+        "valid_until": {"type": "string", "format": "date-time"},
+        "human_stop_conditions": {"$ref": "#/$defs/strings"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "canonical_contract_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_id", "contract_digest", "confirmation_method", "confirmation_statement", "authority_source", "confirmed_by_role", "confirmed_at", "confirmation_fingerprint"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-confirmation.v1"},
+        "artifact_kind": {"const": "standing_authorization_confirmation_evidence"},
+        "permission_grant": {"const": false},
+        "authorization_id": {"type": "string", "pattern": "^SAC-[0-9]{2}$"},
+        "contract_digest": {"$ref": "#/$defs/digest"},
+        "confirmation_method": {"const": "independent_exact_digest_statement"},
+        "confirmation_statement": {"type": "string", "minLength": 1},
+        "authority_source": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+        "confirmed_by_role": {"type": "string", "minLength": 1},
+        "confirmed_at": {"type": "string", "format": "date-time"},
+        "confirmation_fingerprint": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "accepted_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "contract", "confirmation", "accepted_record_digest", "limitations"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-authorization-record.v1"},
+        "artifact_kind": {"const": "standing_authorization_evidence_record"},
+        "permission_grant": {"const": false},
+        "contract": {"$ref": "#/$defs/contract"},
+        "confirmation": {"$ref": "#/$defs/confirmation"},
+        "accepted_record_digest": {"$ref": "#/$defs/digest"},
+        "limitations": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "activation_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "activation_target", "authorization_record_digest", "contract_digest", "confirmation_fingerprint", "adoption_decision_ref", "project_fingerprint", "package_version", "package_digest", "operations", "limitations", "canonical_plan_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-activation-plan.v1"},
+        "artifact_kind": {"const": "autonomous_delivery_activation_plan"},
+        "permission_grant": {"const": false},
+        "read_only": {"const": true},
+        "activation_target": {"enum": ["generated_project", "octon_mini_source_repository"]},
+        "authorization_record_digest": {"$ref": "#/$defs/digest"},
+        "contract_digest": {"$ref": "#/$defs/digest"},
+        "confirmation_fingerprint": {"$ref": "#/$defs/digest"},
+        "adoption_decision_ref": {"type": "string", "pattern": "^(?:DEC-[0-9]{4}|SRC-DEC-[0-9]{4})$"},
+        "project_fingerprint": {"$ref": "#/$defs/digest"},
+        "package_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "package_digest": {"$ref": "#/$defs/digest"},
+        "operations": {"$ref": "#/$defs/strings"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "canonical_plan_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "authority_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "contract_digest", "task_ref", "priority_authority_ref", "architecture_decision_refs", "plan_digest", "repository_identity", "task_branch", "action", "release_type", "valid_from", "valid_until", "remaining_budget", "projection_digest", "limitations"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-authority-projection.v1"},
+        "artifact_kind": {"const": "derived_exact_plan_authority_coverage"},
+        "permission_grant": {"const": false},
+        "authorization_record_digest": {"$ref": "#/$defs/digest"},
+        "contract_digest": {"$ref": "#/$defs/digest"},
+        "task_ref": {"type": "string", "pattern": "^TASK-[0-9]{4}$"},
+        "priority_authority_ref": {"type": "string", "minLength": 1},
+        "architecture_decision_refs": {"$ref": "#/$defs/strings"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "repository_identity": {"type": "string", "minLength": 1},
+        "task_branch": {"type": "string", "minLength": 1},
+        "action": {"$ref": "#/$defs/action"},
+        "release_type": {"type": ["string", "null"], "enum": [null, "patch", "minor"]},
+        "valid_from": {"type": "string", "format": "date-time"},
+        "valid_until": {"type": "string", "format": "date-time"},
+        "remaining_budget": {"type": "object"},
+        "projection_digest": {"$ref": "#/$defs/digest"},
+        "limitations": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "effect_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "receipt_id", "projection_digest", "action", "state", "requested_at", "attempted_at", "observed_at", "before_evidence", "after_evidence", "outcome", "automatic_retry_safe", "limitations", "receipt_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-effect-receipt.v1"},
+        "artifact_kind": {"const": "autonomous_delivery_monotonic_effect_receipt"},
+        "permission_grant": {"const": false},
+        "receipt_id": {"type": "string", "pattern": "^ADER-[a-f0-9]{24}$"},
+        "projection_digest": {"$ref": "#/$defs/digest"},
+        "action": {"$ref": "#/$defs/action"},
+        "state": {"enum": ["requested", "attempted", "completed", "failed_known_no_effect", "partially_completed", "outcome_unknown", "blocked"]},
+        "requested_at": {"type": "string", "format": "date-time"},
+        "attempted_at": {"type": ["string", "null"], "format": "date-time"},
+        "observed_at": {"type": ["string", "null"], "format": "date-time"},
+        "before_evidence": {"type": "object"},
+        "after_evidence": {"type": "object"},
+        "outcome": {"enum": ["not_attempted", "completed", "known_no_effect", "partial", "unknown"]},
+        "automatic_retry_safe": {"type": "boolean"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "receipt_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "cost_enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "host_enforced", "unknown_cost", "per_run_usd", "per_authorization_usd", "observed_at", "valid_until", "evidence_fingerprint"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-cost-enforcement.v1"},
+        "artifact_kind": {"const": "external_host_cost_enforcement_evidence"},
+        "host_enforced": {"const": true},
+        "unknown_cost": {"const": false},
+        "per_run_usd": {"type": "number", "minimum": 0},
+        "per_authorization_usd": {"type": "number", "minimum": 0},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "valid_until": {"type": "string", "format": "date-time"},
+        "evidence_fingerprint": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "activation_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "activation_plan_digest", "transaction_receipt_ref", "transaction_receipt_path", "authorization_record_digest", "status", "limitations"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-activation-receipt.v1"},
+        "artifact_kind": {"const": "derived_activation_result"},
+        "permission_grant": {"const": false},
+        "activation_plan_digest": {"$ref": "#/$defs/digest"},
+        "transaction_receipt_ref": {"type": ["string", "null"], "pattern": "^RCPT-[a-f0-9]{24}$"},
+        "transaction_receipt_path": {"type": ["string", "null"]},
+        "authorization_record_digest": {"$ref": "#/$defs/digest"},
+        "status": {"const": "active"},
+        "limitations": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_id", "accepted_record_digest", "revoked_at", "authority_source", "reason", "successor_authorization_id", "revocation_fingerprint"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-revocation.v1"},
+        "artifact_kind": {"const": "operator_controlled_standing_authorization_revocation"},
+        "permission_grant": {"const": false},
+        "authorization_id": {"type": "string", "pattern": "^SAC-[0-9]{2}$"},
+        "accepted_record_digest": {"$ref": "#/$defs/digest"},
+        "revoked_at": {"type": "string", "format": "date-time"},
+        "authority_source": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+        "reason": {"type": "string", "minLength": 1},
+        "successor_authorization_id": {"type": ["string", "null"], "pattern": "^SAC-[0-9]{2}$"},
+        "revocation_fingerprint": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "emergency_stop_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "path", "state", "observed_at", "worker_may_write", "limitations"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-emergency-stop-observation.v1"},
+        "artifact_kind": {"const": "derived_operator_control_observation"},
+        "permission_grant": {"const": false},
+        "path": {"type": "string", "minLength": 1},
+        "state": {"enum": ["absent", "present", "unknown"]},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "worker_may_write": {"const": false},
+        "limitations": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "run_id", "counts", "ai_provider_cost_usd", "cost_state", "warnings", "exhausted", "observed_at", "usage_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.autonomous-delivery-usage.v1"},
+        "artifact_kind": {"const": "autonomous_delivery_usage_state"},
+        "permission_grant": {"const": false},
+        "authorization_record_digest": {"$ref": "#/$defs/digest"},
+        "run_id": {"type": "string", "minLength": 1},
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["work_iterations", "correction_cycles", "commits_per_run", "pull_requests_per_run", "hosted_workflow_dispatches_per_run", "safe_read_only_retries", "proven_no_effect_retries", "covered_releases", "concurrent_write_runs"],
+          "properties": {
+            "work_iterations": {"type": "integer", "minimum": 0},
+            "correction_cycles": {"type": "integer", "minimum": 0},
+            "commits_per_run": {"type": "integer", "minimum": 0},
+            "pull_requests_per_run": {"type": "integer", "minimum": 0},
+            "hosted_workflow_dispatches_per_run": {"type": "integer", "minimum": 0},
+            "safe_read_only_retries": {"type": "integer", "minimum": 0},
+            "proven_no_effect_retries": {"type": "integer", "minimum": 0},
+            "covered_releases": {"type": "integer", "minimum": 0},
+            "concurrent_write_runs": {"type": "integer", "minimum": 0}
+          }
+        },
+        "ai_provider_cost_usd": {"type": ["number", "null"], "minimum": 0},
+        "cost_state": {"enum": ["known_host_enforced", "unknown"]},
+        "warnings": {"$ref": "#/$defs/strings"},
+        "exhausted": {"type": "boolean"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "usage_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

@@ -209,7 +209,8 @@
         },
         "installation": {
           "enum": [
-            "trigger_installed_transactionally"
+            "trigger_installed_transactionally",
+            "locally_bundled_activation_transaction"
           ]
         },
         "trigger": {

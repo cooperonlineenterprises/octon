@@ -346,3 +346,53 @@ tag, release, publication, deployment, package installation, target-project
 adoption, runtime effect, credential use, or readiness claim. The resulting
 source changes remain unreleased and unadopted until those separate processes
 are explicitly authorized and completed.
+
+## SRC-DEC-0019 — Governed autonomous-delivery capability
+
+| Field | Accepted decision |
+|---|---|
+| Status | `accepted` |
+| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised autonomous-delivery architecture, delivery-profile model, standing-authorization drafting boundary, recovery model, and human-only gates |
+| Scope | One provider-neutral optional `workflow_capability` for autonomously delivering an already human-prioritized and architecturally authorized task |
+| Availability | Every new, adopted, and upgraded project exposes the smallest dormant delivery surface; its initial state is `available_not_activated` and externally locked |
+| Pre-activation boundary | Research, context building, applicability assessment, planning, status, explanation, and activation preview are read-only, execute no project hooks, mutate no repository or external state, create no receipt implying work, and create no authority |
+| Package boundary | Write-capable behavior remains in a locally bundled, content-addressed optional package; activation requires no network installation and never occurs silently |
+| Delivery-profile axis | `review_first`, `balanced_autonomous`, `fast_delivery`, and `custom` are presets independent of assurance, collaboration, concurrency, and layout; the exact accepted standing contract is authoritative |
+| Recommendation boundary | `fast_delivery` may be recommended for most solo developers but is never preselected or activated; a more-permissive successor requires human confirmation |
+| Ownership | Existing task and human priority authority own goal, scope, priority, authority basis, and acceptance; accepted decisions own architecture; `SRC-DEC-0020` owns standing release-evidence policy; long-running work owns the run coordinate; transactions own reversible local mutation; project-check evidence owns validation; work completion owns commit, push, PR, checks, merge, and cleanup; Continuation owns refusal; the package owns only activation, delivery-budget, and release-effect projections and references |
+| Standing-authorization boundary | Setup deterministically drafts a complete non-authorizing contract and digest; only independent human confirmation of those exact bytes supplies authority, after which an immutable external record may evidence the grant outside the repository |
+| Execution boundary | A short-lived exact-plan coverage projection may prove that a current standing record covers one operation; the projection, plan, profile, receipt, or command cannot create or broaden authority |
+| Release adapter | The package may add only the closed Git/GitHub source-release operations accepted here; it is not a universal action runtime, deployment system, package publisher, credential broker, or external-project controller |
+| Recovery boundary | Repository-local transactions may be exactly reversible; commits and unpublished task branches are recoverable; pushes, merges, tags, and Releases are monotonic effects handled through read-before-act, receipts, read-back, reconciliation, and fix-forward; an unknown outcome stops with zero automatic retries |
+| Cost boundary | Direct autonomous-worker purchasing authority is zero; AI/provider compute must be limited and enforced by the external host, and unknown cost is never treated as zero |
+| Compatibility | Additive optional capability with reviewed migration; independent snapshots never acquire activation, repository facts, provider facts, credentials, project decisions, or standing authorization automatically |
+| Human-only gates | Humans retain product-priority selection, architecture acceptance or amendment, release-evidence and risk policy, product-boundary or standing-authority expansion, conflicting-authority resolution, and required specialist or external-project decisions |
+| `permission_grant` | `false` |
+
+This source decision accepts implementation architecture only. The operator's
+implementation prompt authorizes local source work, branches, commits,
+validation, disposable exercises, and deterministic generation of the final
+`SAC-01` draft. Standing external-action authority remains inactive until the
+operator independently confirms the exact final `SAC-01` digest.
+
+## SRC-DEC-0020 — Standing source-release evidence policy
+
+| Field | Accepted decision |
+|---|---|
+| Status | `accepted` |
+| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised standing release-evidence and risk policy |
+| Covered releases | Technically scoped final patch and minor Octon Mini source releases whose product priority was explicitly selected by a human and whose necessary architecture decisions are accepted |
+| Required gates | The release stays within accepted boundaries; all applicable tests, mutation tests, fault injection, migrations, benchmarks, hosted checks, exact read-backs, and unchanged thresholds pass; no critical or high finding remains; unsuccessful evidence is retained; limitations are disclosed |
+| Minor-release addition | Complete the applicable end-to-end disposable exercises and an authorized Octon Mini source exercise |
+| Independent-evidence boundary | Unavailable unfamiliar-operator, independent-reviewer, independent external-project, and human-usability evidence may be disclosed for technically scoped patch and minor releases, but cannot support independent maturity, adoption, usability, project readiness, or production readiness claims |
+| Standing-authority gate | Release requires an independently confirmed, current, exact standing-authorization record whose repository, branch, action, release type, limits, cost enforcement, revocation, emergency-stop, and evidence bindings cover the exact operation |
+| Cost gate | Direct autonomous-worker spending remains zero; the external host must prove enforcement of selected AI/provider compute ceilings, and unknown cost blocks activation or requires a custom human-approved successor |
+| Human reconsideration | Required for major releases; product-boundary expansion; new standing-authority or external-effect families; security, privacy, legal, credential, or destructive-migration changes; deployment; external-project release; package publication; weakened tests, gates, reviews, or thresholds; unavailable mandatory safety evidence; unresolved critical/high findings; or claims exceeding evidence |
+| Historical boundary | The v4.1.0 `accept_disclosed_absence` choice remains release-specific and supplies no authority for this standing policy |
+| Permission effect | None; this policy defines evidence eligibility and cannot activate delivery, create standing authorization, or authorize an individual external effect |
+| `permission_grant` | `false` |
+
+The accepted policy permits no release until the exact independent
+standing-authorization confirmation and every current gate are separately
+satisfied. A draft contract, profile selection, setup answer, plan, receipt,
+evidence record, or successful validator is not release authority.

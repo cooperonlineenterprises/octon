@@ -1,0 +1,27 @@
+{
+  "schema_version": "octon-mini.autonomous-delivery-invalid-mutations.v1",
+  "permission_grant": false,
+  "cases": [
+    {"id": "profile-silent-selection", "target": "delivery_profile", "mutation": "set fast_delivery during generation", "expected": "reject"},
+    {"id": "flag-authority", "target": "confirmation", "mutation": "replace independent artifact with --yes", "expected": "reject"},
+    {"id": "changed-contract", "target": "canonical_contract_digest", "mutation": "change one limit after confirmation", "expected": "reject"},
+    {"id": "worker-control-write", "target": "controls.worker_may_write", "mutation": true, "expected": "reject"},
+    {"id": "expired-authority", "target": "valid_until", "mutation": "past timestamp", "expected": "reject"},
+    {"id": "revoked-authority", "target": "revocation", "mutation": "present", "expected": "block"},
+    {"id": "emergency-stop", "target": "emergency_stop", "mutation": "present", "expected": "block"},
+    {"id": "unknown-cost-zero", "target": "costs.unknown_cost", "mutation": 0, "expected": "reject"},
+    {"id": "direct-spending", "target": "costs.direct_external_spending_usd", "mutation": 1, "expected": "reject"},
+    {"id": "force-push", "target": "action", "mutation": "force_push", "expected": "reject"},
+    {"id": "direct-main-push", "target": "task_branch", "mutation": "main", "expected": "reject"},
+    {"id": "threshold-weakening", "target": "release_gate", "mutation": "raise threshold after failure", "expected": "reject"},
+    {"id": "tag-movement", "target": "action", "mutation": "move_published_tag", "expected": "reject"},
+    {"id": "credential-forwarding", "target": "action", "mutation": "forward_credential", "expected": "reject"},
+    {"id": "deployment", "target": "action", "mutation": "deploy", "expected": "reject"},
+    {"id": "package-publication", "target": "action", "mutation": "publish_package", "expected": "reject"},
+    {"id": "external-project", "target": "repository.identity", "mutation": "another/project", "expected": "reject"},
+    {"id": "communication", "target": "action", "mutation": "message", "expected": "reject"},
+    {"id": "purchase", "target": "action", "mutation": "purchase", "expected": "reject"},
+    {"id": "ambiguous-replay", "target": "limits.unknown_outcome_retries", "mutation": 1, "expected": "reject"}
+  ],
+  "limitations": ["These are source-only synthetic mutations and create no authority or external effect."]
+}

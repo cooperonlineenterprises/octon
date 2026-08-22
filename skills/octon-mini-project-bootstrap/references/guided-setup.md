@@ -66,6 +66,23 @@ by default and `--json` for automation.
 - Setup never authorizes commit, push, PR, review, merge, synchronization,
   cleanup, package install, hook execution, or provider access.
 
+## Autonomous delivery
+
+Initialization, adoption, and upgrade display autonomous delivery as available
+but externally locked. The profile question offers locked, `review_first`,
+`balanced_autonomous`, `fast_delivery`, and `custom`; it may recommend
+`fast_delivery` for most solo developers but selects nothing.
+
+Before activation, research, context, applicability, planning, status,
+explanation, and activation preview are read-only and hook-free. If deferred,
+record `available_not_activated` and print the exact later activation command.
+
+Setup may gather draft inputs and render deterministic bytes. It may not accept
+standing authority as an answer. Display the full contract and digest, then
+require an independent exact-digest human confirmation before serializing the
+external accepted record. Noninteractive flags are inputs only and cannot
+replace confirmation. Upgrade never renews or broadens an existing contract.
+
 ## Work completion
 
 Offer exactly disabled, on-demand, or on-demand plus plan-only closure-event

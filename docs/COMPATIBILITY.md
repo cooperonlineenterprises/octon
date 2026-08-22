@@ -113,6 +113,25 @@ under `.agent/work-runs/`. Existing task, evidence, transaction,
 work-completion, decision, event, focus/current, and continuation owners are
 preserved. See `migrations/4.0.0-to-4.1.0.md`.
 
+## Octon Mini 4.1.0 to 4.2.0
+
+4.2.0 adds project contract `harness.project.v8`, the dormant
+`octon delivery` surface, strict autonomous-delivery contracts, and inert local
+payloads for network-free activation. Every new snapshot starts
+`available_not_activated`, with writes and external effects locked, no selected
+delivery profile, no authorization reference, and an unassessed trigger.
+
+The delivery profile is independent from assurance, collaboration,
+concurrency, and layout. Upgrade advertises the capability but never installs,
+activates, renews, or broadens authority. Existing delivery configuration is
+preserved only while exact bindings remain current; every more-permissive or
+changed contract requires a human-confirmed successor.
+
+The reviewed 4.1→4.2 migration adds exact dormant implementation bytes and
+derived projections without manufacturing repository/provider facts,
+credentials, project decisions, confirmation evidence, standing authority,
+adoption, or readiness. See `migrations/4.1.0-to-4.2.0.md`.
+
 ## Other 4.0 behavior changes
 
 - scripted generation without `--profile` fails;

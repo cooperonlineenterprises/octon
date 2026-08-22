@@ -22,6 +22,36 @@ There is no second installer or apply engine. A setup session is review input,
 not project configuration, accepted authority, a receipt, or runtime
 authorization. `permission_grant` is always `false`.
 
+Every initialization, adoption, and upgrade session exposes autonomous
+delivery as an independent delivery axis. Its initial state is
+`available_not_activated`. Setup displays:
+
+> Autonomous delivery is available.
+>
+> Octon Mini can independently research, implement, test, create PRs, merge,
+> and release work within limits you approve.
+>
+> Current status: available but externally locked.
+>
+> Before activation, research, context building, applicability assessment,
+> planning, status, explanation, and activation preview are available read-only.
+>
+> - Activate using a delivery profile
+> - Configure custom limits
+> - Leave locked for now
+
+`fast_delivery` may be recommended for most solo developers but is never
+preselected. If deferred, setup records locked writes and external effects and
+prints `./octon delivery activate --profile fast_delivery --authority-dir
+<absolute-operator-controlled-directory>` as the exact later entry point.
+
+Setup selections may populate a deterministic contract draft. They cannot
+confirm it. Octon Mini displays every field and digest, and only an independent
+human exact-digest confirmation can permit serialization of the external
+accepted record. A noninteractive flag is never confirmation. Upgrade preserves
+an existing exact contract only while every binding remains current and never
+renews or broadens it automatically.
+
 ## Agent procedure
 
 An AI agent conducting setup must:

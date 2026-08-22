@@ -1,0 +1,15 @@
+{
+  "schema_version": "octon-mini.autonomous-delivery-package.v1",
+  "package_id": "autonomous-delivery",
+  "package_version": "1.0.0",
+  "permission_grant": false,
+  "entrypoint": ".agent/capabilities/autonomous-delivery/delivery_runtime.py",
+  "validator": ".agent/capabilities/autonomous-delivery/validate.py",
+  "dependencies": ["long-running-work", "work.finish", "transactions", "project-checks", "continuation"],
+  "external_effects": "closed_git_github_source_delivery_only_after_exact_standing_authorization_projection",
+  "direct_external_spending_usd": 0,
+  "limitations": [
+    "The package is inert until an independently confirmed exact standing-authorization record is activated.",
+    "The package does not host a worker, model, credential, deployment system, package publisher, or universal action runtime."
+  ]
+}

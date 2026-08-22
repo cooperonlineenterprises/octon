@@ -1000,7 +1000,7 @@ class HarnessValidatorTests(unittest.TestCase):
         self.assertEqual(set(root_actions.choices), expected_local_roots)
         self.assertEqual(
             expected_local_roots,
-            {"check", "doctor", "work", "maintain", "transaction"},
+            {"check", "doctor", "work", "delivery", "maintain", "transaction"},
         )
         self.assertNotIn("--force", parser.format_help())
 

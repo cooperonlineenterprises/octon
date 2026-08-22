@@ -124,6 +124,18 @@
       "limitations": ["Does not host a model, create task scope, grant permission, or replay an ambiguous effect."]
     },
     {
+      "id": "work.autonomous_delivery",
+      "display_name": "Octon Mini Governed Autonomous Delivery",
+      "purpose": "Discover, assess, preview, activate, and govern bounded autonomous delivery for an already human-prioritized task.",
+      "availability": ["bootstrap_source", "generated_project"],
+      "command_entry_points": ["octon delivery"],
+      "implementation_entry_points": [".agent/scripts/octon.py", ".agent/scripts/octon_autonomous_delivery.py", ".agent/capabilities/autonomous-delivery/delivery_runtime.py"],
+      "default_behavior": "mixed",
+      "mutation_behavior": "Research, context, assessment, planning, status, explanation, and activation preview are read-only before activation; write-capable behavior requires the exact independently confirmed standing contract and locally bundled package activation.",
+      "authorization_boundary": "A profile or draft grants nothing; every mutation or external effect requires a current exact standing-authorization record, independent confirmation evidence, exact-plan coverage, current limits, and live revalidation.",
+      "limitations": ["No direct spending, credential handling, deployment, package publication, communication, external-project control, force operation, or ambiguous-effect replay."]
+    },
+    {
       "id": "maintenance.registry",
       "display_name": "Octon Mini Artifact Registry Maintenance",
       "purpose": "Maintain explicit project dossier artifact registrations and their reviewed metadata.",
@@ -237,6 +249,7 @@
     {"name": "work.handoff", "capability_id": "work.lifecycle", "description": "Record a bounded governed work handoff.", "availability": ["generated_project"], "default_behavior": "mutating", "mutation_model": "plan_apply_receipt", "authorization_boundary": "explicit_operator_intent_and_reviewed_digest"},
     {"name": "work.finish", "capability_id": "work.completion", "description": "Plan, apply, or resume governed Git/provider work completion.", "availability": ["generated_project"], "default_behavior": "mixed", "mutation_model": "read_only_plan_then_digest_bound_resumable_progress_receipt", "authorization_boundary": "accepted_workflow_authority_exact_reviewed_digest_current_task_scoped_external_authorization_and_live_preconditions"},
     {"name": "work.run", "capability_id": "work.long_running", "description": "Govern one bounded long-running work run through an optional package.", "availability": ["generated_project"], "default_behavior": "mixed", "mutation_model": "optional_package_owned_run_records_and_marker_backed_checkpoints", "authorization_boundary": "installed_package_project_adoption_existing_task_authority_current_bindings_and_validation"},
+    {"name": "delivery", "capability_id": "work.autonomous_delivery", "description": "Inspect, preview, draft, activate, or govern bounded autonomous delivery.", "availability": ["bootstrap_source", "generated_project"], "default_behavior": "mixed", "mutation_model": "read_only_dormant_surface_then_exact_confirmed_contract_activation_and_monotonic_effect_receipts", "authorization_boundary": "independent_exact_digest_confirmation_current_standing_record_exact_plan_projection_limits_cost_enforcement_and_live_preconditions"},
     {"name": "work.resume", "capability_id": "work.lifecycle", "description": "Show the read-only governed work resumption view.", "availability": ["generated_project"], "default_behavior": "read_only", "mutation_model": "none", "authorization_boundary": "none"},
     {"name": "maintain.registry", "capability_id": "maintenance.registry", "description": "Maintain explicit project artifact registrations.", "availability": ["generated_project"], "default_behavior": "mutating", "mutation_model": "proposal_review_plan_apply_receipt", "authorization_boundary": "explicit_registry_choices_and_reviewed_digest"},
     {"name": "maintain.hooks", "capability_id": "maintenance.hooks", "description": "Configure explicit project-check hooks.", "availability": ["generated_project"], "default_behavior": "mutating", "mutation_model": "plan_apply_receipt", "authorization_boundary": "explicit_project_owned_hook_configuration"},

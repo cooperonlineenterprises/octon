@@ -18,6 +18,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+import test_long_running_work as long_work_fixture
+
 
 SCRIPT_ROOT = Path(__file__).resolve().parent
 SCAFFOLDER = SCRIPT_ROOT / "scaffold_project.py"
@@ -720,15 +722,16 @@ class Migration310To400Tests(unittest.TestCase):
             ],
             SCRIPT_ROOT,
         )
-        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        diagnostic = long_work_fixture.staged_diagnostic(self.root, transaction) if result.returncode else ""
+        self.assertEqual(result.returncode, 0, (result.stderr or result.stdout) + "\nSTAGED:\n" + diagnostic)
 
         final_origin = load(self.root / CURRENT_ORIGIN)
         final_project = load(self.root / ".agent/project.json")
         self.assertEqual(final_origin["schema_version"], "octon-mini.project.origin.v1")
         self.assertEqual(final_origin["product"], "octon-mini")
-        self.assertEqual(final_origin["octon_mini_version"], "4.1.0")
-        self.assertEqual(final_project["schema_version"], "harness.project.v7")
-        self.assertEqual(final_project["project"]["octon_mini_version"], "4.1.0")
+        self.assertEqual(final_origin["octon_mini_version"], "4.2.0")
+        self.assertEqual(final_project["schema_version"], "harness.project.v8")
+        self.assertEqual(final_project["project"]["octon_mini_version"], "4.2.0")
         self.assertEqual(
             final_project["collaboration_profile"]["assessment_status"],
             "not_assessed",

@@ -245,6 +245,32 @@ def dispatch_long_running_work(arguments: list[str]) -> int:
     ).returncode
 
 
+def dispatch_autonomous_delivery(arguments: list[str]) -> int:
+    """Launch the always-present dormant delivery surface in a fresh process."""
+    entry_relative = ".agent/scripts/octon_autonomous_delivery.py"
+    entry = ROOT / entry_relative
+    if not entry.is_file() or entry.is_symlink():
+        raise WorkflowError("autonomous-delivery dormant surface is absent or unsafe")
+    environment = {
+        key: os.environ[key]
+        for key in ("PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR")
+        if key in os.environ
+    }
+    environment.update({
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+    })
+    return subprocess.run(
+        [sys.executable, "-I", "-B", entry_relative, "--target", str(ROOT), *arguments],
+        cwd=ROOT,
+        env=environment,
+        check=False,
+        shell=False,
+    ).returncode
+
+
 def load_validator():
     path = ROOT / ".agent/scripts/validate.py"
     spec = importlib.util.spec_from_file_location("octon_runtime_validator", path)
@@ -1065,6 +1091,13 @@ def parser() -> argparse.ArgumentParser:
     )
     run.add_argument("run_args", nargs=argparse.REMAINDER)
 
+    delivery = commands.add_parser(
+        "delivery",
+        help="inspect, preview, or activate governed autonomous delivery",
+        add_help=False,
+    )
+    delivery.add_argument("delivery_args", nargs=argparse.REMAINDER)
+
     maintain = commands.add_parser(
         "maintain",
         help="maintain explicit Octon Mini project configuration",
@@ -1200,6 +1233,8 @@ def main() -> int:
             raise WorkflowError("unsupported work action")
         write_plan(plan, args.output, json_output=getattr(args, "json", False))
         return 0
+    if args.command == "delivery":
+        return dispatch_autonomous_delivery(args.delivery_args)
     if args.command == "maintain":
         if args.maintain_action == "refresh":
             return subprocess.run([sys.executable, "-B", ".agent/scripts/refresh.py", "--refresh"], cwd=ROOT, check=False, shell=False).returncode

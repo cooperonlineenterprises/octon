@@ -329,6 +329,34 @@
           "authority_class": "explicit_current_authorization",
           "normal_workflow": true,
           "safeguards": ["require_exact_repository_pull_request_and_current_merge_authority", "require_the_one_adopted_integration_method", "require_current_validation_and_review_state"]
+        },
+        {
+          "id": "observe_workflow_runs",
+          "effects": ["read_only_observation", "network_access"],
+          "authority_class": "separate_release_authorization",
+          "normal_workflow": false,
+          "safeguards": ["bind_every_run_and_job_to_the_exact_revision", "queued_cancelled_skipped_or_unavailable_is_not_pass", "retain_failed_runs_and_samples"]
+        },
+        {
+          "id": "dispatch_workflow",
+          "effects": ["network_access", "external_publication"],
+          "authority_class": "separate_release_authorization",
+          "normal_workflow": false,
+          "safeguards": ["require_exact_repository_workflow_and_revision", "persist_attempted_marker_before_dispatch", "read_back_the_exact_run", "unknown_outcome_has_zero_automatic_retries"]
+        },
+        {
+          "id": "observe_source_release",
+          "effects": ["read_only_observation", "network_access"],
+          "authority_class": "separate_release_authorization",
+          "normal_workflow": false,
+          "safeguards": ["bind_tag_object_peeled_revision_release_state_and_assets", "do_not_infer_readiness_or_adoption"]
+        },
+        {
+          "id": "create_source_release",
+          "effects": ["network_access", "external_publication"],
+          "authority_class": "separate_release_authorization",
+          "normal_workflow": false,
+          "safeguards": ["require_exact_immutable_published_tag", "publish_only_reviewed_non_secret_notes", "prohibit_package_assets_deployment_and_tag_movement", "read_back_before_claiming_completion"]
         }
       ]
     }

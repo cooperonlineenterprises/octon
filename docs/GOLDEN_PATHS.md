@@ -255,6 +255,7 @@ separately assessed, installed, and adopted the optional package.
 
 1. From the source bundle, plan and apply content-addressed installation of
    `long-running-work` with an accepted trust/applicability decision.
+
 2. In the generated project, plan and apply `octon work run configure` with a
    separate accepted project adoption decision. Installation remains inactive
    until this step.
@@ -278,6 +279,46 @@ Never replay an external operation during resume. Disable the package before
 removal. Removal refuses active or undispositioned retained run history.
 Structural success, a run completion, or a checkpoint establishes no project
 adoption, external authority, release, or readiness.
+
+## Governed autonomous delivery
+
+1. Inspect the locked default without changing the project:
+
+   ```text
+   ./octon delivery status
+   ./octon delivery assess
+   ./octon delivery activation-preview --profile fast_delivery
+   ```
+
+2. Generate a deterministic draft to an explicit external review area. The
+   draft is not authority:
+
+   ```text
+   ./octon delivery authorization draft \
+     --profile fast_delivery \
+     --repository-root /absolute/project \
+     --repository-identity owner/repository \
+     --authority-dir /absolute/operator-control \
+     --evidence-root /absolute/evidence \
+     --valid-from <timestamp> \
+     --valid-until <timestamp> \
+     --output /absolute/review/SAC-01.draft.json
+   ```
+
+3. Independently confirm the displayed exact digest. A flag is not
+   confirmation. Serialize the accepted external record only from matching
+   confirmation evidence.
+
+4. Plan activation from the accepted record, confirmation, host cost evidence,
+   and accepted project adoption decision; then apply only the exact digest.
+
+5. Use existing long-running work, transactions, project checks, and work
+   completion for ordinary delivery. Use the closed adapter only for exact
+   workflow dispatch, annotated tag, tag push, GitHub source Release, and
+   read-back.
+
+6. If an attempted external effect cannot be read back conclusively, stop. Do
+   not retry. Reconcile or fix forward from the monotonic receipt.
 
 ## Hooks and evidence
 

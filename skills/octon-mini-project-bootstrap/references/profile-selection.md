@@ -3,6 +3,12 @@
 These are independent axes. Do not make team size a risk profile, make layout
 an assurance level, or count agents as human writers.
 
+Delivery is another independent axis: locked, `review_first`,
+`balanced_autonomous`, `fast_delivery`, or `custom`. It never selects or
+changes assurance, collaboration, concurrency, or layout. `fast_delivery` may
+be recommended for most solo developers but is never selected or activated
+without an exact independently confirmed standing contract.
+
 Guided setup asks for these axes through the canonical setup-question catalog.
 It may present an evidence-based recommendation, but it never preselects an
 answer. Preserve `unknown` or `deferred` when allowed, and keep a user selection
@@ -29,6 +35,12 @@ packages, not universal profile payloads. Their absence never establishes
 non-applicability. Long-running work is available to every assurance profile
 only after explicit applicability, installation, and project adoption; High
 Assurance does not activate it automatically.
+
+Autonomous delivery differs only in dormant availability: every snapshot has
+the smallest read-only surface and inert local payload bytes so activation
+needs no network installation. It still starts `available_not_activated`, with
+no package installation, profile selection, project decision, provider fact,
+credential, or standing authorization.
 
 ## Physical layout
 

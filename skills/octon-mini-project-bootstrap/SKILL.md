@@ -1,6 +1,6 @@
 ---
 name: octon-mini-project-bootstrap
-description: Create, adopt, configure, operate, recover, or upgrade a project-local Octon Mini agent harness and project dossier. Use for project bootstrap, new-project initialization, established-project adoption, guided setup, harness and dossier creation, profile and layout selection, governed work lifecycle, validation and recovery, collaboration assessment, package installation, and deliberate upgrades.
+description: Create, adopt, configure, operate, recover, or upgrade a project-local Octon Mini agent harness and project dossier. Use for project bootstrap, new-project initialization, established-project adoption, guided setup, harness and dossier creation, profile and layout selection, governed work lifecycle, autonomous-delivery discovery and activation, validation and recovery, collaboration assessment, package installation, and deliberate upgrades.
 ---
 
 # Octon Mini Project Bootstrap
@@ -19,12 +19,17 @@ facts, identities, permissions, accepted decisions, evidence, or readiness.
    - creation, adoption, maintenance, recovery, upgrade:
      `references/generation-workflow.md`;
    - conversational, TTY, or answer-file setup and resume:
-     `references/guided-setup.md`.
+     `references/guided-setup.md`;
+   - autonomous-delivery discovery, activation, effects, and recovery:
+     `references/autonomous-delivery.md`.
 4. Keep these axes independent:
    - Minimal, Standard, High Assurance: project risk and assurance;
    - solo, pair, tiny: one, two, or three-to-five write-capable humans;
    - `concurrent_work`: simultaneous humans, agents, or automation;
-   - compact or separated: physical representation layout.
+   - compact or separated: physical representation layout;
+   - `review_first`, `balanced_autonomous`, `fast_delivery`, `custom`, or
+     locked: delivery behavior, independently confirmed and unrelated to the
+     other axes.
 
 ## Workflow
 
@@ -75,6 +80,18 @@ command identity with their generated-project command inventory.
   resume only from marker-backed checkpoints. Status, context, resume, and
   explain are read-only. Never replay an ambiguous effect or treat run state as
   task scope, permission, acceptance, release, or readiness.
+- Autonomous delivery: every generated project exposes `octon delivery` in
+  `available_not_activated`. Research, context, applicability, planning,
+  status, explanation, and activation preview are read-only and hook-free.
+  Setup may recommend `fast_delivery` for most solo developers but never
+  selects it. Deterministically draft the complete standing contract, display
+  every field and digest, and require independent human confirmation of those
+  exact bytes before serializing an external evidence record or activating the
+  locally bundled package. Revalidate revocation, emergency stop, repository,
+  branch, task, plan, action, release, evidence, cost enforcement, and limits
+  before every effect. Direct spending is zero; an unknown effect has zero
+  automatic retries. Read `references/autonomous-delivery.md` for activation
+  or delivery work.
 - Governed completion: use `octon work finish plan|apply|resume` only after the
   project explicitly enables the shared engine and adopts the installed
   small-team Git workflow. Planning is read-only. Apply requires the exact
@@ -130,6 +147,9 @@ confirmation, runtime authorization, external-action permission, or readiness.
 - Generated snapshots remain independent and versioned.
 - Optional long-running work is absent and inactive by default; a dormant
   dispatcher and unassessed trigger do not establish applicability or adoption.
+- Autonomous delivery is available but externally locked by default. A profile,
+  draft, setup answer, plan, projection, receipt, or stored record cannot create
+  standing authority; only independent exact-digest human confirmation can.
 - The installed source bundle includes the repository MIT-0 license; generated
   projects do not receive that `LICENSE` file or a project-wide license choice.
 - `check`, detection, diagnosis, planning, and resume views are read-only.

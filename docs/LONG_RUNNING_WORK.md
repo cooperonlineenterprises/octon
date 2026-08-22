@@ -162,9 +162,9 @@ Context, status, resume, and explain target warm p90 below two seconds on the
 10,000-file fixture. Existing scaffold, check, and fast-mutation thresholds do
 not change. Failed samples remain evidence.
 
-The first implementation is unreleased source behavior. A dirty source-tree
-exercise may demonstrate exact behavior but cannot establish final-candidate
-real-project maturity under `docs/REAL_PROJECT_VALIDATION.md`.
+The first implementation was released in 4.1.0. A later dirty source-tree
+exercise may demonstrate exact current behavior but cannot establish
+final-candidate real-project maturity under `docs/REAL_PROJECT_VALIDATION.md`.
 
 ## Deferred capabilities
 

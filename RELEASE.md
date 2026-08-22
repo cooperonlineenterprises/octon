@@ -5,6 +5,30 @@
 > below. This record creates no continuing authority for a later tag, Release,
 > package publication, deployment, adoption, or other external action.
 
+## Current source candidate
+
+Current development targets unreleased Octon Mini `4.2.0`. It implements the
+optional governed autonomous-delivery capability accepted by `SRC-DEC-0019`
+and the standing patch/minor source-release evidence policy accepted by
+`SRC-DEC-0020`.
+
+`SAC-01` is an accepted authorization envelope but is not active standing
+external-action authority. Before any push, PR mutation, workflow dispatch,
+merge, tag, GitHub Release, or remote cleanup, the final deterministic contract
+must be preserved outside the repository and its exact digest independently
+confirmed by the operator. A draft, profile, setup answer, plan, projection,
+receipt, test, or this source record cannot supply that confirmation.
+
+If confirmed, a final patch or minor source release still requires every
+applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,
+integrated-main, exact-read-back, evidence-retention, and no-critical/high-
+finding gate. Direct autonomous-worker spending is zero. The external host must
+enforce USD 250 per run and USD 1,000 per authorization-period AI/provider
+compute ceilings; unknown cost blocks activation. Major, boundary-expanding,
+new effect-family, security/privacy/legal/credential/destructive-migration,
+deployment, external-project, and package-publication releases require renewed
+human input.
+
 ## Current release
 
 - Product and generator: Octon Mini `4.1.0` (released 2026-08-22)
@@ -184,12 +208,19 @@ Before tagging a release:
    `test_migration_4_0_0_to_4_1_0.py`, and confirm valid transformation, exact
    idempotence, reviewed legacy seeding, dormant optional-package behavior,
    rollback evidence, and every fail-closed fixture;
+   for a 4.2 candidate additionally run
+   `test_migration_4_1_0_to_4_2_0.py` and confirm dormant delivery availability,
+   offline payload integrity, no generated authority, read-only no-change, and
+   exact rollback;
 4. run `test_benchmark_validation.py`, `test_octon_launchers.py`,
    `test_velocity_workflows.py`, `test_work_completion.py`,
    `test_guided_setup.py`, `test_acceptance.py`, and, for a 4.1 candidate,
    `test_long_running_work.py`, `test_long_running_work_faults.py`,
    `test_long_running_work_package.py`, `test_adapter_safety.py`, and
-   `test_long_running_work_benchmark.py`; run both
+   `test_long_running_work_benchmark.py`; for a 4.2 candidate also run
+   `test_autonomous_delivery.py`, `test_autonomous_delivery_faults.py`,
+   `test_autonomous_delivery_package.py`, and
+   `test_autonomous_delivery_benchmark.py`; run
    `benchmark_validation.py --enforce` and the 10,000-file
    `benchmark_long_running_work.py --enforce`, retaining each host-specific
    report, every cold-start and warm sample, stderr, and every threshold
@@ -226,6 +257,9 @@ Before tagging a release:
     closed; AI, TTY, and legacy-flag inputs reconcile through stable question
     IDs; init/adopt/upgrade use their existing planners; and work-completion
     setup neither enables missing prerequisites nor creates authorization;
+    for 4.2 also confirm all three setup modes advertise delivery, profile
+    recommendation never selects, deferral remains `available_not_activated`,
+    and no flag substitutes for independent exact-digest confirmation;
 14. commit the exact validated source and publish its required self-PR under
     current authority;
 15. after a separately authorized `merge_commit` integration, manually

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -1322,6 +1323,52 @@ def authority_still_current(receipt: dict[str, Any], operation: str) -> None:
     )
     if operation not in authority_record.get("operations", []):
         raise FinishBlocked(f"authorization does not cover operation: {operation}")
+    source = authority_record.get("authority_source", "")
+    if isinstance(source, str) and source.startswith("external:standing-authorization:"):
+        constraints = authority_record.get("constraints", [])
+        values = {
+            item.partition(":")[0]: item.partition(":")[2]
+            for item in constraints
+            if isinstance(item, str) and ":" in item
+        }
+        required = {
+            "standing_contract_digest",
+            "confirmation_fingerprint",
+            "authorization_record_ref",
+            "confirmation_artifact_ref",
+            "cost_enforcement_artifact_ref",
+            "usage_artifact_ref",
+            "usage_digest",
+        }
+        if not required <= set(values):
+            raise FinishBlocked("standing authorization lacks current revalidation bindings")
+        root = Path.cwd().resolve()
+        core_path = root / ".agent/scripts/octon_autonomous_delivery.py"
+        if not core_path.is_file() or core_path.is_symlink():
+            raise FinishBlocked("standing-authorization evaluator is absent or unsafe")
+        spec = importlib.util.spec_from_file_location("octon_work_completion_standing_authority", core_path)
+        if spec is None or spec.loader is None:
+            raise FinishBlocked("standing-authorization evaluator cannot be loaded")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+        try:
+            confirmation = core.load_json(core.external_path(root, values["confirmation_artifact_ref"], require_file=True))
+            record = core.validate_record(core.load_json(core.external_path(root, values["authorization_record_ref"], require_file=True)), confirmation)
+            contract = record["contract"]
+            core.active_controls(root, contract)
+            core.validate_cost_evidence(core.load_json(core.external_path(root, values["cost_enforcement_artifact_ref"], require_file=True)), contract)
+            usage = core.validate_usage(core.load_json(core.external_path(root, values["usage_artifact_ref"], require_file=True)), record)
+        except Exception as error:
+            raise FinishBlocked(f"standing authorization is not current: {error}") from error
+        expected_record = source.removeprefix("external:standing-authorization:")
+        if record.get("accepted_record_digest") != expected_record:
+            raise FinishBlocked("standing authorization source digest changed")
+        if contract.get("canonical_contract_digest") != values["standing_contract_digest"] or confirmation.get("confirmation_fingerprint") != values["confirmation_fingerprint"]:
+            raise FinishBlocked("standing authorization contract or confirmation changed")
+        if usage.get("usage_digest") != values["usage_digest"]:
+            raise FinishBlocked("standing authorization usage changed; create a current exact-plan attestation")
+        if contract.get("costs", {}).get("direct_external_spending_usd") != 0:
+            raise FinishBlocked("standing authorization would permit direct external spending")
 
 
 def ensure_remote_identity(root: Path, receipt: dict[str, Any]) -> None:

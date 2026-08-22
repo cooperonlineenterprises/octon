@@ -1,0 +1,1424 @@
+#!/usr/bin/env python3
+"""Dormant, fail-closed autonomous-delivery discovery and activation surface."""
+
+from __future__ import annotations
+
+import argparse
+import fnmatch
+import hashlib
+import importlib.util
+import json
+import os
+import re
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+
+CONTRACT_SCHEMA = "harness.autonomous-delivery-standing-authorization.v1"
+CONFIRMATION_SCHEMA = "harness.autonomous-delivery-confirmation.v1"
+RECORD_SCHEMA = "harness.autonomous-delivery-authorization-record.v1"
+PLAN_SCHEMA = "harness.autonomous-delivery-activation-plan.v1"
+PROJECTION_SCHEMA = "harness.autonomous-delivery-authority-projection.v1"
+COST_SCHEMA = "harness.autonomous-delivery-cost-enforcement.v1"
+PACKAGE_ID = "autonomous-delivery"
+PACKAGE_VERSION = "1.0.0"
+STATUS_AVAILABLE = "available_not_activated"
+ALLOWED_PROFILES = {
+    "review_first",
+    "balanced_autonomous",
+    "fast_delivery",
+    "custom",
+}
+ALLOWED_ACTIONS = {
+    "read_research",
+    "build_context",
+    "plan_delivery",
+    "mutate_repository",
+    "create_commit",
+    "push_task_branch",
+    "create_pull_request",
+    "update_pull_request_body",
+    "dispatch_hosted_workflow",
+    "observe_hosted_state",
+    "merge_pull_request",
+    "create_annotated_tag",
+    "push_tag",
+    "create_github_release",
+    "export_evidence",
+    "reconcile_release_records",
+    "delete_merged_task_branch",
+}
+EXTERNAL_ACTIONS = {
+    "push_task_branch",
+    "create_pull_request",
+    "update_pull_request_body",
+    "dispatch_hosted_workflow",
+    "observe_hosted_state",
+    "merge_pull_request",
+    "push_tag",
+    "create_github_release",
+    "delete_merged_task_branch",
+}
+FAST_ACTIONS = sorted(ALLOWED_ACTIONS)
+REVIEW_FIRST_ACTIONS = sorted(
+    ALLOWED_ACTIONS
+    - {
+        "merge_pull_request",
+        "create_annotated_tag",
+        "push_tag",
+        "create_github_release",
+    }
+)
+BALANCED_ACTIONS = sorted(ALLOWED_ACTIONS)
+PURCHASE_DENIES = [
+    "services",
+    "subscriptions",
+    "infrastructure",
+    "paid_apis",
+    "domains",
+    "licenses",
+    "marketplace_products",
+    "other_external_goods_or_services",
+]
+FAST_LIMITS = {
+    "authorization_lifetime_days": 90,
+    "delivery_run_duration_days": 14,
+    "work_iterations": 500,
+    "correction_cycles": 10,
+    "commits_per_run": 50,
+    "pull_requests_per_run": 12,
+    "hosted_workflow_dispatches_per_run": 40,
+    "safe_read_only_retries": 5,
+    "proven_no_effect_retries": 2,
+    "unknown_outcome_retries": 0,
+    "covered_releases": 12,
+    "concurrent_write_runs": 1,
+    "warning_percentages": [70, 85, 95],
+}
+HUMAN_STOPS = [
+    "product_priority_changes",
+    "architecture_decision_required",
+    "release_evidence_or_risk_policy_changes",
+    "product_boundary_or_standing_authority_expands",
+    "accepted_authority_conflicts",
+    "required_human_specialist_security_legal_or_external_project_decision",
+    "exact_contract_digest_unconfirmed",
+    "authorization_expired_revoked_or_exhausted",
+    "emergency_stop_present",
+    "repository_provider_branch_task_action_release_or_cost_outside_authorization",
+    "host_cost_enforcement_unavailable",
+    "required_authentication_unavailable_or_changed",
+    "safety_gate_failed",
+    "mandatory_evidence_unavailable",
+    "critical_or_high_finding_unresolved",
+    "external_outcome_unknown",
+    "evidence_preservation_or_verification_failed",
+    "published_tag_conflicts",
+    "user_owned_changes_cannot_be_preserved",
+    "excluded_action_required",
+]
+LIMITATIONS = [
+    "The draft, profile, plan, projection, receipt, and stored record do not create authority.",
+    "Independent human confirmation of the exact contract digest is the authority source.",
+    "Public effects are monotonic and never represented as atomically rollbackable.",
+    "Unknown external outcomes stop with zero automatic retries.",
+]
+
+
+class DeliveryError(RuntimeError):
+    """Fail-closed autonomous-delivery error."""
+
+
+def duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def load_json(path: Path) -> Any:
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=duplicate_pairs,
+            parse_constant=lambda raw: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value: {raw}")
+            ),
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
+        raise DeliveryError(f"cannot load strict JSON {path}: {error}") from error
+
+
+def canonical_bytes(value: Any) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def digest(value: Any) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def digest_without(value: dict[str, Any], field: str) -> str:
+    candidate = dict(value)
+    candidate.pop(field, None)
+    return digest(candidate)
+
+
+def file_sha256(path: Path) -> str:
+    value = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            value.update(block)
+    return value.hexdigest()
+
+
+def timestamp(value: str, label: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as error:
+        raise DeliveryError(f"{label} must be an ISO-8601 timestamp") from error
+    if parsed.tzinfo is None:
+        raise DeliveryError(f"{label} requires a timezone")
+    return parsed
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def utc_text(value: datetime | None = None) -> str:
+    return (value or utc_now()).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def root_path(raw: str | None) -> Path:
+    root = Path(raw or ".").resolve()
+    if not root.is_dir() or (root / ".agent").is_symlink():
+        raise DeliveryError("target project root is absent or unsafe")
+    return root
+
+
+def confined(root: Path, raw: str, *, require_file: bool = False) -> Path:
+    relative = PurePosixPath(raw)
+    if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+        raise DeliveryError(f"unsafe project path: {raw}")
+    candidate = root.joinpath(*relative.parts)
+    current = root
+    for part in relative.parts[:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise DeliveryError(f"project path has a symlink ancestor: {raw}")
+    try:
+        candidate.resolve(strict=False).relative_to(root)
+    except (OSError, ValueError) as error:
+        raise DeliveryError(f"project path escapes target: {raw}") from error
+    if require_file and (not candidate.is_file() or candidate.is_symlink()):
+        raise DeliveryError(f"required project file is absent or unsafe: {raw}")
+    return candidate
+
+
+def external_path(root: Path, raw: str, *, require_file: bool = False) -> Path:
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        raise DeliveryError("operator-controlled paths must be absolute")
+    candidate = candidate.resolve(strict=False)
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        pass
+    else:
+        raise DeliveryError("operator-controlled paths must remain outside the repository")
+    current = Path(candidate.anchor)
+    for part in candidate.parts[1:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise DeliveryError("operator-controlled path has a symlink ancestor")
+    if require_file and (not candidate.is_file() or candidate.is_symlink()):
+        raise DeliveryError(f"required external record is absent or unsafe: {candidate}")
+    return candidate
+
+
+def write_external_new(root: Path, raw: str, value: Any) -> Path:
+    path = external_path(root, raw)
+    if not path.parent.is_dir() or path.parent.is_symlink():
+        raise DeliveryError("external output parent must already exist and be nonsymlinked")
+    try:
+        with path.open("xb") as handle:
+            handle.write(canonical_bytes(value))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as error:
+        raise DeliveryError(f"external output already exists and will not be overwritten: {path}") from error
+    return path
+
+
+def emit(value: Any, output: str | None, root: Path) -> None:
+    if output:
+        write_external_new(root, output, value)
+    else:
+        sys.stdout.buffer.write(canonical_bytes(value))
+
+
+def project(root: Path) -> dict[str, Any]:
+    value = load_json(confined(root, ".agent/project.json", require_file=True))
+    if not isinstance(value, dict):
+        raise DeliveryError("project contract must be an object")
+    return value
+
+
+def delivery_config(root: Path) -> dict[str, Any]:
+    if not (root / ".agent/project.json").exists() and (root / "octon-mini.json").is_file() and (root / "VERSION").is_file():
+        return {
+            "schema_version": "harness.autonomous-delivery-config.v1",
+            "status": STATUS_AVAILABLE,
+            "write_capability": "locked",
+            "external_effects": "locked",
+            "delivery_profile": None,
+            "adoption_decision_ref": None,
+            "authorization_record_ref": None,
+            "authorization_record_digest": None,
+            "activation_receipt_ref": None,
+            "limitations": ["Octon Mini source delivery remains locally implemented but externally locked pending exact SAC confirmation."],
+        }
+    value = project(root).get("autonomous_delivery")
+    if value is None:
+        return {
+            "schema_version": "harness.autonomous-delivery-config.v1",
+            "status": STATUS_AVAILABLE,
+            "write_capability": "locked",
+            "external_effects": "locked",
+            "delivery_profile": None,
+            "adoption_decision_ref": None,
+            "authorization_record_ref": None,
+            "authorization_record_digest": None,
+            "activation_receipt_ref": None,
+            "limitations": ["Older snapshot or unprojected configuration; upgrade assessment is required."],
+        }
+    if not isinstance(value, dict):
+        raise DeliveryError("autonomous-delivery project configuration is malformed")
+    return value
+
+
+def profile_preset(profile: str) -> dict[str, Any]:
+    if profile not in ALLOWED_PROFILES:
+        raise DeliveryError(f"unsupported delivery profile: {profile}")
+    if profile == "review_first":
+        actions = REVIEW_FIRST_ACTIONS
+        releases: list[str] = []
+        limits = {**FAST_LIMITS, "covered_releases": 0}
+    elif profile == "balanced_autonomous":
+        actions = BALANCED_ACTIONS
+        releases = ["patch"]
+        limits = dict(FAST_LIMITS)
+    elif profile == "fast_delivery":
+        actions = FAST_ACTIONS
+        releases = ["patch", "minor"]
+        limits = dict(FAST_LIMITS)
+    else:
+        actions = []
+        releases = []
+        limits = dict(FAST_LIMITS)
+    return {
+        "profile": profile,
+        "recommended_for_most_solo_developers": profile == "fast_delivery",
+        "silently_selected": False,
+        "permitted_actions": actions,
+        "release_types": releases,
+        "limits": limits,
+        "hard_safety_rules_are_overridable": False,
+    }
+
+
+def read_only_status(
+    root: Path,
+    authorization_record: str | None = None,
+    confirmation_artifact: str | None = None,
+    cost_enforcement_artifact: str | None = None,
+    activation_receipt: str | None = None,
+) -> dict[str, Any]:
+    config = delivery_config(root)
+    source_active = False
+    supplied = [authorization_record, confirmation_artifact, cost_enforcement_artifact, activation_receipt]
+    if any(supplied):
+        if not all(supplied):
+            raise DeliveryError("active source status requires authorization, confirmation, cost, and activation-receipt artifacts together")
+        confirmation = load_json(external_path(root, str(confirmation_artifact), require_file=True))
+        record = validate_record(load_json(external_path(root, str(authorization_record), require_file=True)), confirmation)
+        active_controls(root, record["contract"])
+        validate_cost_evidence(load_json(external_path(root, str(cost_enforcement_artifact), require_file=True)), record["contract"])
+        receipt = load_json(external_path(root, str(activation_receipt), require_file=True))
+        if not isinstance(receipt, dict) or receipt.get("schema_version") != "harness.autonomous-delivery-activation-receipt.v1" or receipt.get("status") != "active" or receipt.get("authorization_record_digest") != record["accepted_record_digest"]:
+            raise DeliveryError("source activation receipt is absent, malformed, or bound to another standing record")
+        source_active = True
+    return {
+        "schema_version": "harness.autonomous-delivery-status.v1",
+        "artifact_kind": "derived_read_only_delivery_status",
+        "permission_grant": False,
+        "read_only": True,
+        "status": "active" if source_active else config.get("status", STATUS_AVAILABLE),
+        "write_capability": "authorized_within_exact_standing_contract" if source_active else config.get("write_capability", "locked"),
+        "external_effects": "authorized_only_through_current_exact_plan_projections" if source_active else config.get("external_effects", "locked"),
+        "delivery_profile": record["contract"]["delivery_profile"] if source_active else config.get("delivery_profile"),
+        "pre_activation_capabilities": [
+            "research",
+            "context_building",
+            "applicability_assessment",
+            "planning",
+            "status",
+            "explanation",
+            "activation_preview",
+        ],
+        "project_hooks_executed": False,
+        "repository_mutated": False,
+        "external_state_mutated": False,
+        "authority_created": False,
+        "limitations": config.get("limitations", []),
+    }
+
+
+def context_manifest(root: Path, max_bytes: int, task_ref: str | None) -> dict[str, Any]:
+    candidates = ["AGENTS.md", ".agent/project.json", ".agent/state/focus.json"]
+    if task_ref:
+        candidates.extend(
+            path.relative_to(root).as_posix()
+            for path in sorted((root / ".agent/tasks").glob(f"{task_ref}*.md"))
+            if path.is_file() and not path.is_symlink()
+        )
+    included: list[dict[str, Any]] = []
+    omitted: list[dict[str, Any]] = []
+    consumed = 0
+    for relative in candidates:
+        path = confined(root, relative)
+        if not path.is_file() or path.is_symlink():
+            omitted.append({"path": relative, "reason": "absent"})
+            continue
+        size = path.stat().st_size
+        item = {"path": relative, "sha256": file_sha256(path), "bytes": size}
+        if consumed + size > max_bytes:
+            omitted.append({**item, "reason": "byte_budget_exhausted"})
+            continue
+        included.append({**item, "reason": "deterministic_governing_source"})
+        consumed += size
+    value = {
+        "schema_version": "harness.autonomous-delivery-context.v1",
+        "artifact_kind": "derived_read_only_context_manifest",
+        "permission_grant": False,
+        "read_only": True,
+        "task_ref": task_ref,
+        "max_bytes": max_bytes,
+        "measured_bytes": consumed,
+        "included": included,
+        "omitted": omitted,
+        "project_hooks_executed": False,
+        "repository_mutated": False,
+        "external_state_mutated": False,
+        "limitations": ["Content is referenced by digest and is not copied into this manifest."],
+    }
+    value["manifest_digest"] = digest(value)
+    return value
+
+
+def applicability(root: Path) -> dict[str, Any]:
+    config = delivery_config(root)
+    available = confined(root, ".agent/available-packages/autonomous-delivery/payload")
+    source_available = (
+        root / "skills/octon-mini-project-bootstrap/assets/packages/autonomous-delivery/templates"
+    ).is_dir()
+    return {
+        "schema_version": "harness.autonomous-delivery-applicability.v1",
+        "artifact_kind": "read_only_applicability_assessment",
+        "permission_grant": False,
+        "read_only": True,
+        "status": config.get("status", STATUS_AVAILABLE),
+        "offline_payload_available": (available.is_dir() and not available.is_symlink()) or source_available,
+        "repository_observed": (root / ".git").exists(),
+        "provider": "unknown",
+        "credential": "unknown",
+        "standing_authorization": "absent_or_unconfirmed",
+        "recommendation": "fast_delivery",
+        "recommendation_is_selection": False,
+        "project_hooks_executed": False,
+        "repository_mutated": False,
+        "external_state_mutated": False,
+        "limitations": ["Applicability does not adopt or activate the capability."],
+    }
+
+
+def delivery_plan(root: Path, task_ref: str | None) -> dict[str, Any]:
+    value = {
+        "schema_version": "harness.autonomous-delivery-read-only-plan.v1",
+        "artifact_kind": "non_authorizing_delivery_plan",
+        "permission_grant": False,
+        "read_only": True,
+        "task_ref": task_ref,
+        "phases": [
+            "research",
+            "context",
+            "implementation",
+            "validation",
+            "correction",
+            "work_completion",
+            "hosted_validation",
+            "release_if_eligible",
+            "evidence",
+            "reconciliation",
+            "cleanup",
+        ],
+        "blocking": [
+            "write capability remains locked until exact standing-authorization activation"
+        ] if delivery_config(root).get("status") != "active" else [],
+        "project_hooks_executed": False,
+        "repository_mutated": False,
+        "external_state_mutated": False,
+        "limitations": LIMITATIONS,
+    }
+    value["canonical_plan_digest"] = digest(value)
+    return value
+
+
+def research_projection(query: str) -> dict[str, Any]:
+    value = {
+        "schema_version": "harness.autonomous-delivery-research.v1",
+        "artifact_kind": "read_only_research_request",
+        "permission_grant": False,
+        "read_only": True,
+        "query": query,
+        "network_requirement": "none_in_octon_mini_core",
+        "external_worker": "optional_read_only_consumer",
+        "forbidden_external_mutations": [
+            "like", "post", "follow", "message", "purchase", "subscribe", "configure"
+        ],
+        "project_hooks_executed": False,
+        "repository_mutated": False,
+        "external_state_mutated": False,
+        "authority_created": False,
+        "limitations": ["This projection does not itself browse or claim research evidence."],
+    }
+    value["request_digest"] = digest(value)
+    return value
+
+
+def contract_from(args: argparse.Namespace) -> dict[str, Any]:
+    preset = profile_preset(args.profile)
+    valid_from = timestamp(args.valid_from, "valid_from")
+    requested_until = timestamp(args.valid_until, "valid_until")
+    maximum_until = valid_from + timedelta(days=int(preset["limits"]["authorization_lifetime_days"]))
+    valid_until = min(requested_until, maximum_until)
+    if valid_until <= valid_from:
+        raise DeliveryError("authorization validity interval is empty or contradictory")
+    control = Path(args.authority_dir).expanduser().resolve(strict=False)
+    evidence_root = Path(args.evidence_root).expanduser().resolve(strict=False)
+    actions = preset["permitted_actions"]
+    release_types = preset["release_types"]
+    if args.profile == "custom":
+        if not args.custom_contract:
+            raise DeliveryError("custom profile requires --custom-contract")
+        custom = load_json(Path(args.custom_contract))
+        if not isinstance(custom, dict):
+            raise DeliveryError("custom profile input must be an object")
+        actions = custom.get("permitted_actions")
+        release_types = custom.get("release_types")
+        limits = custom.get("limits")
+        if not isinstance(actions, list) or not set(actions) <= ALLOWED_ACTIONS:
+            raise DeliveryError("custom permitted actions are malformed or unsupported")
+        if not isinstance(release_types, list) or not set(release_types) <= {"patch", "minor"}:
+            raise DeliveryError("custom release types are malformed or unsupported")
+        if not isinstance(limits, dict):
+            raise DeliveryError("custom limits are missing")
+    else:
+        limits = preset["limits"]
+    value = {
+        "schema_version": CONTRACT_SCHEMA,
+        "artifact_kind": "standing_authorization_contract",
+        "permission_grant": False,
+        "authorization_id": args.authorization_id,
+        "status": "proposed_unconfirmed",
+        "delivery_profile": args.profile,
+        "priority_authority_required": True,
+        "architecture_authority_required": True,
+        "release_policy_ref": "SRC-DEC-0020",
+        "repository": {
+            "root": str(Path(args.repository_root).expanduser().resolve()),
+            "identity": args.repository_identity,
+            "remote": args.remote,
+            "default_branch": args.default_branch,
+            "task_branch_pattern": args.task_branch_pattern,
+        },
+        "permitted_actions": sorted(set(actions)),
+        "release_types": sorted(set(release_types)),
+        "merge_method": "merge_commit",
+        "limits": limits,
+        "costs": {
+            "host_enforcement_required": True,
+            "ai_provider_usd_per_run": args.ai_budget_per_run,
+            "ai_provider_usd_per_authorization": args.ai_budget_per_authorization,
+            "unknown_cost_behavior": "block_activation_or_require_human_approved_custom_treatment",
+            "direct_external_spending_usd": 0,
+            "purchases_prohibited": PURCHASE_DENIES,
+        },
+        "evidence": {
+            "root": str(evidence_root),
+            "raw_retention_days": 365,
+            "release_manifests": "indefinite",
+            "failed_evidence_retained": True,
+            "hash_algorithm": "sha256",
+        },
+        "controls": {
+            "authorization_path": str(control / f"{args.authorization_id}.json"),
+            "confirmation_path": str(control / f"{args.authorization_id}.confirmation.json"),
+            "revocation_path": str(control / f"{args.authorization_id}.revoked.json"),
+            "emergency_stop_path": str(control / "STOP"),
+            "worker_may_write": False,
+        },
+        "valid_from": utc_text(valid_from),
+        "valid_until": utc_text(valid_until),
+        "human_stop_conditions": HUMAN_STOPS,
+        "limitations": LIMITATIONS,
+    }
+    value["canonical_contract_digest"] = digest(value)
+    validate_contract(value)
+    return value
+
+
+def validate_contract(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") != CONTRACT_SCHEMA:
+        raise DeliveryError("standing-authorization contract is malformed")
+    if value.get("canonical_contract_digest") != digest_without(value, "canonical_contract_digest"):
+        raise DeliveryError("standing-authorization contract digest is invalid")
+    if value.get("permission_grant") is not False or value.get("status") != "proposed_unconfirmed":
+        raise DeliveryError("standing-authorization contract envelope is invalid")
+    if value.get("delivery_profile") not in ALLOWED_PROFILES:
+        raise DeliveryError("standing-authorization delivery profile is invalid")
+    actions = value.get("permitted_actions")
+    if not isinstance(actions, list) or not actions or set(actions) - ALLOWED_ACTIONS:
+        raise DeliveryError("standing-authorization actions are invalid")
+    costs = value.get("costs")
+    if not isinstance(costs, dict) or costs.get("direct_external_spending_usd") != 0:
+        raise DeliveryError("direct external spending must remain zero")
+    if costs.get("host_enforcement_required") is not True:
+        raise DeliveryError("AI/provider cost enforcement must remain host-owned")
+    if not isinstance(costs.get("ai_provider_usd_per_run"), (int, float)) or costs["ai_provider_usd_per_run"] <= 0 or not isinstance(costs.get("ai_provider_usd_per_authorization"), (int, float)) or costs["ai_provider_usd_per_authorization"] < costs["ai_provider_usd_per_run"]:
+        raise DeliveryError("AI/provider cost ceilings are malformed")
+    if costs.get("purchases_prohibited") != PURCHASE_DENIES:
+        raise DeliveryError("autonomous-delivery purchase denials differ from the hard boundary")
+    limits = value.get("limits")
+    if not isinstance(limits, dict) or set(limits) != set(FAST_LIMITS) or any(not isinstance(item, int) or item < 0 for key, item in limits.items() if key != "warning_percentages") or limits.get("unknown_outcome_retries") != 0 or limits.get("concurrent_write_runs") != 1:
+        raise DeliveryError("hard delivery limits are invalid")
+    if limits.get("warning_percentages") != [70, 85, 95]:
+        raise DeliveryError("usage warnings must remain 70, 85, and 95 percent")
+    if timestamp(value.get("valid_until"), "valid_until") <= timestamp(value.get("valid_from"), "valid_from"):
+        raise DeliveryError("standing-authorization validity is contradictory")
+    if timestamp(value.get("valid_until"), "valid_until") > timestamp(value.get("valid_from"), "valid_from") + timedelta(days=limits["authorization_lifetime_days"]):
+        raise DeliveryError("standing-authorization validity exceeds its accepted lifetime")
+    releases = value.get("release_types")
+    if not isinstance(releases, list) or set(releases) - {"patch", "minor"}:
+        raise DeliveryError("standing-authorization release types are invalid")
+    controls = value.get("controls")
+    if not isinstance(controls, dict) or controls.get("worker_may_write") is not False:
+        raise DeliveryError("operator controls must remain worker-read-only")
+    return value
+
+
+def expected_confirmation_statement(contract_digest: str) -> str:
+    return (
+        f"I confirm exact SAC-01 digest `{contract_digest}` as presented and activate it within "
+        "its accepted scope, limits, expiration, release policy, revocation, emergency-stop, "
+        "evidence, and human-stop conditions."
+    )
+
+
+def validate_confirmation(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") != CONFIRMATION_SCHEMA:
+        raise DeliveryError("independent confirmation evidence is absent or malformed")
+    if value.get("confirmation_fingerprint") != digest_without(value, "confirmation_fingerprint"):
+        raise DeliveryError("confirmation evidence fingerprint is invalid")
+    contract_digest = contract["canonical_contract_digest"]
+    if value.get("contract_digest") != contract_digest:
+        raise DeliveryError("confirmation evidence covers a different contract digest")
+    if value.get("confirmation_statement") != expected_confirmation_statement(contract_digest):
+        raise DeliveryError("confirmation statement is not the exact accepted digest statement")
+    if value.get("confirmation_method") != "independent_exact_digest_statement":
+        raise DeliveryError("confirmation method is not independent exact-digest confirmation")
+    if value.get("permission_grant") is not False:
+        raise DeliveryError("confirmation evidence envelope is invalid")
+    return value
+
+
+def accepted_record(contract: dict[str, Any], confirmation: dict[str, Any]) -> dict[str, Any]:
+    validate_contract(contract)
+    validate_confirmation(confirmation, contract)
+    value = {
+        "schema_version": RECORD_SCHEMA,
+        "artifact_kind": "standing_authorization_evidence_record",
+        "permission_grant": False,
+        "contract": contract,
+        "confirmation": confirmation,
+        "limitations": [
+            "This immutable record is evidence of the independently confirmed human grant.",
+            "The record does not create, extend, or approve its own authority.",
+        ],
+    }
+    value["accepted_record_digest"] = digest(value)
+    return value
+
+
+def validate_record(value: Any, confirmation: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") != RECORD_SCHEMA:
+        raise DeliveryError("accepted standing-authorization record is absent or malformed")
+    if value.get("accepted_record_digest") != digest_without(value, "accepted_record_digest"):
+        raise DeliveryError("accepted standing-authorization record digest is invalid")
+    contract = validate_contract(value.get("contract"))
+    embedded = validate_confirmation(value.get("confirmation"), contract)
+    if confirmation is not None and confirmation != embedded:
+        raise DeliveryError("separate confirmation artifact differs from the accepted record")
+    return value
+
+
+def validate_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {
+        "schema_version", "artifact_kind", "host_enforced", "unknown_cost", "per_run_usd",
+        "per_authorization_usd", "observed_at", "valid_until", "evidence_fingerprint"
+    }:
+        raise DeliveryError("host cost-enforcement evidence is absent or malformed")
+    if value.get("schema_version") != COST_SCHEMA or value.get("host_enforced") is not True or value.get("unknown_cost") is not False:
+        raise DeliveryError("host cannot prove enforcement of known AI/provider cost limits")
+    if value.get("evidence_fingerprint") != digest_without(value, "evidence_fingerprint"):
+        raise DeliveryError("cost-enforcement evidence fingerprint is invalid")
+    costs = contract["costs"]
+    if value.get("per_run_usd") != costs["ai_provider_usd_per_run"] or value.get("per_authorization_usd") != costs["ai_provider_usd_per_authorization"]:
+        raise DeliveryError("host cost ceilings differ from the accepted contract")
+    if timestamp(value.get("valid_until"), "cost valid_until") < utc_now():
+        raise DeliveryError("host cost-enforcement evidence is expired")
+    return value
+
+
+def package_inventory(root: Path, package_id: str) -> tuple[dict[str, bytes], str]:
+    if package_id not in {"autonomous-delivery", "long-running-work"}:
+        raise DeliveryError("offline package identity is outside the closed activation dependency set")
+    payload = confined(root, f".agent/available-packages/{package_id}/payload")
+    if not payload.is_dir() or payload.is_symlink():
+        raise DeliveryError(f"offline {package_id} package payload is absent or unsafe")
+    files: dict[str, bytes] = {}
+    for path in sorted(payload.rglob("*")):
+        if path.is_symlink():
+            raise DeliveryError("offline autonomous-delivery payload contains a symlink")
+        if path.is_file():
+            relative = path.relative_to(payload).as_posix()
+            if not relative.startswith(f".agent/capabilities/{package_id}/"):
+                raise DeliveryError(f"offline package path is outside the closed payload: {relative}")
+            files[relative] = path.read_bytes()
+    if not files:
+        raise DeliveryError(f"offline {package_id} package payload is empty")
+    value = hashlib.sha256()
+    for relative, content in sorted(files.items()):
+        value.update(relative.encode("utf-8"))
+        value.update(b"\0")
+        value.update(content)
+        value.update(b"\0")
+    return files, value.hexdigest()
+
+
+def available_package_catalog(root: Path) -> dict[str, dict[str, Any]]:
+    value = load_json(confined(root, ".agent/available-packages/catalog.json", require_file=True))
+    if not isinstance(value, dict) or value.get("schema_version") != "harness.available-package-catalog.v1" or value.get("permission_grant") is not False:
+        raise DeliveryError("offline available-package catalog is malformed")
+    packages = {
+        item.get("id"): item
+        for item in value.get("packages", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    if set(packages) != {"autonomous-delivery", "long-running-work"}:
+        raise DeliveryError("offline available-package catalog differs from the closed dependency set")
+    for package_id, item in packages.items():
+        if item.get("kind") != "workflow_capability" or item.get("status") != "available_not_installed" or item.get("payload_root") != f".agent/available-packages/{package_id}/payload" or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("source_sha256", ""))) or not re.fullmatch(r"[a-f0-9]{64}", str(item.get("installed_paths_sha256", ""))):
+            raise DeliveryError(f"offline available-package contract is invalid: {package_id}")
+    return packages
+
+
+def project_fingerprint(root: Path) -> str:
+    value = hashlib.sha256()
+    relatives = ["AGENTS.md", ".octon-mini-origin.json", ".agent/project.json", ".agent/packages.json"]
+    if (root / "octon-mini.json").is_file() and not (root / ".agent/project.json").is_file():
+        relatives = ["AGENTS.md", "VERSION", "octon-mini.json", "ARCHITECTURE_DECISIONS.md", "RELEASE.md", "GIT_WORKFLOW.md", "shared/source-contracts/profile-manifest.json"]
+    for relative in relatives:
+        path = confined(root, relative)
+        value.update(relative.encode("utf-8"))
+        value.update(b"\0")
+        if path.is_file() and not path.is_symlink():
+            value.update(path.read_bytes())
+        else:
+            value.update(b"<absent>")
+        value.update(b"\0")
+    return value.hexdigest()
+
+
+def active_controls(root: Path, contract: dict[str, Any]) -> None:
+    controls = contract["controls"]
+    for field in ["authorization_path", "confirmation_path", "revocation_path", "emergency_stop_path"]:
+        external_path(root, controls[field])
+    if Path(controls["revocation_path"]).exists():
+        raise DeliveryError("standing authorization is revoked")
+    if Path(controls["emergency_stop_path"]).exists():
+        raise DeliveryError("operator emergency stop is present")
+    now = utc_now()
+    if not timestamp(contract["valid_from"], "valid_from") <= now <= timestamp(contract["valid_until"], "valid_until"):
+        raise DeliveryError("standing authorization is not currently valid")
+
+
+def accepted_project_decision(root: Path, decision_ref: str) -> Path:
+    if decision_ref == "SRC-DEC-0019" and (root / "octon-mini.json").is_file() and not (root / ".agent/project.json").exists():
+        path = root / "ARCHITECTURE_DECISIONS.md"
+        text = path.read_text(encoding="utf-8")
+        section = text.split("## SRC-DEC-0019 —", 1)
+        if len(section) != 2 or "| Status | `accepted` |" not in section[1].split("## SRC-DEC-0020 —", 1)[0]:
+            raise DeliveryError("source autonomous-delivery architecture decision is not accepted")
+        return path
+    if re.fullmatch(r"DEC-[0-9]{4}", decision_ref) is None:
+        raise DeliveryError("activation requires an exact project adoption decision reference")
+    matches = sorted((root / ".agent/decisions").glob(f"{decision_ref}*.md"))
+    if len(matches) != 1 or matches[0].is_symlink() or not matches[0].is_file():
+        raise DeliveryError("project adoption decision must resolve exactly once")
+    lines = matches[0].read_text(encoding="utf-8").splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        raise DeliveryError("project adoption decision lacks strict JSON front matter")
+    try:
+        end = next(index for index, line in enumerate(lines[1:], 1) if line.strip() == "---")
+        record = json.loads("".join(lines[1:end]), object_pairs_hook=duplicate_pairs)
+    except (StopIteration, json.JSONDecodeError, ValueError) as error:
+        raise DeliveryError("project adoption decision is malformed") from error
+    if not isinstance(record, dict) or record.get("id") != decision_ref or record.get("status") != "accepted" or not str(record.get("authority_source", "")).startswith(("authority:", "external:")):
+        raise DeliveryError("project adoption decision is not accepted under external authority")
+    return matches[0]
+
+
+def build_activation_plan(
+    root: Path,
+    record: dict[str, Any],
+    confirmation: dict[str, Any],
+    cost_evidence: dict[str, Any],
+    adoption_decision_ref: str,
+) -> dict[str, Any]:
+    record = validate_record(record, confirmation)
+    contract = record["contract"]
+    active_controls(root, contract)
+    validate_cost_evidence(cost_evidence, contract)
+    accepted_project_decision(root, adoption_decision_ref)
+    if Path(contract["repository"]["root"]).resolve() != root:
+        raise DeliveryError("standing authorization covers a different repository root")
+    source_mode = (root / "octon-mini.json").is_file() and not (root / ".agent/project.json").is_file()
+    if source_mode:
+        manifest = load_json(root / "shared/source-contracts/profile-manifest.json")
+        contracts = {item["id"]: item for item in manifest.get("packages", []) if isinstance(item, dict) and item.get("id") in {"autonomous-delivery", "long-running-work"}}
+        if set(contracts) != {"autonomous-delivery", "long-running-work"}:
+            raise DeliveryError("source package manifest lacks the closed delivery dependency set")
+        autonomous_digest = contracts["autonomous-delivery"]["sha256"]
+        long_digest = contracts["long-running-work"]["sha256"]
+        catalog = contracts
+    else:
+        _autonomous_files, autonomous_digest = package_inventory(root, "autonomous-delivery")
+        _long_files, long_digest = package_inventory(root, "long-running-work")
+        catalog = available_package_catalog(root)
+        if autonomous_digest != catalog["autonomous-delivery"]["installed_paths_sha256"] or long_digest != catalog["long-running-work"]["installed_paths_sha256"]:
+            raise DeliveryError("offline package payload digest differs from the generated catalog")
+    package_digest = digest({"autonomous-delivery": autonomous_digest, "long-running-work": long_digest})
+    value = {
+        "schema_version": PLAN_SCHEMA,
+        "artifact_kind": "autonomous_delivery_activation_plan",
+        "permission_grant": False,
+        "read_only": True,
+        "activation_target": "octon_mini_source_repository" if source_mode else "generated_project",
+        "authorization_record_digest": record["accepted_record_digest"],
+        "contract_digest": contract["canonical_contract_digest"],
+        "confirmation_fingerprint": confirmation["confirmation_fingerprint"],
+        "adoption_decision_ref": adoption_decision_ref,
+        "project_fingerprint": project_fingerprint(root),
+        "package_version": catalog["autonomous-delivery"]["version"],
+        "package_digest": package_digest,
+        "operations": [
+            "install exact offline autonomous-delivery package payload",
+            "record digest-bound project activation configuration",
+            "record package registry entry from the exact transaction receipt",
+        ] if not source_mode else [
+            "bind the independently confirmed standing record to the source delivery controller",
+            "write an external activation receipt without modifying the repository",
+        ],
+        "limitations": LIMITATIONS,
+    }
+    value["canonical_plan_digest"] = digest(value)
+    return value
+
+
+def load_module(path: Path, name: str) -> Any:
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise DeliveryError(f"cannot load required project module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def activation_operations(root: Path, plan: dict[str, Any], record_path: str, receipt_id: str) -> tuple[list[dict[str, Any]], str]:
+    autonomous_files, autonomous_digest = package_inventory(root, "autonomous-delivery")
+    long_files, long_digest = package_inventory(root, "long-running-work")
+    catalog = available_package_catalog(root)
+    if autonomous_digest != catalog["autonomous-delivery"]["installed_paths_sha256"] or long_digest != catalog["long-running-work"]["installed_paths_sha256"]:
+        raise DeliveryError("offline package payload digest differs from the generated catalog")
+    package_digest = digest({"autonomous-delivery": autonomous_digest, "long-running-work": long_digest})
+    if package_digest != plan["package_digest"]:
+        raise DeliveryError("offline package bytes changed after activation planning")
+    transaction = load_module(confined(root, ".agent/scripts/octon_transaction.py", require_file=True), "octon_delivery_transaction")
+    operations: list[dict[str, Any]] = []
+    registry_path = confined(root, ".agent/packages.json", require_file=True)
+    registry = load_json(registry_path)
+    if not isinstance(registry, dict):
+        raise DeliveryError("package registry is malformed")
+    installed = {
+        item.get("id"): item
+        for item in registry.get("packages", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    for package_id, files, installed_digest in (
+        ("long-running-work", long_files, long_digest),
+        ("autonomous-delivery", autonomous_files, autonomous_digest),
+    ):
+        existing = installed.get(package_id)
+        if existing is not None:
+            if package_id == "autonomous-delivery":
+                raise DeliveryError("autonomous-delivery package is already installed; use an explicit successor activation")
+            observed: dict[str, bytes] = {}
+            for relative in existing.get("installed_paths", []):
+                path = confined(root, relative, require_file=True)
+                observed[relative] = path.read_bytes()
+            observed_digest = hashlib.sha256()
+            for relative, content in sorted(observed.items()):
+                observed_digest.update(relative.encode("utf-8")); observed_digest.update(b"\0"); observed_digest.update(content); observed_digest.update(b"\0")
+            if observed_digest.hexdigest() != installed_digest:
+                raise DeliveryError("installed long-running-work dependency differs from the exact offline activation payload")
+            if existing.get("version") != catalog[package_id]["version"] or existing.get("sha256") != catalog[package_id]["source_sha256"]:
+                raise DeliveryError("installed long-running-work dependency source contract differs from the offline catalog")
+            continue
+        for relative, content in sorted(files.items()):
+            operations.append(transaction.operation("create", relative, content, f"Install the exact offline {package_id} payload.", mode=0o755 if relative.endswith(".py") else 0o644))
+    project_value = project(root)
+    config = project_value.get("autonomous_delivery")
+    if not isinstance(config, dict) or config.get("status") != STATUS_AVAILABLE:
+        raise DeliveryError("activation requires the exact available-not-activated project state")
+    project_value["autonomous_delivery"] = {
+        "schema_version": "harness.autonomous-delivery-config.v1",
+        "status": "active",
+        "write_capability": "authorized_within_exact_standing_contract",
+        "external_effects": "authorized_only_through_current_exact_plan_projections",
+        "delivery_profile": record_path and load_json(Path(record_path))["contract"]["delivery_profile"],
+        "adoption_decision_ref": plan["adoption_decision_ref"],
+        "authorization_record_ref": record_path,
+        "authorization_record_digest": plan["authorization_record_digest"],
+        "activation_receipt_ref": receipt_id,
+        "limitations": LIMITATIONS,
+    }
+    project_value["packages"]["trigger_assessments"]["autonomous_delivery"] = "applicable"
+    project_value["packages"]["trigger_assessments"]["long_running_work"] = "applicable"
+    operations.append(transaction.operation("replace", ".agent/project.json", canonical_bytes(project_value), "Activate autonomous delivery from the independently confirmed exact contract."))
+    for package_id, files, installed_digest in (
+        ("long-running-work", long_files, long_digest),
+        ("autonomous-delivery", autonomous_files, autonomous_digest),
+    ):
+        if package_id in installed:
+            continue
+        registry["packages"].append({
+            "id": package_id,
+            "kind": "workflow_capability",
+            "version": catalog[package_id]["version"],
+            "sha256": catalog[package_id]["source_sha256"],
+            "installed_paths": sorted(files),
+            "installed_paths_sha256": installed_digest,
+            "owner": "autonomous-delivery-operator",
+            "trust_decision_ref": plan["adoption_decision_ref"],
+            "validation_status": "pass",
+            "validation_receipt_ref": receipt_id,
+            "evidence_refs": [plan["adoption_decision_ref"], receipt_id],
+        })
+    registry["packages"] = sorted(registry["packages"], key=lambda item: item["id"])
+    operations.append(transaction.operation("replace", ".agent/packages.json", canonical_bytes(registry), "Register exact installed autonomous-delivery bytes and activation receipt."))
+    decision_path = accepted_project_decision(root, plan["adoption_decision_ref"])
+    adoption_value = {
+        "schema_version": "harness.long-running-work-adoption.v1",
+        "status": "enabled",
+        "permission_grant": False,
+        "owner": "autonomous-delivery-operator",
+        "decision_ref": plan["adoption_decision_ref"],
+        "decision_sha256": file_sha256(decision_path),
+        "runtime_authorization": False,
+        "limitations": ["Adoption enables package commands but grants no task or external-effect authority."],
+    }
+    adoption_path = confined(root, ".agent/work-runs/adoption.json")
+    if adoption_path.exists() and adoption_path.is_file() and not adoption_path.is_symlink():
+        existing_adoption = load_json(adoption_path)
+        if existing_adoption != adoption_value:
+            operations.append(transaction.operation("replace", ".agent/work-runs/adoption.json", canonical_bytes(adoption_value), "Bind long-running work to the accepted autonomous-delivery adoption decision."))
+    elif adoption_path.exists() or adoption_path.is_symlink():
+        raise DeliveryError("long-running-work adoption path is unsafe")
+    else:
+        operations.append(transaction.operation("create", ".agent/work-runs/adoption.json", canonical_bytes(adoption_value), "Adopt long-running work for the accepted autonomous-delivery architecture without creating task authority."))
+    return operations, package_digest
+
+
+def apply_activation(root: Path, plan: dict[str, Any], accepted_digest: str, record_path: str, confirmation_path: str, cost_path: str, activation_receipt_output: str | None = None) -> dict[str, Any]:
+    if plan.get("schema_version") != PLAN_SCHEMA or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or accepted_digest != plan.get("canonical_plan_digest"):
+        raise DeliveryError("activation apply requires the exact current reviewed plan digest")
+    record = validate_record(load_json(external_path(root, record_path, require_file=True)), load_json(external_path(root, confirmation_path, require_file=True)))
+    current = build_activation_plan(root, record, record["confirmation"], load_json(external_path(root, cost_path, require_file=True)), plan.get("adoption_decision_ref"))
+    if current != plan:
+        raise DeliveryError("activation inputs or target state changed after planning")
+    if plan.get("activation_target") == "octon_mini_source_repository":
+        value = {
+            "schema_version": "harness.autonomous-delivery-activation-receipt.v1",
+            "artifact_kind": "derived_activation_result",
+            "permission_grant": False,
+            "activation_plan_digest": plan["canonical_plan_digest"],
+            "transaction_receipt_ref": None,
+            "transaction_receipt_path": None,
+            "authorization_record_digest": record["accepted_record_digest"],
+            "status": "active",
+            "limitations": ["Source activation wrote only this explicit external evidence record and did not mutate repository or provider state."],
+        }
+        if not activation_receipt_output:
+            raise DeliveryError("source activation requires an explicit external --activation-receipt-output")
+        write_external_new(root, activation_receipt_output, value)
+        return value
+    transaction = load_module(confined(root, ".agent/scripts/octon_transaction.py", require_file=True), "octon_delivery_transaction_apply")
+    receipt_id = transaction.new_receipt_id()
+    operations, _package_digest = activation_operations(root, plan, record_path, receipt_id)
+    validators = load_json(confined(root, ".agent/validators.json", require_file=True))
+    derived_writes = validators.get("commands", {}).get("refresh", {}).get("writes", [])
+    if not isinstance(derived_writes, list) or any(not isinstance(item, str) for item in derived_writes):
+        raise DeliveryError("refresh writer paths are not a closed path array")
+    tx_plan = transaction.build_plan(
+        root,
+        operation_name="delivery.activate",
+        scope="Install and activate exact independently confirmed autonomous delivery.",
+        operations=operations,
+        evidence=[transaction.source_evidence("standing_authorization", record_path, content=canonical_bytes(record), limitations=["External record is evidence of a human grant, not self-created authority."])],
+        assumptions=[],
+        confidence="high",
+        limitations=LIMITATIONS,
+        staged_validation_plan=[
+            [sys.executable, "-B", ".agent/scripts/refresh.py", "--refresh"],
+            [sys.executable, "-B", ".agent/scripts/validate.py", "--check"],
+        ],
+        post_apply_validation_plan=[[sys.executable, "-B", ".agent/scripts/validate.py", "--check"]],
+        derived_write_paths=derived_writes,
+        evidence_paths=[".agent/project.json", ".agent/packages.json"],
+        planned_receipt_id=receipt_id,
+        bundle_authority_class="independently_confirmed_standing_authorization",
+    )
+    receipt, receipt_path = transaction.apply_plan(root, tx_plan, tx_plan["canonical_plan_digest"])
+    return {
+        "schema_version": "harness.autonomous-delivery-activation-receipt.v1",
+        "artifact_kind": "derived_activation_result",
+        "permission_grant": False,
+        "activation_plan_digest": plan["canonical_plan_digest"],
+        "transaction_receipt_ref": receipt.get("receipt_id"),
+        "transaction_receipt_path": receipt_path.relative_to(root).as_posix(),
+        "authorization_record_digest": record["accepted_record_digest"],
+        "status": "active",
+        "limitations": LIMITATIONS,
+    }
+
+
+def deactivation_plan(root: Path, status: str, authority_source: str) -> dict[str, Any]:
+    if status not in {"disabled", "revoked", "expired"}:
+        raise DeliveryError("deactivation status is invalid")
+    if not authority_source.startswith(("authority:", "external:")):
+        raise DeliveryError("deactivation requires an independent current authority source")
+    config = delivery_config(root)
+    if config.get("status") != "active":
+        raise DeliveryError("deactivation requires an active delivery configuration")
+    active_pointer = root / ".agent/work-runs/active.json"
+    if active_pointer.exists() or active_pointer.is_symlink():
+        raise DeliveryError("deactivation refuses while long-running work has an active pointer")
+    value = {
+        "schema_version": "harness.autonomous-delivery-deactivation-plan.v1",
+        "artifact_kind": "autonomous_delivery_deactivation_plan",
+        "permission_grant": False,
+        "read_only": True,
+        "status": status,
+        "authority_source": authority_source,
+        "project_fingerprint": project_fingerprint(root),
+        "authorization_record_digest": config.get("authorization_record_digest"),
+        "operations": ["lock repository mutation", "lock external effects", "retain package and authority evidence"],
+        "limitations": ["Deactivation does not revoke or delete the operator-owned external standing-authorization record."],
+    }
+    value["canonical_plan_digest"] = digest(value)
+    return value
+
+
+def apply_deactivation(root: Path, plan: dict[str, Any], accepted_digest: str) -> dict[str, Any]:
+    if not isinstance(plan, dict) or plan.get("schema_version") != "harness.autonomous-delivery-deactivation-plan.v1" or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or accepted_digest != plan.get("canonical_plan_digest"):
+        raise DeliveryError("deactivation apply requires the exact reviewed plan digest")
+    current = deactivation_plan(root, plan["status"], plan["authority_source"])
+    if current != plan:
+        raise DeliveryError("deactivation target or authority changed after planning")
+    transaction = load_module(confined(root, ".agent/scripts/octon_transaction.py", require_file=True), "octon_delivery_deactivation_transaction")
+    project_value = project(root)
+    config = project_value["autonomous_delivery"]
+    config["status"] = plan["status"]
+    config["write_capability"] = "locked"
+    config["external_effects"] = "locked"
+    validators = load_json(confined(root, ".agent/validators.json", require_file=True))
+    writes = validators.get("commands", {}).get("refresh", {}).get("writes", [])
+    tx_plan = transaction.build_plan(
+        root,
+        operation_name="delivery.deactivate",
+        scope=f"Set autonomous delivery to {plan['status']} without altering external authority records.",
+        operations=[transaction.operation("replace", ".agent/project.json", canonical_bytes(project_value), "Lock autonomous-delivery writes and external effects while retaining evidence references.")],
+        evidence=[transaction.source_evidence("current_deactivation_authority", plan["authority_source"])],
+        assumptions=[],
+        confidence="high",
+        limitations=["The external standing-authorization record is not changed by this transaction."],
+        staged_validation_plan=[[sys.executable, "-B", ".agent/scripts/refresh.py", "--refresh"], [sys.executable, "-B", ".agent/scripts/validate.py", "--check"]],
+        post_apply_validation_plan=[[sys.executable, "-B", ".agent/scripts/validate.py", "--check"]],
+        derived_write_paths=writes,
+        evidence_paths=[".agent/project.json"],
+        bundle_authority_class="repository_local_current_request",
+    )
+    receipt, receipt_path = transaction.apply_plan(root, tx_plan, tx_plan["canonical_plan_digest"])
+    return {"status": plan["status"], "transaction_receipt_ref": receipt["receipt_id"], "transaction_receipt_path": receipt_path.relative_to(root).as_posix(), "permission_grant": False}
+
+
+def usage_warning(used: int, limit: int) -> str | None:
+    if limit <= 0:
+        return "exhausted"
+    percentage = used * 100 / limit
+    if percentage >= 100:
+        return "exhausted"
+    for threshold in reversed([70, 85, 95]):
+        if percentage >= threshold:
+            return f"warning_{threshold}_percent"
+    return None
+
+
+USAGE_KEYS = {
+    "work_iterations": "work_iterations",
+    "correction_cycles": "correction_cycles",
+    "commits_per_run": "commits_per_run",
+    "pull_requests_per_run": "pull_requests_per_run",
+    "hosted_workflow_dispatches_per_run": "hosted_workflow_dispatches_per_run",
+    "safe_read_only_retries": "safe_read_only_retries",
+    "proven_no_effect_retries": "proven_no_effect_retries",
+    "covered_releases": "covered_releases",
+    "concurrent_write_runs": "concurrent_write_runs",
+}
+
+
+def validate_usage(value: Any, record: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") != "harness.autonomous-delivery-usage.v1":
+        raise DeliveryError("delivery usage state is absent or malformed")
+    if value.get("usage_digest") != digest_without(value, "usage_digest"):
+        raise DeliveryError("delivery usage digest is invalid")
+    if value.get("authorization_record_digest") != record["accepted_record_digest"]:
+        raise DeliveryError("delivery usage belongs to another standing authorization")
+    if value.get("cost_state") != "known_host_enforced" or not isinstance(value.get("ai_provider_cost_usd"), (int, float)):
+        raise DeliveryError("delivery usage cost is unknown or not host enforced")
+    contract = record["contract"]
+    if value["ai_provider_cost_usd"] < 0 or value["ai_provider_cost_usd"] > contract["costs"]["ai_provider_usd_per_run"]:
+        raise DeliveryError("delivery run AI/provider cost limit is exhausted or malformed")
+    counts = value.get("counts")
+    if not isinstance(counts, dict) or set(counts) != set(USAGE_KEYS) or any(not isinstance(item, int) or item < 0 for item in counts.values()):
+        raise DeliveryError("delivery usage counts are malformed")
+    expected_warnings: list[str] = []
+    exhausted = False
+    for count_key, limit_key in USAGE_KEYS.items():
+        warning = usage_warning(counts[count_key], contract["limits"][limit_key])
+        if warning:
+            expected_warnings.append(f"{count_key}:{warning}")
+        exhausted = exhausted or warning == "exhausted"
+    cost_warning = usage_warning(int(value["ai_provider_cost_usd"] * 100), int(contract["costs"]["ai_provider_usd_per_run"] * 100))
+    if cost_warning:
+        expected_warnings.append(f"ai_provider_cost_usd:{cost_warning}")
+    exhausted = exhausted or cost_warning == "exhausted"
+    if value.get("warnings") != sorted(expected_warnings) or value.get("exhausted") is not exhausted:
+        raise DeliveryError("delivery usage warnings or exhaustion state is not derived exactly")
+    if exhausted:
+        raise DeliveryError("standing authorization usage is exhausted")
+    if utc_now() - timestamp(value.get("observed_at"), "usage observed_at") > timedelta(minutes=15):
+        raise DeliveryError("delivery usage observation is stale")
+    return value
+
+
+def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]:
+    confirmation = load_json(external_path(root, args.confirmation_artifact, require_file=True))
+    record = validate_record(load_json(external_path(root, args.authorization_record, require_file=True)), confirmation)
+    contract = record["contract"]
+    active_controls(root, contract)
+    validate_cost_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    repository = contract["repository"]
+    if Path(repository["root"]).resolve() != root or args.repository_identity != repository["identity"]:
+        raise DeliveryError("authority projection repository binding is outside the standing contract")
+    if not fnmatch.fnmatchcase(args.task_branch, repository["task_branch_pattern"]):
+        raise DeliveryError("authority projection task branch is outside the standing contract")
+    if args.action not in contract["permitted_actions"]:
+        raise DeliveryError("authority projection action is outside the standing contract")
+    if args.release_type and args.release_type not in contract["release_types"]:
+        raise DeliveryError("authority projection release type is outside the standing contract")
+    if not re.fullmatch(r"[a-f0-9]{64}", args.plan_digest):
+        raise DeliveryError("authority projection requires an exact plan digest")
+    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record)
+    remaining: dict[str, Any] = {}
+    for key, limit in contract["limits"].items():
+        if key == "warning_percentages":
+            continue
+        used = usage["counts"].get(key, 0)
+        if not isinstance(used, int) or used < 0:
+            raise DeliveryError(f"usage value is malformed: {key}")
+        if isinstance(limit, int):
+            warning = usage_warning(used, limit)
+            if warning == "exhausted":
+                raise DeliveryError(f"standing authorization limit is exhausted: {key}")
+            remaining[key] = {"used": used, "limit": limit, "remaining": limit - used, "warning": warning}
+    started = utc_now()
+    value = {
+        "schema_version": PROJECTION_SCHEMA,
+        "artifact_kind": "derived_exact_plan_authority_coverage",
+        "permission_grant": False,
+        "authorization_record_digest": record["accepted_record_digest"],
+        "contract_digest": contract["canonical_contract_digest"],
+        "task_ref": args.task_ref,
+        "priority_authority_ref": args.priority_authority_ref,
+        "architecture_decision_refs": sorted(set(args.architecture_decision_ref)),
+        "plan_digest": args.plan_digest,
+        "repository_identity": args.repository_identity,
+        "task_branch": args.task_branch,
+        "action": args.action,
+        "release_type": args.release_type,
+        "valid_from": utc_text(started),
+        "valid_until": utc_text(min(started + timedelta(minutes=15), timestamp(contract["valid_until"], "valid_until"))),
+        "remaining_budget": remaining,
+        "limitations": LIMITATIONS,
+    }
+    value["projection_digest"] = digest(value)
+    return value
+
+
+def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[str, Any]:
+    confirmation = load_json(external_path(root, args.confirmation_artifact, require_file=True))
+    record = validate_record(load_json(external_path(root, args.authorization_record, require_file=True)), confirmation)
+    contract = record["contract"]
+    active_controls(root, contract)
+    validate_cost_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record)
+    plan = load_json(confined(root, args.work_plan, require_file=True))
+    if not isinstance(plan, dict) or plan.get("schema_version") != "harness.work-completion-plan.v1":
+        raise DeliveryError("work-completion plan is absent or malformed")
+    plan_digest = plan.get("canonical_plan_digest")
+    if not isinstance(plan_digest, str) or re.fullmatch(r"[a-f0-9]{64}", plan_digest) is None:
+        raise DeliveryError("work-completion plan lacks an exact digest")
+    repository = plan.get("repository", {})
+    branches = plan.get("branches", {})
+    if repository.get("identity") != contract["repository"]["identity"] or repository.get("remote") != contract["repository"]["remote"]:
+        raise DeliveryError("work-completion repository is outside standing authorization")
+    if branches.get("default") != contract["repository"]["default_branch"] or not fnmatch.fnmatchcase(str(branches.get("task")), contract["repository"]["task_branch_pattern"]):
+        raise DeliveryError("work-completion branch is outside standing authorization")
+    operation_map = {
+        "create_commit": "create_commit",
+        "push_branch": "push_task_branch",
+        "locate_pull_request": "observe_hosted_state",
+        "open_pull_request": "create_pull_request",
+        "observe_hosted_checks": "observe_hosted_state",
+        "observe_pull_request_reviews": "observe_hosted_state",
+        "merge_pull_request": "merge_pull_request",
+        "delete_remote_branch": "delete_merged_task_branch",
+    }
+    required_actions = {
+        operation_map[item]
+        for item in plan.get("external_operations", [])
+        if item in operation_map
+    }
+    unknown = [item for item in plan.get("external_operations", []) if item not in operation_map]
+    if unknown:
+        raise DeliveryError("work-completion plan contains unsupported standing-authority operations: " + ", ".join(sorted(unknown)))
+    if not required_actions <= set(contract["permitted_actions"]):
+        raise DeliveryError("standing authorization does not cover every work-completion action")
+    observed = utc_now()
+    valid_until = min(observed + timedelta(minutes=15), timestamp(contract["valid_until"], "valid_until"))
+    value = {
+        "schema_version": "harness.work-completion-authorization.v1",
+        "artifact_kind": "external_authorization_attestation",
+        "permission_grant": False,
+        "plan_digest": plan_digest,
+        "task_ref": plan["task_ref"],
+        "repository_identity": repository["identity"],
+        "remote": repository["remote"],
+        "default_branch": branches["default"],
+        "task_branch": branches["task"],
+        "operations": plan["external_operations"],
+        "authority_source": f"external:standing-authorization:{record['accepted_record_digest']}",
+        "principal_or_role": "governed-autonomous-delivery-worker",
+        "observed_by": "octon-autonomous-delivery-exact-plan-projector",
+        "observed_at": utc_text(observed),
+        "valid_from": utc_text(observed),
+        "valid_until": utc_text(valid_until),
+        "constraints": [
+            f"standing_contract_digest:{contract['canonical_contract_digest']}",
+            f"confirmation_fingerprint:{confirmation['confirmation_fingerprint']}",
+            f"authorization_record_ref:{str(external_path(root, args.authorization_record, require_file=True))}",
+            f"confirmation_artifact_ref:{str(external_path(root, args.confirmation_artifact, require_file=True))}",
+            f"cost_enforcement_artifact_ref:{str(external_path(root, args.cost_enforcement_artifact, require_file=True))}",
+            f"usage_artifact_ref:{str(external_path(root, args.usage, require_file=True))}",
+            f"usage_digest:{usage['usage_digest']}",
+            "revalidate_revocation_emergency_stop_cost_limits_and_live_state_before_every_effect",
+            "unknown_external_outcome_has_zero_automatic_retries",
+        ],
+    }
+    value["evidence_fingerprint"] = digest(value)
+    return value
+
+
+def parser() -> argparse.ArgumentParser:
+    value = argparse.ArgumentParser(description=__doc__)
+    value.add_argument("--target", default=".")
+    commands = value.add_subparsers(dest="command", required=True)
+    for name in ["status", "assess", "plan", "explain", "resume"]:
+        item = commands.add_parser(name)
+        item.add_argument("--task-ref")
+        if name in {"status", "explain", "resume"}:
+            item.add_argument("--authorization-record")
+            item.add_argument("--confirmation-artifact")
+            item.add_argument("--cost-enforcement-artifact")
+            item.add_argument("--activation-receipt")
+    research = commands.add_parser("research")
+    research.add_argument("--query", required=True)
+    context = commands.add_parser("context")
+    context.add_argument("--task-ref")
+    context.add_argument("--max-bytes", type=int, default=65536)
+    preview = commands.add_parser("activation-preview")
+    preview.add_argument("--profile", choices=sorted(ALLOWED_PROFILES), default="fast_delivery")
+
+    authorization = commands.add_parser("authorization")
+    authorization_commands = authorization.add_subparsers(dest="authorization_command", required=True)
+    draft = authorization_commands.add_parser("draft")
+    draft.add_argument("--authorization-id", default="SAC-01")
+    draft.add_argument("--profile", choices=sorted(ALLOWED_PROFILES), required=True)
+    draft.add_argument("--repository-root", required=True)
+    draft.add_argument("--repository-identity", required=True)
+    draft.add_argument("--remote", default="origin")
+    draft.add_argument("--default-branch", default="main")
+    draft.add_argument("--task-branch-pattern", default="chore/autonomous-*")
+    draft.add_argument("--authority-dir", required=True)
+    draft.add_argument("--evidence-root", required=True)
+    draft.add_argument("--valid-from", required=True)
+    draft.add_argument("--valid-until", required=True)
+    draft.add_argument("--ai-budget-per-run", type=float, default=250.0)
+    draft.add_argument("--ai-budget-per-authorization", type=float, default=1000.0)
+    draft.add_argument("--custom-contract")
+    draft.add_argument("--output")
+    record = authorization_commands.add_parser("record")
+    record.add_argument("--draft", required=True)
+    record.add_argument("--confirmation-artifact", required=True)
+    record.add_argument("--output", required=True)
+    projection = authorization_commands.add_parser("project")
+    projection.add_argument("--authorization-record", required=True)
+    projection.add_argument("--confirmation-artifact", required=True)
+    projection.add_argument("--cost-enforcement-artifact", required=True)
+    projection.add_argument("--task-ref", required=True)
+    projection.add_argument("--priority-authority-ref", required=True)
+    projection.add_argument("--architecture-decision-ref", action="append", required=True)
+    projection.add_argument("--plan-digest", required=True)
+    projection.add_argument("--repository-identity", required=True)
+    projection.add_argument("--task-branch", required=True)
+    projection.add_argument("--action", choices=sorted(ALLOWED_ACTIONS), required=True)
+    projection.add_argument("--release-type", choices=["patch", "minor"])
+    projection.add_argument("--usage", required=True)
+    projection.add_argument("--output")
+    completion = authorization_commands.add_parser("work-completion")
+    completion.add_argument("--authorization-record", required=True)
+    completion.add_argument("--confirmation-artifact", required=True)
+    completion.add_argument("--cost-enforcement-artifact", required=True)
+    completion.add_argument("--usage", required=True)
+    completion.add_argument("--work-plan", required=True)
+    completion.add_argument("--output")
+
+    activate = commands.add_parser("activate")
+    activation_commands = activate.add_subparsers(dest="activation_command", required=True)
+    activate_plan = activation_commands.add_parser("plan")
+    activate_plan.add_argument("--authorization-record", required=True)
+    activate_plan.add_argument("--confirmation-artifact", required=True)
+    activate_plan.add_argument("--cost-enforcement-artifact", required=True)
+    activate_plan.add_argument("--adoption-decision-ref", required=True)
+    activate_plan.add_argument("--output")
+    activate_apply = activation_commands.add_parser("apply")
+    activate_apply.add_argument("--plan", required=True)
+    activate_apply.add_argument("--accept-digest", required=True)
+    activate_apply.add_argument("--authorization-record", required=True)
+    activate_apply.add_argument("--confirmation-artifact", required=True)
+    activate_apply.add_argument("--cost-enforcement-artifact", required=True)
+    activate_apply.add_argument("--activation-receipt-output")
+    deactivate = commands.add_parser("deactivate")
+    deactivation_commands = deactivate.add_subparsers(dest="deactivation_command", required=True)
+    deactivate_plan = deactivation_commands.add_parser("plan")
+    deactivate_plan.add_argument("--status", choices=["disabled", "revoked", "expired"], default="disabled")
+    deactivate_plan.add_argument("--authority-source", required=True)
+    deactivate_plan.add_argument("--output")
+    deactivate_apply = deactivation_commands.add_parser("apply")
+    deactivate_apply.add_argument("--plan", required=True)
+    deactivate_apply.add_argument("--accept-digest", required=True)
+    return value
+
+
+def main() -> int:
+    args = parser().parse_args()
+    root = root_path(args.target)
+    if args.command == "status":
+        print(json.dumps(read_only_status(root, args.authorization_record, args.confirmation_artifact, args.cost_enforcement_artifact, args.activation_receipt), indent=2, sort_keys=True))
+    elif args.command == "assess":
+        print(json.dumps(applicability(root), indent=2, sort_keys=True))
+    elif args.command == "plan":
+        print(json.dumps(delivery_plan(root, args.task_ref), indent=2, sort_keys=True))
+    elif args.command == "explain":
+        print(json.dumps({"status": read_only_status(root, args.authorization_record, args.confirmation_artifact, args.cost_enforcement_artifact, args.activation_receipt), "applicability": applicability(root), "profile_presets": [profile_preset(item) for item in sorted(ALLOWED_PROFILES)]}, indent=2, sort_keys=True))
+    elif args.command == "resume":
+        print(json.dumps({"schema_version": "harness.autonomous-delivery-resume.v1", "permission_grant": False, "read_only": True, "status": read_only_status(root, args.authorization_record, args.confirmation_artifact, args.cost_enforcement_artifact, args.activation_receipt), "next_action": ["./octon", "delivery", "status"], "project_hooks_executed": False, "repository_mutated": False, "external_state_mutated": False, "limitations": ["Effect receipt resume is available only through an active exact package receipt and never replays an unknown outcome."]}, indent=2, sort_keys=True))
+    elif args.command == "research":
+        print(json.dumps(research_projection(args.query), indent=2, sort_keys=True))
+    elif args.command == "context":
+        if args.max_bytes < 1:
+            raise DeliveryError("context byte budget must be positive")
+        print(json.dumps(context_manifest(root, args.max_bytes, args.task_ref), indent=2, sort_keys=True))
+    elif args.command == "activation-preview":
+        print(json.dumps({"schema_version": "harness.autonomous-delivery-activation-preview.v1", "permission_grant": False, "read_only": True, "current": read_only_status(root), "preset": profile_preset(args.profile), "confirmation_required": True, "project_hooks_executed": False, "repository_mutated": False, "external_state_mutated": False, "limitations": LIMITATIONS}, indent=2, sort_keys=True))
+    elif args.command == "authorization" and args.authorization_command == "draft":
+        emit(contract_from(args), args.output, root)
+    elif args.command == "authorization" and args.authorization_command == "record":
+        contract = validate_contract(load_json(external_path(root, args.draft, require_file=True)))
+        confirmation = validate_confirmation(load_json(external_path(root, args.confirmation_artifact, require_file=True)), contract)
+        emit(accepted_record(contract, confirmation), args.output, root)
+    elif args.command == "authorization" and args.authorization_command == "project":
+        emit(authority_projection(args, root), args.output, root)
+    elif args.command == "authorization" and args.authorization_command == "work-completion":
+        emit(work_completion_authorization(args, root), args.output, root)
+    elif args.command == "activate" and args.activation_command == "plan":
+        confirmation = load_json(external_path(root, args.confirmation_artifact, require_file=True))
+        record = validate_record(load_json(external_path(root, args.authorization_record, require_file=True)), confirmation)
+        cost = load_json(external_path(root, args.cost_enforcement_artifact, require_file=True))
+        emit(build_activation_plan(root, record, confirmation, cost, args.adoption_decision_ref), args.output, root)
+    elif args.command == "activate" and args.activation_command == "apply":
+        plan = load_json(external_path(root, args.plan, require_file=True))
+        result = apply_activation(root, plan, args.accept_digest, args.authorization_record, args.confirmation_artifact, args.cost_enforcement_artifact, args.activation_receipt_output)
+        print(json.dumps(result, indent=2, sort_keys=True))
+    elif args.command == "deactivate" and args.deactivation_command == "plan":
+        emit(deactivation_plan(root, args.status, args.authority_source), args.output, root)
+    elif args.command == "deactivate" and args.deactivation_command == "apply":
+        plan = load_json(external_path(root, args.plan, require_file=True))
+        print(json.dumps(apply_deactivation(root, plan, args.accept_digest), indent=2, sort_keys=True))
+    else:
+        raise DeliveryError("unsupported autonomous-delivery command")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except DeliveryError as error:
+        print(f"autonomous delivery blocked: {error}", file=sys.stderr)
+        raise SystemExit(2) from error

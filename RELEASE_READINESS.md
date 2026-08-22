@@ -1,4 +1,19 @@
-# Octon Mini 4.1.0 Release-Readiness Record
+# Octon Mini Release-Readiness Record
+
+## 4.2.0 candidate — in progress
+
+Octon Mini 4.2.0 is unreleased. `SRC-DEC-0019` and `SRC-DEC-0020` are
+accepted for source implementation, while `SAC-01` standing external-action
+authority remains inactive pending independent confirmation of the final exact
+contract digest.
+
+Current source evidence may demonstrate implementation, deterministic safety,
+migration, recovery, and performance. It cannot establish release, target-
+project adoption, independent human usability, field maturity, project
+readiness, or production readiness. No hosted candidate or integrated-main
+evidence exists until separately authorized external delivery occurs.
+
+## 4.1.0 completed release
 
 ## Status and authority boundary
 

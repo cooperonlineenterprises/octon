@@ -40,6 +40,21 @@ effects.
 Consequential guided init, adoption, upgrade, and release workflows stage the
 release tier even though primitive scaffolding uses the bounded fast tier.
 
+## Autonomous-delivery benchmark
+
+`benchmark_autonomous_delivery.py` generates a disposable Minimal snapshot,
+adds 10,000 inert payload files, and records one cold plus ten warm fresh-process
+samples for delivery status, context, activation preview, resume, and
+explanation. Each applicable warm p90 must remain below two seconds. The report
+uses the documented nearest-rank percentile and retains every command failure,
+sample, and host-specific limitation.
+
+The benchmark executes no project hook, provider call, external effect,
+standing-authority activation, or evidence mutation in the source tree. It does
+not measure model quality, human usability, hosted latency, or external-effect
+completion time. Existing scaffold, read-only check, bounded mutation,
+long-running-work, and benchmark-v2 thresholds remain unchanged.
+
 ## Historical benchmark evidence and audit finding
 
 The following three-sample evidence predates the version 2 benchmark method.

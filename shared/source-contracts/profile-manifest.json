@@ -287,6 +287,27 @@
       "permission_grant": false
     },
     {
+      "id": "autonomous-delivery",
+      "kind": "workflow_capability",
+      "version": "1.0.0",
+      "sha256": "5d6b63a84a14090321f47668e8dc0aff73f99661510c14ba62c379610130cb58",
+      "source": "skill:assets/packages/autonomous-delivery/templates",
+      "inventory_paths": [
+        ".agent/capabilities/autonomous-delivery/README.md.tmpl",
+        ".agent/capabilities/autonomous-delivery/delivery_runtime.py.tmpl",
+        ".agent/capabilities/autonomous-delivery/package.json.tmpl",
+        ".agent/capabilities/autonomous-delivery/validate.py.tmpl"
+      ],
+      "profiles": [
+        "minimal",
+        "standard",
+        "high-assurance"
+      ],
+      "installation": "locally_bundled_activation_transaction",
+      "trigger": "autonomous_delivery_exact_standing_authorization_confirmed",
+      "permission_grant": false
+    },
+    {
       "id": "context-pack-schema",
       "kind": "optional_schema",
       "version": "2.0.0",
@@ -321,7 +342,9 @@
     {"id": 17, "title": "guided_resumable_setup_interview", "release_coverage": "automated_pass"},
     {"id": 18, "title": "fail_closed_continuation_successors_proof_reuse_and_safe_bundles", "release_coverage": "automated_pass"},
     {"id": 19, "title": "optional_long_running_work_limits_context_checkpoints_and_recovery", "release_coverage": "automated_pass"},
-    {"id": 20, "title": "representative_long_running_work_operator_evidence", "release_coverage": "project_demonstration_required"}
+    {"id": 20, "title": "representative_long_running_work_operator_evidence", "release_coverage": "project_demonstration_required"},
+    {"id": 21, "title": "governed_autonomous_delivery_activation_limits_effects_and_recovery", "release_coverage": "automated_pass"},
+    {"id": 22, "title": "representative_autonomous_delivery_operator_evidence", "release_coverage": "project_demonstration_required"}
   ],
   "documentation_projections": [
     {
@@ -358,6 +381,7 @@
       ],
       "inventory_paths": [
         ".agent/START_HERE.md.tmpl",
+        ".agent/available-packages/catalog.json.tmpl",
         ".agent/context.json.tmpl",
         ".agent/decisions/README.md.tmpl",
         ".agent/decisions/governance-register.json.tmpl",
@@ -373,6 +397,7 @@
         ".agent/scm.json.tmpl",
         ".agent/scripts/refresh.py.tmpl",
         ".agent/scripts/octon.py.tmpl",
+        ".agent/scripts/octon_autonomous_delivery.py.tmpl",
         ".agent/scripts/octon_continuation.py.tmpl",
         ".agent/scripts/octon_doctor.py.tmpl",
         ".agent/scripts/octon_work_completion.py.tmpl",
@@ -419,13 +444,66 @@
         "project-dossier/validation/QUALITY_GATES.json.tmpl",
         "project-dossier/validation/README.md.tmpl"
       ],
-      "inventory_count": 61,
-      "inventory_paths_sha256": "5b37d5d54e0377889d705e52cc190c4b5e12a8ed282f89ee774e1fa7dd21fa3d",
+      "inventory_count": 63,
+      "inventory_paths_sha256": "baae12433b755cbc67ebbf569d4834042b5d3e1df404aee4f104fdc998460920",
       "output": {
         "root": ".",
         "strip_suffix": ".tmpl"
       },
       "reason": "Core templates are generated in every profile after placeholder validation."
+    },
+    {
+      "id": "autonomous-delivery-offline-payload",
+      "source": "skill:assets/packages/autonomous-delivery/templates",
+      "match": "recursive_suffix",
+      "suffix": ".tmpl",
+      "disposition": "generated",
+      "profiles": [
+        "minimal",
+        "standard",
+        "high-assurance"
+      ],
+      "inventory_paths": [
+        ".agent/capabilities/autonomous-delivery/README.md.tmpl",
+        ".agent/capabilities/autonomous-delivery/delivery_runtime.py.tmpl",
+        ".agent/capabilities/autonomous-delivery/package.json.tmpl",
+        ".agent/capabilities/autonomous-delivery/validate.py.tmpl"
+      ],
+      "inventory_count": 4,
+      "inventory_paths_sha256": "fa4edac6de6f5bf3fafc16cc6aa5ef234c12429b5b72234832019920132d94e8",
+      "output": {
+        "root": ".agent/available-packages/autonomous-delivery/payload",
+        "strip_suffix": ".tmpl"
+      },
+      "reason": "Every independent snapshot carries the exact inert autonomous-delivery payload for network-free activation."
+    },
+    {
+      "id": "long-running-work-offline-payload",
+      "source": "skill:assets/packages/long-running-work/templates",
+      "match": "recursive_suffix",
+      "suffix": ".tmpl",
+      "disposition": "generated",
+      "profiles": [
+        "minimal",
+        "standard",
+        "high-assurance"
+      ],
+      "inventory_paths": [
+        ".agent/capabilities/long-running-work/README.md.tmpl",
+        ".agent/capabilities/long-running-work/checkpoint.schema.json.tmpl",
+        ".agent/capabilities/long-running-work/context.schema.json.tmpl",
+        ".agent/capabilities/long-running-work/long_work.py.tmpl",
+        ".agent/capabilities/long-running-work/package.json.tmpl",
+        ".agent/capabilities/long-running-work/run.schema.json.tmpl",
+        ".agent/capabilities/long-running-work/validate.py.tmpl"
+      ],
+      "inventory_count": 7,
+      "inventory_paths_sha256": "2496d9ed71394744bbedf9169e68d2f9f153c89903cff49febd7c81e745f5346",
+      "output": {
+        "root": ".agent/available-packages/long-running-work/payload",
+        "strip_suffix": ".tmpl"
+      },
+      "reason": "Autonomous-delivery activation can install its existing long-running-work dependency from exact local bytes without a service or network installation."
     },
     {
       "id": "templates-standard",
@@ -526,6 +604,7 @@
         "dossier-records.schema.json",
         "harness-artifact-registry.schema.json",
         "harness-assurance-records.schema.json",
+        "harness-autonomous-delivery.schema.json",
         "harness-capability-records.schema.json",
         "harness-collaboration-profile.schema.json",
         "harness-continuation.schema.json",
@@ -557,8 +636,8 @@
     "octon-mini-bootstrap-upgrade.schema.json",
     "reference-evidence.schema.json"
       ],
-      "inventory_count": 36,
-      "inventory_paths_sha256": "bd9abe89481749453821b0fb9d54eb562164363c3904dca5244c49b6306f75af",
+      "inventory_count": 37,
+      "inventory_paths_sha256": "c21c92ebf6d7d3dee5b5435b80a9d19630973471d505ca8a80a8ed694bb41605",
       "output": {
         "root": ".agent/schemas",
         "strip_suffix": null

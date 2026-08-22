@@ -19,6 +19,14 @@
     "communication": "requires_explicit_current_authorization",
     "purchase": "requires_explicit_current_authorization"
   },
+  "autonomous_delivery": {
+    "pre_activation": "read_only_no_hooks_no_repository_or_external_mutation",
+    "write_activation": "independent_exact_digest_human_confirmation_required",
+    "external_effects": "current_exact_plan_projection_and_live_revalidation_required",
+    "unknown_outcome_retries": 0,
+    "direct_external_spending_usd": 0,
+    "credentials": "creation_storage_and_forwarding_prohibited"
+  },
   "sensitive": {
     "secret_values_in_repository_or_logs": "prohibited",
     "production_data": "prohibited_unless_explicitly_authorized_and_isolated",

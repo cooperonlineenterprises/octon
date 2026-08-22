@@ -29,7 +29,7 @@
         ".agents",
         "octon"
       ],
-      "kernel_version": "4.1.0",
+      "kernel_version": "4.2.0",
       "command_manifest": "shared/source-contracts/commands.json",
       "scm_trigger_file": ".agent/scm.json",
       "package_registry_file": ".agent/packages.json",
@@ -61,6 +61,7 @@
     "setup_question_catalog_generated": false,
     "setup_session_schema": "shared/schemas/octon-mini-bootstrap-setup-session.schema.json",
     "setup_answers_schema": "shared/schemas/octon-mini-bootstrap-setup-answers.schema.json",
+    "autonomous_delivery_schema": "shared/schemas/harness-autonomous-delivery.schema.json",
     "architecture_proof_schema": "patterns/architecture-proof/schema.json",
     "architecture_proof_generated": false
   },

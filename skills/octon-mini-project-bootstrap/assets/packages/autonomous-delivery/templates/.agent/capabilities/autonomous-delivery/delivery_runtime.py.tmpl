@@ -1,0 +1,528 @@
+#!/usr/bin/env python3
+"""Closed, receipt-backed Git/GitHub source-release adapter."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+import secrets
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+
+PLAN_SCHEMA = "harness.autonomous-delivery-effect-plan.v1"
+RECEIPT_SCHEMA = "harness.autonomous-delivery-effect-receipt.v1"
+SUPPORTED = {
+    "dispatch_hosted_workflow",
+    "create_annotated_tag",
+    "push_tag",
+    "create_github_release",
+}
+EXTERNAL = {
+    "dispatch_hosted_workflow",
+    "push_tag",
+    "create_github_release",
+}
+INTERRUPTION_HOOK = lambda _phase: None
+
+
+class RuntimeBlocked(RuntimeError):
+    pass
+
+
+def duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def load_json(path: Path) -> Any:
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=duplicate_pairs,
+            parse_constant=lambda raw: (_ for _ in ()).throw(ValueError(raw)),
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
+        raise RuntimeBlocked(f"cannot load strict JSON {path}: {error}") from error
+
+
+def canonical_bytes(value: Any) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def digest(value: Any) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def digest_without(value: dict[str, Any], field: str) -> str:
+    copy = dict(value)
+    copy.pop(field, None)
+    return digest(copy)
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def root_path(raw: str) -> Path:
+    root = Path(raw).resolve()
+    if not root.is_dir() or not (root / ".agent/project.json").is_file():
+        raise RuntimeBlocked("target is not a generated Octon Mini project")
+    return root
+
+
+def external_path(root: Path, raw: str, *, require_file: bool = True) -> Path:
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        raise RuntimeBlocked("external control and evidence paths must be absolute")
+    path = path.resolve(strict=False)
+    try:
+        path.relative_to(root)
+    except ValueError:
+        pass
+    else:
+        raise RuntimeBlocked("external control and evidence paths must remain outside the repository")
+    if require_file and (not path.is_file() or path.is_symlink()):
+        raise RuntimeBlocked(f"required external file is absent or unsafe: {path}")
+    return path
+
+
+def project_path(root: Path, raw: str, *, require_file: bool = False) -> Path:
+    relative = PurePosixPath(raw)
+    if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+        raise RuntimeBlocked(f"unsafe project path: {raw}")
+    path = root.joinpath(*relative.parts)
+    current = root
+    for part in relative.parts[:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise RuntimeBlocked(f"project path has a symlink ancestor: {raw}")
+    try:
+        path.resolve(strict=False).relative_to(root)
+    except (OSError, ValueError) as error:
+        raise RuntimeBlocked(f"project path escapes target: {raw}") from error
+    if require_file and (not path.is_file() or path.is_symlink()):
+        raise RuntimeBlocked(f"required project file is absent or unsafe: {raw}")
+    return path
+
+
+def load_core(root: Path) -> Any:
+    path = project_path(root, ".agent/scripts/octon_autonomous_delivery.py", require_file=True)
+    spec = importlib.util.spec_from_file_location("octon_autonomous_delivery_runtime_core", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeBlocked("cannot load autonomous-delivery core")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def run(root: Path, argv: list[str], *, check: bool = True) -> subprocess.CompletedProcess[bytes]:
+    if not argv or any(not isinstance(item, str) or "\x00" in item for item in argv):
+        raise RuntimeBlocked("adapter argv is malformed")
+    environment = {
+        key: os.environ[key]
+        for key in ["PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TMPDIR", "TEMP", "TMP"]
+        if key in os.environ
+    }
+    environment.update({"GIT_TERMINAL_PROMPT": "0", "GH_PROMPT_DISABLED": "1", "PAGER": "cat", "GIT_PAGER": "cat"})
+    result = subprocess.run(
+        argv,
+        cwd=root,
+        env=environment,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=7200,
+        shell=False,
+        check=False,
+    )
+    if check and result.returncode:
+        stderr = result.stderr.decode("utf-8", errors="replace")[-2000:]
+        raise RuntimeBlocked(f"adapter command failed ({result.returncode}): {stderr}")
+    return result
+
+
+def text(result: subprocess.CompletedProcess[bytes]) -> str:
+    return result.stdout.decode("utf-8", errors="strict").strip()
+
+
+def git(root: Path, *args: str, check: bool = True) -> str:
+    return text(run(root, ["git", *args], check=check))
+
+
+def require_clean_main(root: Path, expected_commit: str, default_branch: str) -> None:
+    if git(root, "symbolic-ref", "--short", "HEAD") != default_branch:
+        raise RuntimeBlocked("release adapter requires the exact default branch")
+    if git(root, "rev-parse", "HEAD") != expected_commit:
+        raise RuntimeBlocked("release adapter HEAD differs from the exact plan commit")
+    if git(root, "status", "--porcelain=v1"):
+        raise RuntimeBlocked("release adapter requires a clean worktree and index")
+
+
+def plan_from(args: argparse.Namespace, root: Path) -> dict[str, Any]:
+    projection = load_json(external_path(root, args.projection))
+    if not isinstance(projection, dict) or projection.get("projection_digest") != digest_without(projection, "projection_digest"):
+        raise RuntimeBlocked("authority projection is malformed or stale")
+    if projection.get("action") != args.action or args.action not in SUPPORTED:
+        raise RuntimeBlocked("authority projection does not cover the requested closed adapter action")
+    if projection.get("plan_digest") != args.delivery_plan_digest:
+        raise RuntimeBlocked("authority projection covers a different delivery plan")
+    if args.action == "dispatch_hosted_workflow":
+        if not args.workflow or not args.commit:
+            raise RuntimeBlocked("workflow dispatch requires --workflow and --commit")
+        operation_argv = ["gh", "workflow", "run", args.workflow, "--ref", args.commit]
+    elif args.action == "create_annotated_tag":
+        if not args.tag or not args.commit or not args.message:
+            raise RuntimeBlocked("annotated tag creation requires --tag, --commit, and --message")
+        operation_argv = ["git", "tag", "-a", args.tag, args.commit, "-m", args.message]
+    elif args.action == "push_tag":
+        if not args.tag or not args.commit:
+            raise RuntimeBlocked("tag push requires --tag and --commit")
+        operation_argv = ["git", "push", "--no-follow-tags", args.remote, f"refs/tags/{args.tag}:refs/tags/{args.tag}"]
+    elif args.action == "create_github_release":
+        if not args.tag or not args.commit or not args.release_title or not args.release_notes:
+            raise RuntimeBlocked("GitHub Release creation requires --tag, --commit, --release-title, and --release-notes")
+        notes = project_path(root, args.release_notes, require_file=True)
+        operation_argv = ["gh", "release", "create", args.tag, "--title", args.release_title, "--notes-file", notes.relative_to(root).as_posix(), "--verify-tag"]
+    else:
+        raise RuntimeBlocked("unsupported closed adapter action")
+    value = {
+        "schema_version": PLAN_SCHEMA,
+        "artifact_kind": "autonomous_delivery_effect_plan",
+        "permission_grant": False,
+        "read_only": True,
+        "action": args.action,
+        "projection_digest": projection["projection_digest"],
+        "delivery_plan_digest": args.delivery_plan_digest,
+        "repository_identity": projection["repository_identity"],
+        "default_branch": args.default_branch,
+        "remote": args.remote,
+        "expected_commit": args.commit,
+        "tag": args.tag,
+        "workflow": args.workflow,
+        "operation_argv": operation_argv,
+        "external_effect": args.action in EXTERNAL,
+        "unknown_outcome_retries": 0,
+        "rollback": "local_tag_may_be_deleted_only_before_publication_other_effects_are_monotonic_fix_forward",
+        "limitations": [
+            "This exact plan is non-authorizing and must be revalidated against current standing authorization.",
+            "An attempted effect without decisive read-back becomes outcome_unknown and is never replayed automatically.",
+        ],
+    }
+    value["canonical_plan_digest"] = digest(value)
+    return value
+
+
+def observe(root: Path, plan: dict[str, Any]) -> dict[str, Any]:
+    action = plan["action"]
+    if action == "create_annotated_tag":
+        result = run(root, ["git", "rev-parse", "-q", "--verify", f"refs/tags/{plan['tag']}^{{}}"], check=False)
+        return {"exists": result.returncode == 0, "peeled": text(result) if result.returncode == 0 else None}
+    if action == "push_tag":
+        result = run(root, ["git", "ls-remote", "--tags", plan["remote"], f"refs/tags/{plan['tag']}", f"refs/tags/{plan['tag']}^{{}}"], check=False)
+        if result.returncode:
+            return {"observation": "unknown", "returncode": result.returncode, "stderr_sha256": hashlib.sha256(result.stderr).hexdigest()}
+        lines = [line.split() for line in text(result).splitlines() if line.strip()]
+        return {"observation": "known", "refs": {ref: oid for oid, ref in lines}}
+    if action == "create_github_release":
+        tag_result = run(root, ["git", "ls-remote", "--tags", plan["remote"], f"refs/tags/{plan['tag']}", f"refs/tags/{plan['tag']}^{{}}"], check=False)
+        if tag_result.returncode:
+            return {"observation": "unknown", "returncode": tag_result.returncode, "stderr_sha256": hashlib.sha256(tag_result.stderr).hexdigest()}
+        tag_lines = [line.split() for line in text(tag_result).splitlines() if line.strip()]
+        remote_refs = {ref: oid for oid, ref in tag_lines}
+        result = run(root, ["gh", "release", "view", plan["tag"], "--json", "tagName,url,isDraft,isPrerelease,targetCommitish"], check=False)
+        if result.returncode:
+            return {"observation": "known_absent", "remote_refs": remote_refs}
+        try:
+            return {"observation": "known", "remote_refs": remote_refs, "release": json.loads(text(result), object_pairs_hook=duplicate_pairs)}
+        except (json.JSONDecodeError, ValueError) as error:
+            raise RuntimeBlocked("GitHub Release observation returned malformed JSON") from error
+    if action == "dispatch_hosted_workflow":
+        result = run(root, ["gh", "run", "list", "--workflow", plan["workflow"], "--commit", plan["expected_commit"], "--limit", "20", "--json", "databaseId,url,event,status,conclusion,headSha,createdAt"], check=False)
+        if result.returncode:
+            return {"observation": "unknown", "returncode": result.returncode, "stderr_sha256": hashlib.sha256(result.stderr).hexdigest()}
+        try:
+            runs = json.loads(text(result), object_pairs_hook=duplicate_pairs)
+        except (json.JSONDecodeError, ValueError) as error:
+            raise RuntimeBlocked("workflow-run observation returned malformed JSON") from error
+        return {"observation": "known", "runs": runs}
+    raise RuntimeBlocked("unsupported observation action")
+
+
+def effect_satisfied(plan: dict[str, Any], observation: dict[str, Any]) -> bool:
+    action = plan["action"]
+    expected = plan.get("expected_commit")
+    if action == "create_annotated_tag":
+        return observation.get("exists") is True and observation.get("peeled") == expected
+    if action == "push_tag":
+        refs = observation.get("refs", {})
+        peeled = refs.get(f"refs/tags/{plan['tag']}^{{}}") or refs.get(f"refs/tags/{plan['tag']}")
+        return peeled == expected
+    if action == "create_github_release":
+        release = observation.get("release") or {}
+        refs = observation.get("remote_refs", {})
+        peeled = refs.get(f"refs/tags/{plan['tag']}^{{}}") or refs.get(f"refs/tags/{plan['tag']}")
+        return peeled == expected and release.get("tagName") == plan["tag"] and release.get("isDraft") is False and release.get("isPrerelease") is False
+    if action == "dispatch_hosted_workflow":
+        return any(item.get("headSha") == expected and item.get("event") == "workflow_dispatch" for item in observation.get("runs", []))
+    return False
+
+
+def receipt_root(root: Path) -> Path:
+    common = Path(git(root, "rev-parse", "--git-common-dir"))
+    if not common.is_absolute():
+        common = (root / common).resolve()
+    path = common / "octon-mini" / "autonomous-delivery" / "receipts"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def write_successor(root: Path, receipt_id: str, sequence: int, value: dict[str, Any]) -> Path:
+    directory = receipt_root(root) / receipt_id
+    directory.mkdir(mode=0o700, exist_ok=True)
+    path = directory / f"{sequence:04d}.json"
+    value["receipt_digest"] = digest(value)
+    try:
+        with path.open("xb") as handle:
+            handle.write(canonical_bytes(value))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as error:
+        raise RuntimeBlocked("effect receipt successor already exists") from error
+    return path
+
+
+def receipt_sequence(root: Path, receipt_id: str) -> list[dict[str, Any]]:
+    if not isinstance(receipt_id, str) or not receipt_id.startswith("ADER-"):
+        raise RuntimeBlocked("effect receipt identity is malformed")
+    directory = receipt_root(root) / receipt_id
+    if not directory.is_dir() or directory.is_symlink():
+        raise RuntimeBlocked("effect receipt history is unavailable or unsafe")
+    values: list[dict[str, Any]] = []
+    for expected, path in enumerate(sorted(directory.glob("*.json")), 1):
+        if path.name != f"{expected:04d}.json" or path.is_symlink():
+            raise RuntimeBlocked("effect receipt history has a malformed or noncontiguous successor")
+        value = load_json(path)
+        if not isinstance(value, dict) or value.get("receipt_id") != receipt_id or value.get("receipt_digest") != digest_without(value, "receipt_digest"):
+            raise RuntimeBlocked("effect receipt successor is malformed or corrupt")
+        values.append(value)
+    if not values:
+        raise RuntimeBlocked("effect receipt history is empty")
+    return values
+
+
+def receipt_value(receipt_id: str, projection_digest: str, action: str, state: str, before: dict[str, Any], after: dict[str, Any], outcome: str, attempted_at: str | None, observed_at: str | None) -> dict[str, Any]:
+    return {
+        "schema_version": RECEIPT_SCHEMA,
+        "artifact_kind": "autonomous_delivery_monotonic_effect_receipt",
+        "permission_grant": False,
+        "receipt_id": receipt_id,
+        "projection_digest": projection_digest,
+        "action": action,
+        "state": state,
+        "requested_at": now(),
+        "attempted_at": attempted_at,
+        "observed_at": observed_at,
+        "before_evidence": before,
+        "after_evidence": after,
+        "outcome": outcome,
+        "automatic_retry_safe": outcome == "known_no_effect",
+        "limitations": [
+            "Public effects are monotonic and not atomically rollbackable.",
+            "An unknown outcome has zero automatic retries and requires reconciliation.",
+        ],
+    }
+
+
+def validate_runtime_authority(root: Path, args: argparse.Namespace, plan: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+    core = load_core(root)
+    confirmation = core.load_json(core.external_path(root, args.confirmation_artifact, require_file=True))
+    record = core.validate_record(core.load_json(core.external_path(root, args.authorization_record, require_file=True)), confirmation)
+    contract = record["contract"]
+    core.active_controls(root, contract)
+    core.validate_cost_evidence(core.load_json(core.external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    projection = core.load_json(core.external_path(root, args.projection, require_file=True))
+    if projection.get("projection_digest") != core.digest_without(projection, "projection_digest"):
+        raise RuntimeBlocked("authority projection digest is invalid")
+    if projection.get("authorization_record_digest") != record["accepted_record_digest"] or projection.get("contract_digest") != contract["canonical_contract_digest"]:
+        raise RuntimeBlocked("authority projection is bound to another standing record")
+    if projection.get("action") != plan["action"] or projection.get("projection_digest") != plan["projection_digest"]:
+        raise RuntimeBlocked("effect plan and authority projection differ")
+    if datetime.fromisoformat(projection["valid_until"].replace("Z", "+00:00")) < datetime.now(timezone.utc):
+        raise RuntimeBlocked("short-lived authority projection is expired")
+    return core, projection
+
+
+def apply_effect(args: argparse.Namespace, root: Path) -> dict[str, Any]:
+    plan = load_json(external_path(root, args.plan))
+    if not isinstance(plan, dict) or plan.get("schema_version") != PLAN_SCHEMA or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or args.accept_digest != plan.get("canonical_plan_digest"):
+        raise RuntimeBlocked("effect apply requires the exact current reviewed plan digest")
+    _core, projection = validate_runtime_authority(root, args, plan)
+    if plan["expected_commit"]:
+        require_clean_main(root, plan["expected_commit"], plan["default_branch"])
+    before = observe(root, plan)
+    if before.get("observation") == "unknown":
+        raise RuntimeBlocked("pre-action external observation is unknown")
+    if plan["action"] == "create_github_release":
+        refs = before.get("remote_refs", {})
+        peeled = refs.get(f"refs/tags/{plan['tag']}^{{}}") or refs.get(f"refs/tags/{plan['tag']}")
+        if peeled != plan["expected_commit"]:
+            raise RuntimeBlocked("GitHub Release creation requires the exact published tag target")
+    receipt_id = "ADER-" + secrets.token_hex(12)
+    requested = receipt_value(receipt_id, projection["projection_digest"], plan["action"], "requested", before, {}, "not_attempted", None, None)
+    write_successor(root, receipt_id, 1, requested)
+    INTERRUPTION_HOOK("after_requested_receipt")
+    if effect_satisfied(plan, before):
+        completed = receipt_value(receipt_id, projection["projection_digest"], plan["action"], "completed", before, before, "completed", None, now())
+        write_successor(root, receipt_id, 2, completed)
+        return completed
+    attempted_time = now()
+    attempted = receipt_value(receipt_id, projection["projection_digest"], plan["action"], "attempted", before, {}, "unknown", attempted_time, None)
+    write_successor(root, receipt_id, 2, attempted)
+    INTERRUPTION_HOOK("before_external_effect")
+    result = run(root, plan["operation_argv"], check=False)
+    INTERRUPTION_HOOK("after_external_effect_before_readback")
+    after = observe(root, plan)
+    observed_time = now()
+    if effect_satisfied(plan, after):
+        state, outcome = "completed", "completed"
+    elif after.get("observation") in {"known", "known_absent"} and result.returncode != 0:
+        state, outcome = "failed_known_no_effect", "known_no_effect"
+    else:
+        state, outcome = "outcome_unknown", "unknown"
+    final = receipt_value(receipt_id, projection["projection_digest"], plan["action"], state, before, {**after, "command_returncode": result.returncode, "stdout_sha256": hashlib.sha256(result.stdout).hexdigest(), "stderr_sha256": hashlib.sha256(result.stderr).hexdigest()}, outcome, attempted_time, observed_time)
+    write_successor(root, receipt_id, 3, final)
+    if outcome == "unknown":
+        raise RuntimeBlocked(f"external effect outcome is unknown; receipt {receipt_id} requires read-only reconciliation and must not be replayed")
+    if outcome == "known_no_effect":
+        raise RuntimeBlocked(f"external effect failed with known no effect; receipt {receipt_id} permits at most the accepted proven-no-effect retry policy")
+    return final
+
+
+def resume_effect(args: argparse.Namespace, root: Path) -> dict[str, Any]:
+    plan = load_json(external_path(root, args.plan))
+    if not isinstance(plan, dict) or plan.get("schema_version") != PLAN_SCHEMA or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or args.accept_digest != plan.get("canonical_plan_digest"):
+        raise RuntimeBlocked("effect resume requires the exact current reviewed plan digest")
+    _core, projection = validate_runtime_authority(root, args, plan)
+    history = receipt_sequence(root, args.receipt_id)
+    last = history[-1]
+    if last.get("projection_digest") != projection["projection_digest"] or last.get("action") != plan["action"]:
+        raise RuntimeBlocked("effect receipt is bound to another plan or standing-authority projection")
+    if last.get("state") == "completed":
+        return last
+    after = observe(root, plan)
+    if after.get("observation") == "unknown":
+        raise RuntimeBlocked("external read-back remains unknown; zero automatic retries are permitted")
+    if effect_satisfied(plan, after):
+        final = receipt_value(args.receipt_id, projection["projection_digest"], plan["action"], "completed", last.get("before_evidence", {}), after, "completed", last.get("attempted_at"), now())
+        write_successor(root, args.receipt_id, len(history) + 1, final)
+        return final
+    if last.get("state") == "requested" and last.get("attempted_at") is None:
+        # The durable attempted marker is written before every effect. Its
+        # absence proves this invocation never reached the external call.
+        attempted_time = now()
+        attempted = receipt_value(args.receipt_id, projection["projection_digest"], plan["action"], "attempted", last.get("before_evidence", {}), {}, "unknown", attempted_time, None)
+        write_successor(root, args.receipt_id, len(history) + 1, attempted)
+        INTERRUPTION_HOOK("before_external_effect")
+        result = run(root, plan["operation_argv"], check=False)
+        INTERRUPTION_HOOK("after_external_effect_before_readback")
+        observed = observe(root, plan)
+        if effect_satisfied(plan, observed):
+            state, outcome = "completed", "completed"
+        elif observed.get("observation") in {"known", "known_absent"} and result.returncode != 0:
+            state, outcome = "failed_known_no_effect", "known_no_effect"
+        else:
+            state, outcome = "outcome_unknown", "unknown"
+        final = receipt_value(args.receipt_id, projection["projection_digest"], plan["action"], state, last.get("before_evidence", {}), {**observed, "command_returncode": result.returncode, "stdout_sha256": hashlib.sha256(result.stdout).hexdigest(), "stderr_sha256": hashlib.sha256(result.stderr).hexdigest()}, outcome, attempted_time, now())
+        write_successor(root, args.receipt_id, len(history) + 2, final)
+        if outcome != "completed":
+            raise RuntimeBlocked("resumed external effect did not produce exact completion evidence")
+        return final
+    final = receipt_value(args.receipt_id, projection["projection_digest"], plan["action"], "outcome_unknown", last.get("before_evidence", {}), after, "unknown", last.get("attempted_at"), now())
+    write_successor(root, args.receipt_id, len(history) + 1, final)
+    raise RuntimeBlocked("attempted external effect is not proven complete; it remains outcome_unknown and will not be replayed")
+
+
+def parser() -> argparse.ArgumentParser:
+    value = argparse.ArgumentParser(description=__doc__)
+    value.add_argument("--target", default=".")
+    commands = value.add_subparsers(dest="command", required=True)
+    status = commands.add_parser("status")
+    status.add_argument("--json", action="store_true")
+    plan = commands.add_parser("plan")
+    plan.add_argument("--projection", required=True)
+    plan.add_argument("--action", choices=sorted(SUPPORTED), required=True)
+    plan.add_argument("--delivery-plan-digest", required=True)
+    plan.add_argument("--default-branch", default="main")
+    plan.add_argument("--remote", default="origin")
+    plan.add_argument("--commit")
+    plan.add_argument("--tag")
+    plan.add_argument("--message")
+    plan.add_argument("--workflow")
+    plan.add_argument("--release-title")
+    plan.add_argument("--release-notes")
+    plan.add_argument("--output")
+    apply = commands.add_parser("apply")
+    apply.add_argument("--plan", required=True)
+    apply.add_argument("--accept-digest", required=True)
+    apply.add_argument("--projection", required=True)
+    apply.add_argument("--authorization-record", required=True)
+    apply.add_argument("--confirmation-artifact", required=True)
+    apply.add_argument("--cost-enforcement-artifact", required=True)
+    resume = commands.add_parser("resume")
+    resume.add_argument("--receipt-id", required=True)
+    resume.add_argument("--plan", required=True)
+    resume.add_argument("--accept-digest", required=True)
+    resume.add_argument("--projection", required=True)
+    resume.add_argument("--authorization-record", required=True)
+    resume.add_argument("--confirmation-artifact", required=True)
+    resume.add_argument("--cost-enforcement-artifact", required=True)
+    return value
+
+
+def main() -> int:
+    args = parser().parse_args()
+    root = root_path(args.target)
+    if args.command == "status":
+        value = {
+            "schema_version": "harness.autonomous-delivery-runtime-status.v1",
+            "permission_grant": False,
+            "supported_release_effects": sorted(SUPPORTED),
+            "unknown_outcome_retries": 0,
+            "direct_external_spending_usd": 0,
+        }
+        print(json.dumps(value, indent=2, sort_keys=True))
+    elif args.command == "plan":
+        value = plan_from(args, root)
+        if args.output:
+            path = external_path(root, args.output, require_file=False)
+            if not path.parent.is_dir() or path.exists():
+                raise RuntimeBlocked("effect-plan output parent must exist and output must be new")
+            path.write_bytes(canonical_bytes(value))
+        else:
+            print(json.dumps(value, indent=2, sort_keys=True))
+    elif args.command == "apply":
+        print(json.dumps(apply_effect(args, root), indent=2, sort_keys=True))
+    elif args.command == "resume":
+        print(json.dumps(resume_effect(args, root), indent=2, sort_keys=True))
+    else:
+        raise RuntimeBlocked("unsupported runtime command")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except RuntimeBlocked as error:
+        print(f"autonomous delivery blocked: {error}", file=sys.stderr)
+        raise SystemExit(2) from error

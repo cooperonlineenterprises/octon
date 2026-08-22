@@ -424,6 +424,7 @@
         "non_authorization_rule",
         "local",
         "external",
+        "autonomous_delivery",
         "sensitive",
         "repository",
         "invariants",
@@ -507,6 +508,19 @@
             "purchase": {
               "const": "requires_explicit_current_authorization"
             }
+          }
+        },
+        "autonomous_delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pre_activation", "write_activation", "external_effects", "unknown_outcome_retries", "direct_external_spending_usd", "credentials"],
+          "properties": {
+            "pre_activation": {"const": "read_only_no_hooks_no_repository_or_external_mutation"},
+            "write_activation": {"const": "independent_exact_digest_human_confirmation_required"},
+            "external_effects": {"const": "current_exact_plan_projection_and_live_revalidation_required"},
+            "unknown_outcome_retries": {"const": 0},
+            "direct_external_spending_usd": {"const": 0},
+            "credentials": {"const": "creation_storage_and_forwarding_prohibited"}
           }
         },
         "sensitive": {
@@ -682,7 +696,7 @@
           "const": "harness.schema.v1"
         },
         "kernel_version": {
-          "const": "4.1.0"
+          "const": "4.2.0"
         },
         "compatibility": {
           "type": "object"
@@ -693,7 +707,7 @@
         "contract_versions": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["continuation", "plan_summary", "transaction_plan", "transaction_receipt", "transaction_bundle", "decision_reuse", "validation_proof"],
+          "required": ["continuation", "plan_summary", "transaction_plan", "transaction_receipt", "transaction_bundle", "decision_reuse", "validation_proof", "autonomous_delivery"],
           "properties": {
             "continuation": {"const": "octon-mini.continuation.v1"},
             "plan_summary": {"const": "harness.plan-summary.v1"},
@@ -701,7 +715,8 @@
             "transaction_receipt": {"const": "harness.transaction-receipt.v3"},
             "transaction_bundle": {"const": "harness.transaction-bundle.v1"},
             "decision_reuse": {"const": "harness.decision-reuse-registry.v1"},
-            "validation_proof": {"const": "harness.validation-proof.v1"}
+            "validation_proof": {"const": "harness.validation-proof.v1"},
+            "autonomous_delivery": {"const": "harness.autonomous-delivery-standing-authorization.v1"}
           }
         },
         "id_patterns": {
@@ -996,7 +1011,7 @@
       ],
       "properties": {
         "schema_version": {
-          "enum": ["harness.project.v5", "harness.project.v6", "harness.project.v7"]
+          "enum": ["harness.project.v5", "harness.project.v6", "harness.project.v7", "harness.project.v8"]
         },
         "project": {
           "type": "object",
@@ -1195,6 +1210,34 @@
         "work_completion": {
           "type": "object"
         },
+        "autonomous_delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "status",
+            "write_capability",
+            "external_effects",
+            "delivery_profile",
+            "adoption_decision_ref",
+            "authorization_record_ref",
+            "authorization_record_digest",
+            "activation_receipt_ref",
+            "limitations"
+          ],
+          "properties": {
+            "schema_version": {"const": "harness.autonomous-delivery-config.v1"},
+            "status": {"enum": ["available_not_activated", "active", "disabled", "revoked", "expired"]},
+            "write_capability": {"enum": ["locked", "authorized_within_exact_standing_contract"]},
+            "external_effects": {"enum": ["locked", "authorized_only_through_current_exact_plan_projections"]},
+            "delivery_profile": {"type": ["string", "null"], "enum": [null, "review_first", "balanced_autonomous", "fast_delivery", "custom"]},
+            "adoption_decision_ref": {"type": ["string", "null"], "pattern": "^DEC-[0-9]{4}$"},
+            "authorization_record_ref": {"type": ["string", "null"]},
+            "authorization_record_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+            "activation_receipt_ref": {"type": ["string", "null"]},
+            "limitations": {"$ref": "#/$defs/strings"}
+          }
+        },
         "packages": {
           "type": "object",
           "additionalProperties": false,
@@ -1214,7 +1257,8 @@
               "properties": {
                 "operations_observability": {"enum": ["not_assessed", "not_applicable", "applicable"]},
                 "security_supply_chain": {"enum": ["not_assessed", "not_applicable", "applicable"]},
-                "long_running_work": {"enum": ["not_assessed", "not_applicable", "applicable"]}
+                "long_running_work": {"enum": ["not_assessed", "not_applicable", "applicable"]},
+                "autonomous_delivery": {"enum": ["not_assessed", "not_applicable", "applicable"]}
               }
             },
             "absence_means_not_applicable": {

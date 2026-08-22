@@ -460,12 +460,12 @@ class ArchitecturalPatternContractTests(unittest.TestCase):
         scaffolder = CONTRACTS.load_scaffolder(ROOT)
         self.assertEqual(
             (ROOT / "VERSION").read_text(encoding="utf-8").strip(),
-            "4.1.0",
+            "4.2.0",
         )
         self.assertEqual(
-            product_config["modules"]["harness"]["kernel_version"], "4.1.0"
+            product_config["modules"]["harness"]["kernel_version"], "4.2.0"
         )
-        self.assertEqual(scaffolder.KERNEL_VERSION, "4.1.0")
+        self.assertEqual(scaffolder.KERNEL_VERSION, "4.2.0")
         self.assertNotIn(
             ".agent/schemas/context-pack-manifest.schema.json",
             {path.as_posix() for path in scaffolder.schema_outputs("minimal")},
