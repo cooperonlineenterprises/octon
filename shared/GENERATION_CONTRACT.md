@@ -562,8 +562,9 @@ The source checkout may route `octon work finish` to the existing
 work-completion engine through a source-only runner. That runner consumes an
 external immutable, digest-bound Codex task reference and a precommitted source
 candidate; it generates no target task record and is never copied as a second
-generated-project lifecycle. Source cleanup remains blocked until exact
-integrated-main validation evidence is recorded.
+generated-project lifecycle. Source merge remains blocked until the required
+check and all 24 candidate matrix jobs pass; cleanup remains blocked until
+exact integrated-main validation evidence is recorded.
 
 The generated portfolio excludes GitFlow, merge queues, release trains,
 stacked-PR dependency trains, fork-first internal contribution, multi-level

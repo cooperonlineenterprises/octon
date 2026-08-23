@@ -104,7 +104,7 @@
       "display_name": "Octon Mini Governed Work Completion",
       "purpose": "Plan and resume governed Git and provider work completion for an adopted small-team workflow.",
       "availability": ["bootstrap_source", "generated_project"],
-      "command_entry_points": ["octon work finish plan", "octon work finish apply", "octon work finish resume", "octon work finish attest-post-merge"],
+      "command_entry_points": ["octon work finish plan", "octon work finish apply", "octon work finish resume", "octon work finish attest-candidate-matrix", "octon work finish attest-post-merge"],
       "implementation_entry_points": ["skills/octon-mini-project-bootstrap/scripts/source_work_completion.py", ".agent/scripts/octon.py", ".agent/scripts/octon_work_completion.py"],
       "default_behavior": "mixed",
       "mutation_behavior": "Planning is read-only; apply and resume use monotonic receipts for explicitly authorized local and external effects.",

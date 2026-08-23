@@ -346,10 +346,13 @@ reference and then run:
 ```
 
 The plan binds the already committed branch range. Apply uses a separately
-projected, fresh work-completion authorization. After merge and local `main`
-synchronization, the receipt pauses before cleanup. Record exact integrated-
-main smoke and full-matrix evidence with `attest-post-merge`, then resume under
-fresh authorization. No source `.agent/tasks` store is created.
+projected, fresh work-completion authorization. After the stable required check
+passes, dispatch and read back the complete candidate matrix. Record the exact
+24/24 candidate source/acceptance job evidence with `attest-candidate-matrix`;
+only then may resume reach merge. After merge and local `main` synchronization,
+the receipt pauses again before cleanup. Record exact integrated-main smoke and
+full-matrix evidence with `attest-post-merge`, then resume under fresh
+authorization. No source `.agent/tasks` store is created.
 
 ## Hooks and evidence
 

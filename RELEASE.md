@@ -21,8 +21,9 @@ receipt, test, or this source record cannot create or broaden that authority.
 The accepted narrow source-repository amendment keeps commit, push, PR, checks,
 merge, synchronization, and cleanup in the existing work-completion owner. It
 uses an external immutable, digest-bound Codex task reference rather than a
-source task store, and cleanup cannot proceed until exact integrated-main
-validation evidence is recorded.
+source task store. Merge cannot proceed until the required check and all 24
+candidate source/acceptance matrix jobs pass on the exact head; cleanup cannot
+proceed until exact integrated-main validation evidence is recorded.
 
 If confirmed, a final patch or minor source release still requires every
 applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,

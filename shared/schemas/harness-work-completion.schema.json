@@ -341,7 +341,7 @@
     "source_plan": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "source_mode", "task_ref", "task_status", "external_task_binding", "external_task_valid_until", "priority_authority_ref", "workflow", "adopted_workflow_authority_ref", "assurance_profile", "assurance_control_refs", "standing_authorization_record_ref", "repository", "branches", "expected_revisions", "candidate_commits", "eligible_staging_paths", "path_preconditions", "closure_transaction", "git_hook_observation", "proposed_commit", "validation_commands", "validation_evidence_refs", "pull_request", "review", "required_hosted_checks", "integration_method", "cleanup", "post_merge_validation", "concurrent_work", "external_operations", "authorization_contract", "stop_conditions", "blocking_reasons", "source_inputs", "relevant_input_fingerprint", "limitations", "canonical_plan_digest"],
+      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "source_mode", "task_ref", "task_status", "external_task_binding", "external_task_valid_until", "priority_authority_ref", "workflow", "adopted_workflow_authority_ref", "assurance_profile", "assurance_control_refs", "standing_authorization_record_ref", "repository", "branches", "expected_revisions", "candidate_commits", "eligible_staging_paths", "path_preconditions", "closure_transaction", "git_hook_observation", "proposed_commit", "validation_commands", "validation_evidence_refs", "pull_request", "review", "required_hosted_checks", "integration_method", "cleanup", "candidate_validation", "post_merge_validation", "concurrent_work", "external_operations", "authorization_contract", "stop_conditions", "blocking_reasons", "source_inputs", "relevant_input_fingerprint", "limitations", "canonical_plan_digest"],
       "properties": {
         "schema_version": {"const": "harness.source-work-completion-plan.v1"},
         "artifact_kind": {"const": "work_completion_plan"},
@@ -433,6 +433,17 @@
             "local_task_branch": {"const": true}
           }
         },
+        "candidate_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "evidence_schema", "expected_matrix_jobs", "integration_before_pass"],
+          "properties": {
+            "required": {"const": true},
+            "evidence_schema": {"const": "harness.source-candidate-matrix-validation.v1"},
+            "expected_matrix_jobs": {"const": 24},
+            "integration_before_pass": {"const": false}
+          }
+        },
         "post_merge_validation": {
           "type": "object",
           "additionalProperties": false,
@@ -475,6 +486,35 @@
         "relevant_input_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "limitations": {"$ref": "#/$defs/strings"},
         "canonical_plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "source_candidate_matrix_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "receipt_id", "plan_digest", "candidate_revision", "pull_request_number", "pull_request_head", "required_check", "full_matrix", "observed_at", "evidence_refs", "limitations", "evidence_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.source-candidate-matrix-validation.v1"},
+        "artifact_kind": {"const": "source_candidate_hosted_validation_evidence"},
+        "permission_grant": {"const": false},
+        "receipt_id": {"type": "string", "pattern": "^WCR-[a-f0-9]{24}$"},
+        "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "candidate_revision": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "pull_request_number": {"type": "integer", "minimum": 1},
+        "pull_request_head": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "required_check": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}}
+        },
+        "full_matrix": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref", "expected_jobs", "successful_jobs"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}, "expected_jobs": {"const": 24}, "successful_jobs": {"const": 24}}
+        },
+        "observed_at": {"type": "string", "format": "date-time"},
+        "evidence_refs": {"$ref": "#/$defs/strings"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
       }
     },
     "source_post_merge_validation": {

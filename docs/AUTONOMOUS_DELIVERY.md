@@ -114,9 +114,11 @@ file, run loop, or generic event platform.
 For this source repository, `./octon work finish` uses the same work-completion
 engine with an external immutable, digest-bound Codex task reference. The
 source plan binds the precommitted candidate range and exact source authority;
-it never creates `.agent/tasks`. After integration it records a planned stop,
-and cleanup cannot proceed until exact automatic-main and full-matrix evidence
-for the integrated revision is supplied.
+it never creates `.agent/tasks`. Before integration it records a planned stop
+until the stable required check and all 24 candidate source/acceptance matrix
+jobs pass on the exact head. After integration it stops again, and cleanup
+cannot proceed until exact automatic-main and full-matrix evidence for the
+integrated revision is supplied.
 
 ## Fast-delivery limits
 

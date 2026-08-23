@@ -104,9 +104,10 @@ command identity with their generated-project command inventory.
   only the exact read-only plan hook after successful task closure.
   In the Octon Mini source repository only, the same owner exposes source mode
   over an external immutable, digest-bound Codex task reference. It binds an
-  already committed candidate range and pauses cleanup until exact
-  integrated-main validation evidence is recorded. It creates no source task
-  store, task lifecycle, or release-adapter ownership.
+  already committed candidate range, pauses merge until the required check and
+  all 24 candidate matrix jobs pass, and pauses cleanup until exact integrated-
+  main validation evidence is recorded. It creates no source task store, task
+  lifecycle, or release-adapter ownership.
 - Configuration: use `octon maintain hooks`, `octon maintain collaboration`,
   `octon maintain registry`, and source `octon maintain package` plan/apply flows.
   Package applicability, owner, trust decision, version, digest, and successful

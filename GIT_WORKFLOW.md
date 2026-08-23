@@ -141,7 +141,9 @@ The accepted 2026-08-23 narrow amendment routes this source repository through
 the existing work-completion engine. It binds the precommitted candidate to an
 external immutable Codex task reference and does not create `.agent/tasks` or
 move push/PR/check/merge/cleanup ownership into the release adapter. Cleanup is
-deferred until exact integrated-main smoke and full-matrix evidence passes.
+deferred until exact integrated-main smoke and full-matrix evidence passes;
+merge is separately blocked until the stable required check and all 24 complete
+candidate source/acceptance matrix jobs pass on the exact head.
 
 The completed 3.0.0 release-candidate task used `concurrent_work` with disjoint
 file ownership, a shared base revision, conflict detection, and explicit

@@ -321,6 +321,12 @@ def build_plan(root: Path, task_path: Path, standing_path: Path) -> dict[str, An
         "required_hosted_checks": ["required"],
         "integration_method": "merge_commit",
         "cleanup": {"remote_task_branch": True, "local_task_branch": True},
+        "candidate_validation": {
+            "required": True,
+            "evidence_schema": "harness.source-candidate-matrix-validation.v1",
+            "expected_matrix_jobs": 24,
+            "integration_before_pass": False,
+        },
         "post_merge_validation": {
             "required": True,
             "evidence_schema": "harness.source-post-merge-validation.v1",
@@ -346,6 +352,7 @@ def build_plan(root: Path, task_path: Path, standing_path: Path) -> dict[str, An
             "external task, source authority, standing authorization, or instructions change",
             "local or remote revisions differ from the reviewed preconditions",
             "required checks or mergeability are absent, pending, failed, stale, or unknown",
+            "candidate full-matrix validation evidence is absent or incomplete",
             "integrated-main validation evidence is absent or incomplete",
             "cleanup lacks integration, synchronization, and post-merge evidence",
         ],
@@ -426,6 +433,9 @@ def parser() -> argparse.ArgumentParser:
     resume = commands.add_parser("resume")
     resume.add_argument("--receipt-id", required=True)
     resume.add_argument("--authorization", required=True)
+    attest_candidate = commands.add_parser("attest-candidate-matrix")
+    attest_candidate.add_argument("--receipt-id", required=True)
+    attest_candidate.add_argument("--evidence", required=True)
     attest = commands.add_parser("attest-post-merge")
     attest.add_argument("--receipt-id", required=True)
     attest.add_argument("--evidence", required=True)
@@ -449,6 +459,11 @@ def main() -> int:
     elif args.command == "resume":
         _transaction, completion, _autonomous = engine_modules()
         value = completion.resume(root, args.receipt_id, external_path(root, args.authorization))
+        print(json.dumps(value, indent=2, sort_keys=True))
+    elif args.command == "attest-candidate-matrix":
+        transaction, completion, _autonomous = engine_modules()
+        receipt = completion.validate_receipt(transaction.load_work_completion_receipt(root, args.receipt_id))
+        value = completion.record_source_candidate_validation(root, receipt, external_path(root, args.evidence))
         print(json.dumps(value, indent=2, sort_keys=True))
     elif args.command == "attest-post-merge":
         transaction, completion, _autonomous = engine_modules()

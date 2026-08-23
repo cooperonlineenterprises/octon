@@ -56,8 +56,10 @@ provider fixtures unless a real effect has separate exact authorization.
 Record every intervention, correction cycle, receipt successor, read-back,
 unknown outcome, duplicate-effect count, retained failure, and residual state.
 For Octon Mini source delivery, also record the external Codex task-reference
-digest, precommitted candidate range, post-merge validation pause, and whether
-cleanup remained blocked until exact integrated-main evidence passed.
+digest, precommitted candidate range, candidate-matrix pre-merge pause,
+post-merge validation pause, whether merge remained blocked until all 24
+candidate jobs passed, and whether cleanup remained blocked until exact
+integrated-main evidence passed.
 An unavailable unfamiliar operator, independent reviewer, external project, or
 human-usability observation remains `not_run` and cannot support maturity,
 adoption, usability, or readiness claims.

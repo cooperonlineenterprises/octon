@@ -10,9 +10,10 @@ effect still requires a fresh exact-plan projection and live compute evidence.
 The accepted narrow `SRC-DEC-0019` amendment adds source-repository mode to the
 existing work-completion engine. It requires an external immutable,
 digest-bound Codex task reference and pauses cleanup until exact integrated-
-main smoke and full-matrix evidence is recorded. It creates no source task
-store and grants no release-adapter ownership over push, PR, checks, merge, or
-cleanup.
+main smoke and full-matrix evidence is recorded. It also blocks merge until the
+stable required check and all 24 candidate source/acceptance matrix jobs pass
+on the exact head. It creates no source task store and grants no release-
+adapter ownership over push, PR, checks, merge, or cleanup.
 
 Current source evidence may demonstrate implementation, deterministic safety,
 migration, recovery, and performance. It cannot establish release, target-

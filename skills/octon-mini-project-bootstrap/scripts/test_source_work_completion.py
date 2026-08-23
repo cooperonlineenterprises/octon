@@ -195,6 +195,8 @@ class SourceWorkCompletionTests(unittest.TestCase):
         self.assertEqual(plan["expected_revisions"]["candidate_head"], git(self.root, "rev-parse", "HEAD"))
         self.assertEqual(plan["candidate_commits"], [git(self.root, "rev-parse", "HEAD")])
         self.assertEqual(plan["external_operations"], ["fetch_remote", "push_branch", "locate_pull_request", "open_pull_request", "observe_change_checks", "merge_pull_request", "delete_remote_branch"])
+        self.assertTrue(plan["candidate_validation"]["required"])
+        self.assertEqual(plan["candidate_validation"]["expected_matrix_jobs"], 24)
         self.assertTrue(plan["post_merge_validation"]["required"])
         self.assertEqual(git(self.root, "status", "--porcelain=v1"), before)
         self.assertEqual(self.validator.validate_schema(load_json(self.task_path), self.schema["$defs"]["external_task_reference"], root_schema=self.schema), [])
@@ -372,11 +374,73 @@ class SourceWorkCompletionTests(unittest.TestCase):
         with self.assertRaisesRegex(self.completion.FinishBlocked, "standing authorization is not current"):
             self.completion.authority_still_current(self.root, receipt, "fetch_remote")
 
+    def test_source_integration_stops_until_candidate_matrix_is_recorded(self) -> None:
+        plan = RUNNER.build_plan(self.root, self.task_path, self.record_path)
+        receipt = self.completion.new_receipt(plan, self.authorization(plan))
+        candidate = plan["expected_revisions"]["candidate_head"]
+        receipt["revisions"]["commit"] = candidate
+        receipt["pull_request"] = {
+            "number": 91,
+            "url": "https://example.invalid/pull/91",
+            "state": "OPEN",
+            "isDraft": False,
+            "headRefName": plan["branches"]["task"],
+            "baseRefName": plan["branches"]["default"],
+            "headRefOid": candidate,
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": "",
+            "mergedAt": None,
+            "mergeCommit": None,
+        }
+        receipt["completed_operations"] = [
+            "create_commit", "push_task_branch", "locate_or_open_pull_request",
+            "observe_hosted_checks", "record_self_review",
+        ]
+        self.transaction.write_work_completion_receipt(self.root, receipt, create=True)
+        with (
+            mock.patch.object(self.completion, "ensure_plan_sources"),
+            mock.patch.object(self.completion, "git_hook_observation", return_value=plan["git_hook_observation"]),
+            mock.patch.object(self.completion, "dirty_state", return_value=([], [])),
+            mock.patch.object(self.completion, "merge_pr") as merge_pr,
+        ):
+            with self.assertRaisesRegex(self.completion.FinishBlocked, "candidate full-matrix"):
+                self.completion.execute(self.root, receipt)
+        merge_pr.assert_not_called()
+        now = datetime.now(timezone.utc)
+        evidence = {
+            "schema_version": "harness.source-candidate-matrix-validation.v1",
+            "artifact_kind": "source_candidate_hosted_validation_evidence",
+            "permission_grant": False,
+            "receipt_id": receipt["receipt_id"],
+            "plan_digest": receipt["plan_digest"],
+            "candidate_revision": candidate,
+            "pull_request_number": 91,
+            "pull_request_head": candidate,
+            "required_check": {"status": "pass", "run_ref": "external:synthetic-required-check"},
+            "full_matrix": {"status": "pass", "run_ref": "external:synthetic-candidate-matrix", "expected_jobs": 24, "successful_jobs": 24},
+            "observed_at": now.isoformat().replace("+00:00", "Z"),
+            "evidence_refs": ["external:synthetic-required-check", "external:synthetic-candidate-matrix"],
+            "limitations": ["Synthetic fixture only."],
+        }
+        evidence["evidence_digest"] = self.completion.digest(evidence)
+        evidence_path = self.area / "candidate-matrix.json"
+        write_json(evidence_path, evidence)
+        self.assertEqual(self.validator.validate_schema(evidence, self.schema["$defs"]["source_candidate_matrix_validation"], root_schema=self.schema), [])
+        result = self.completion.record_source_candidate_validation(self.root.resolve(), receipt, evidence_path.resolve())
+        self.assertIn("record_candidate_matrix_validation", result["completed_operations"])
+        incomplete = json.loads(json.dumps(evidence))
+        incomplete["full_matrix"]["successful_jobs"] = 23
+        incomplete["evidence_digest"] = self.completion.digest({key: value for key, value in incomplete.items() if key != "evidence_digest"})
+        incomplete_path = self.area / "candidate-matrix-incomplete.json"
+        write_json(incomplete_path, incomplete)
+        with self.assertRaisesRegex(self.completion.FinishBlocked, "accounting is incomplete"):
+            self.completion.record_source_candidate_validation(self.root.resolve(), receipt, incomplete_path.resolve())
+
     def test_source_cleanup_stops_until_post_merge_validation_is_recorded(self) -> None:
         plan = RUNNER.build_plan(self.root, self.task_path, self.record_path)
         receipt = self.completion.new_receipt(plan, self.authorization(plan))
         receipt["revisions"] = {"commit": plan["expected_revisions"]["candidate_head"], "integrated": "a" * 40, "synchronized_default": "a" * 40}
-        receipt["completed_operations"] = ["create_commit", "push_task_branch", "locate_or_open_pull_request", "observe_hosted_checks", "record_self_review", "merge_pull_request", "synchronize_local_default_branch"]
+        receipt["completed_operations"] = ["create_commit", "push_task_branch", "locate_or_open_pull_request", "observe_hosted_checks", "record_self_review", "record_candidate_matrix_validation", "merge_pull_request", "synchronize_local_default_branch"]
         with (
             mock.patch.object(self.completion, "ensure_plan_sources"),
             mock.patch.object(self.completion, "git_hook_observation", return_value=plan["git_hook_observation"]),
@@ -407,7 +471,7 @@ class SourceWorkCompletionTests(unittest.TestCase):
         integrated = git(self.root, "rev-parse", "HEAD")
         receipt["state"] = "default_branch_synchronized"
         receipt["revisions"] = {"commit": plan["expected_revisions"]["candidate_head"], "integrated": integrated, "synchronized_default": integrated}
-        receipt["completed_operations"] = ["create_commit", "push_task_branch", "locate_or_open_pull_request", "observe_hosted_checks", "record_self_review", "merge_pull_request", "synchronize_local_default_branch"]
+        receipt["completed_operations"] = ["create_commit", "push_task_branch", "locate_or_open_pull_request", "observe_hosted_checks", "record_self_review", "record_candidate_matrix_validation", "merge_pull_request", "synchronize_local_default_branch"]
         self.transaction.write_work_completion_receipt(self.root, receipt, create=True)
         evidence = {
             "schema_version": "harness.source-post-merge-validation.v1",

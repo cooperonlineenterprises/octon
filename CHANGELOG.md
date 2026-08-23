@@ -38,7 +38,8 @@ snapshots do not upgrade automatically.
   only after revalidating a current independently confirmed standing record;
 - the same work-completion owner supports the Octon Mini source checkout
   through an external immutable Codex task reference, a precommitted candidate
-  binding, and a mandatory integrated-main validation pause before cleanup;
+  binding, a complete candidate-matrix pause before merge, and a mandatory
+  integrated-main validation pause before cleanup;
   and
 - every snapshot carries exact inert package bytes without acquiring a
   project decision, repository/provider fact, credential, standing authority,

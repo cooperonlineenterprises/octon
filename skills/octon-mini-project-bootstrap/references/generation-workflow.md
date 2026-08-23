@@ -134,7 +134,8 @@ The Octon Mini source checkout routes the same `octon work finish` owner through
 `source_work_completion.py`. Source mode accepts only an external immutable,
 digest-bound Codex task reference, never creates `.agent/tasks`, and treats the
 existing committed branch range as the local candidate. It retains monotonic
-receipts and defers remote/local branch cleanup until exact integrated-main
+receipts, blocks merge until the required check and all 24 candidate matrix jobs
+pass, and defers remote/local branch cleanup until exact integrated-main
 validation evidence passes.
 
 Maintain decision questions in the project-owned governance register. Keep

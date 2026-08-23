@@ -39,9 +39,10 @@ standing evidence and live state before each effect.
 For Octon Mini source delivery, work completion consumes an external immutable
 Codex task reference instead of creating a source task store. Its plan binds the
 precommitted candidate base, head, commit range, changed paths, standing
-authorization, and source authority. Integration pauses before cleanup until
-exact automatic-main and full-matrix evidence for the integrated revision is
-recorded.
+authorization, and source authority. Merge pauses until the required check and
+all 24 candidate source/acceptance matrix jobs pass on the exact head. Cleanup
+pauses until exact automatic-main and full-matrix evidence for the integrated
+revision is recorded.
 
 Transactions may restore exact local preimages. Public effects are monotonic:
 persist attempted state, execute once, read back, receipt, reconcile, and fix
