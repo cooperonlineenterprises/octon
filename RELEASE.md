@@ -12,8 +12,10 @@ optional governed autonomous-delivery capability accepted by `SRC-DEC-0019`
 and the standing patch/minor source-release evidence policy accepted by
 `SRC-DEC-0020`.
 
-`SAC-01` is an accepted authorization envelope but is not active standing
-external-action authority. Before any push, PR mutation, workflow dispatch,
+The confirmed v1 `SAC-01` record remains preserved but was not activated. The
+accepted dual-mode amendment requires a v2 successor selecting exactly one
+compute mode, so no active standing external-action authority currently
+exists. Before any push, PR mutation, workflow dispatch,
 merge, tag, GitHub Release, or remote cleanup, the final deterministic contract
 must be preserved outside the repository and its exact digest independently
 confirmed by the operator. A draft, profile, setup answer, plan, projection,
@@ -22,9 +24,12 @@ receipt, test, or this source record cannot supply that confirmation.
 If confirmed, a final patch or minor source release still requires every
 applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,
 integrated-main, exact-read-back, evidence-retention, and no-critical/high-
-finding gate. Direct autonomous-worker spending is zero. The external host must
-enforce USD 250 per run and USD 1,000 per authorization-period AI/provider
-compute ceilings; unknown cost blocks activation. Major, boundary-expanding,
+finding gate. Direct autonomous-worker spending is zero. Each exact contract
+selects one compute mode: metered API retains host-enforced USD 250 per run and
+USD 1,000 per authorization-period ceilings; included subscription permits
+only current readable included allowance and prohibits paid credits,
+API/pay-as-you-go billing, add-ons, and upgrades. Unknown, unreadable,
+exhausted, or changed compute state blocks activation. Major, boundary-expanding,
 new effect-family, security/privacy/legal/credential/destructive-migration,
 deployment, external-project, and package-publication releases require renewed
 human input.

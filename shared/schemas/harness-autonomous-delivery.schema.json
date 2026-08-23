@@ -73,22 +73,50 @@
         }
       }
     },
-    "costs": {
+    "compute_control": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "host_enforcement_required",
-        "ai_provider_usd_per_run",
-        "ai_provider_usd_per_authorization",
-        "unknown_cost_behavior",
+        "mode",
+        "metered_api",
+        "included_subscription",
+        "unknown_usage_behavior",
+        "mode_change_behavior",
         "direct_external_spending_usd",
         "purchases_prohibited"
       ],
       "properties": {
-        "host_enforcement_required": {"const": true},
-        "ai_provider_usd_per_run": {"type": "number", "minimum": 0},
-        "ai_provider_usd_per_authorization": {"type": "number", "minimum": 0},
-        "unknown_cost_behavior": {"const": "block_activation_or_require_human_approved_custom_treatment"},
+        "mode": {"enum": ["metered_api", "included_subscription"]},
+        "metered_api": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["host_enforcement_required", "ai_provider_usd_per_run", "ai_provider_usd_per_authorization", "unknown_cost_behavior"],
+          "properties": {
+            "host_enforcement_required": {"const": true},
+            "ai_provider_usd_per_run": {"type": "number", "minimum": 0},
+            "ai_provider_usd_per_authorization": {"type": "number", "minimum": 0},
+            "unknown_cost_behavior": {"const": "block"}
+          }
+        },
+        "included_subscription": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["plan_ref", "provider_limit_enforcement_required", "usage_status_readback_required", "included_allowance_only", "separately_purchased_credits_allowed", "api_billing_allowed", "pay_as_you_go_allowed", "add_ons_allowed", "plan_upgrades_allowed", "unreadable_exhausted_or_changed_behavior"],
+          "properties": {
+            "plan_ref": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+            "provider_limit_enforcement_required": {"const": true},
+            "usage_status_readback_required": {"const": true},
+            "included_allowance_only": {"const": true},
+            "separately_purchased_credits_allowed": {"const": false},
+            "api_billing_allowed": {"const": false},
+            "pay_as_you_go_allowed": {"const": false},
+            "add_ons_allowed": {"const": false},
+            "plan_upgrades_allowed": {"const": false},
+            "unreadable_exhausted_or_changed_behavior": {"const": "block"}
+          }
+        },
+        "unknown_usage_behavior": {"const": "block"},
+        "mode_change_behavior": {"const": "require_confirmed_successor_authorization"},
         "direct_external_spending_usd": {"const": 0},
         "purchases_prohibited": {
           "type": "array",
@@ -109,6 +137,18 @@
         "remote": {"type": "string", "minLength": 1},
         "default_branch": {"type": "string", "minLength": 1},
         "task_branch_pattern": {"type": "string", "minLength": 1}
+      }
+    },
+    "supersedes": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["authorization_id", "accepted_record_digest", "contract_digest", "revocation_path", "activation_requires_revocation"],
+      "properties": {
+        "authorization_id": {"type": "string", "pattern": "^SAC-[0-9]{2}$"},
+        "accepted_record_digest": {"$ref": "#/$defs/digest"},
+        "contract_digest": {"$ref": "#/$defs/digest"},
+        "revocation_path": {"type": "string", "minLength": 1},
+        "activation_requires_revocation": {"const": true}
       }
     },
     "controls": {
@@ -148,12 +188,13 @@
         "priority_authority_required",
         "architecture_authority_required",
         "release_policy_ref",
+        "supersedes",
         "repository",
         "permitted_actions",
         "release_types",
         "merge_method",
         "limits",
-        "costs",
+        "compute_control",
         "evidence",
         "controls",
         "valid_from",
@@ -163,7 +204,7 @@
         "canonical_contract_digest"
       ],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-standing-authorization.v1"},
+        "schema_version": {"const": "harness.autonomous-delivery-standing-authorization.v2"},
         "artifact_kind": {"const": "standing_authorization_contract"},
         "permission_grant": {"const": false},
         "authorization_id": {"type": "string", "pattern": "^SAC-[0-9]{2}$"},
@@ -172,12 +213,13 @@
         "priority_authority_required": {"const": true},
         "architecture_authority_required": {"const": true},
         "release_policy_ref": {"const": "SRC-DEC-0020"},
+        "supersedes": {"$ref": "#/$defs/supersedes"},
         "repository": {"$ref": "#/$defs/repository"},
         "permitted_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
         "release_types": {"type": "array", "uniqueItems": true, "items": {"enum": ["patch", "minor"]}},
         "merge_method": {"const": "merge_commit"},
         "limits": {"$ref": "#/$defs/limits"},
-        "costs": {"$ref": "#/$defs/costs"},
+        "compute_control": {"$ref": "#/$defs/compute_control"},
         "evidence": {"$ref": "#/$defs/evidence"},
         "controls": {"$ref": "#/$defs/controls"},
         "valid_from": {"type": "string", "format": "date-time"},
@@ -210,7 +252,7 @@
       "additionalProperties": false,
       "required": ["schema_version", "artifact_kind", "permission_grant", "contract", "confirmation", "accepted_record_digest", "limitations"],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-authorization-record.v1"},
+        "schema_version": {"const": "harness.autonomous-delivery-authorization-record.v2"},
         "artifact_kind": {"const": "standing_authorization_evidence_record"},
         "permission_grant": {"const": false},
         "contract": {"$ref": "#/$defs/contract"},
@@ -222,9 +264,9 @@
     "activation_plan": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "activation_target", "authorization_record_digest", "contract_digest", "confirmation_fingerprint", "adoption_decision_ref", "project_fingerprint", "package_version", "package_digest", "operations", "limitations", "canonical_plan_digest"],
+      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "activation_target", "authorization_record_digest", "contract_digest", "confirmation_fingerprint", "compute_mode", "compute_evidence_fingerprint", "adoption_decision_ref", "project_fingerprint", "package_version", "package_digest", "operations", "limitations", "canonical_plan_digest"],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-activation-plan.v1"},
+        "schema_version": {"const": "harness.autonomous-delivery-activation-plan.v2"},
         "artifact_kind": {"const": "autonomous_delivery_activation_plan"},
         "permission_grant": {"const": false},
         "read_only": {"const": true},
@@ -232,6 +274,8 @@
         "authorization_record_digest": {"$ref": "#/$defs/digest"},
         "contract_digest": {"$ref": "#/$defs/digest"},
         "confirmation_fingerprint": {"$ref": "#/$defs/digest"},
+        "compute_mode": {"enum": ["metered_api", "included_subscription"]},
+        "compute_evidence_fingerprint": {"$ref": "#/$defs/digest"},
         "adoption_decision_ref": {"type": "string", "pattern": "^(?:DEC-[0-9]{4}|SRC-DEC-[0-9]{4})$"},
         "project_fingerprint": {"$ref": "#/$defs/digest"},
         "package_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
@@ -244,13 +288,15 @@
     "authority_projection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "contract_digest", "task_ref", "priority_authority_ref", "architecture_decision_refs", "plan_digest", "repository_identity", "task_branch", "action", "release_type", "valid_from", "valid_until", "remaining_budget", "projection_digest", "limitations"],
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "contract_digest", "compute_mode", "compute_evidence_fingerprint", "task_ref", "priority_authority_ref", "architecture_decision_refs", "plan_digest", "repository_identity", "task_branch", "action", "release_type", "valid_from", "valid_until", "remaining_budget", "projection_digest", "limitations"],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-authority-projection.v1"},
+        "schema_version": {"const": "harness.autonomous-delivery-authority-projection.v2"},
         "artifact_kind": {"const": "derived_exact_plan_authority_coverage"},
         "permission_grant": {"const": false},
         "authorization_record_digest": {"$ref": "#/$defs/digest"},
         "contract_digest": {"$ref": "#/$defs/digest"},
+        "compute_mode": {"enum": ["metered_api", "included_subscription"]},
+        "compute_evidence_fingerprint": {"$ref": "#/$defs/digest"},
         "task_ref": {"type": "string", "pattern": "^TASK-[0-9]{4}$"},
         "priority_authority_ref": {"type": "string", "minLength": 1},
         "architecture_decision_refs": {"$ref": "#/$defs/strings"},
@@ -289,19 +335,60 @@
         "receipt_digest": {"$ref": "#/$defs/digest"}
       }
     },
-    "cost_enforcement": {
+    "compute_enforcement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "host_enforced", "unknown_cost", "per_run_usd", "per_authorization_usd", "observed_at", "valid_until", "evidence_fingerprint"],
+      "required": ["schema_version", "artifact_kind", "compute_mode", "host_enforced", "observed_at", "valid_until", "metered_api", "included_subscription", "evidence_fingerprint"],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-cost-enforcement.v1"},
-        "artifact_kind": {"const": "external_host_cost_enforcement_evidence"},
+        "schema_version": {"const": "harness.autonomous-delivery-compute-enforcement.v2"},
+        "artifact_kind": {"const": "external_host_compute_enforcement_evidence"},
+        "compute_mode": {"enum": ["metered_api", "included_subscription"]},
         "host_enforced": {"const": true},
-        "unknown_cost": {"const": false},
-        "per_run_usd": {"type": "number", "minimum": 0},
-        "per_authorization_usd": {"type": "number", "minimum": 0},
         "observed_at": {"type": "string", "format": "date-time"},
         "valid_until": {"type": "string", "format": "date-time"},
+        "metered_api": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["unknown_cost", "per_run_usd", "per_authorization_usd"],
+          "properties": {
+            "unknown_cost": {"const": false},
+            "per_run_usd": {"type": "number", "minimum": 0},
+            "per_authorization_usd": {"type": "number", "minimum": 0}
+          }
+        },
+        "included_subscription": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["plan_ref", "usage_status_readable", "allowance_status", "all_applicable_windows_reported", "included_allowance_only", "separately_purchased_credits_in_use", "api_billing_in_use", "pay_as_you_go_in_use", "add_ons_in_use", "plan_upgrade_in_progress", "billing_mode_changed", "quota_windows"],
+          "properties": {
+            "plan_ref": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+            "usage_status_readable": {"const": true},
+            "allowance_status": {"const": "available"},
+            "all_applicable_windows_reported": {"const": true},
+            "included_allowance_only": {"const": true},
+            "separately_purchased_credits_in_use": {"const": false},
+            "api_billing_in_use": {"const": false},
+            "pay_as_you_go_in_use": {"const": false},
+            "add_ons_in_use": {"const": false},
+            "plan_upgrade_in_progress": {"const": false},
+            "billing_mode_changed": {"const": false},
+            "quota_windows": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "used_percent", "status", "resets_at"],
+                "properties": {
+                  "id": {"type": "string", "minLength": 1},
+                  "used_percent": {"type": "number", "minimum": 0, "maximum": 100},
+                  "status": {"const": "available"},
+                  "resets_at": {"type": "string", "format": "date-time"}
+                }
+              }
+            }
+          }
+        },
         "evidence_fingerprint": {"$ref": "#/$defs/digest"}
       }
     },
@@ -356,9 +443,9 @@
     "usage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "run_id", "counts", "ai_provider_cost_usd", "cost_state", "warnings", "exhausted", "observed_at", "usage_digest"],
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "run_id", "counts", "compute_mode", "compute_evidence_fingerprint", "metered_api_usage", "included_subscription_usage", "warnings", "exhausted", "observed_at", "usage_digest"],
       "properties": {
-        "schema_version": {"const": "harness.autonomous-delivery-usage.v1"},
+        "schema_version": {"const": "harness.autonomous-delivery-usage.v2"},
         "artifact_kind": {"const": "autonomous_delivery_usage_state"},
         "permission_grant": {"const": false},
         "authorization_record_digest": {"$ref": "#/$defs/digest"},
@@ -379,8 +466,26 @@
             "concurrent_write_runs": {"type": "integer", "minimum": 0}
           }
         },
-        "ai_provider_cost_usd": {"type": ["number", "null"], "minimum": 0},
-        "cost_state": {"enum": ["known_host_enforced", "unknown"]},
+        "compute_mode": {"enum": ["metered_api", "included_subscription"]},
+        "compute_evidence_fingerprint": {"$ref": "#/$defs/digest"},
+        "metered_api_usage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["run_usd", "authorization_usd"],
+          "properties": {
+            "run_usd": {"type": "number", "minimum": 0},
+            "authorization_usd": {"type": "number", "minimum": 0}
+          }
+        },
+        "included_subscription_usage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["maximum_used_percent", "quota_window_ids"],
+          "properties": {
+            "maximum_used_percent": {"type": "number", "minimum": 0, "maximum": 100},
+            "quota_window_ids": {"$ref": "#/$defs/strings"}
+          }
+        },
         "warnings": {"$ref": "#/$defs/strings"},
         "exhausted": {"type": "boolean"},
         "observed_at": {"type": "string", "format": "date-time"},

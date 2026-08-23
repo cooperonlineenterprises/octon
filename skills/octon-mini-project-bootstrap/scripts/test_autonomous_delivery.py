@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import timedelta
 from pathlib import Path
 
 import test_long_running_work as long_work_fixture
@@ -125,13 +126,23 @@ class AutonomousDeliveryTests(unittest.TestCase):
     def octon(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return run([sys.executable, "-I", "-B", "octon", *arguments], self.target)
 
-    def draft(self, profile: str = "fast_delivery") -> dict[str, object]:
-        result = self.octon(
+    def draft(
+        self,
+        profile: str = "fast_delivery",
+        compute_mode: str = "metered_api",
+        authorization_id: str = "SAC-01",
+        supersedes_record: Path | None = None,
+    ) -> dict[str, object]:
+        arguments = [
             "delivery",
             "authorization",
             "draft",
+            "--authorization-id",
+            authorization_id,
             "--profile",
             profile,
+            "--compute-mode",
+            compute_mode,
             "--repository-root",
             str(self.target),
             "--repository-identity",
@@ -150,7 +161,12 @@ class AutonomousDeliveryTests(unittest.TestCase):
             "2026-08-22T00:00:00Z",
             "--valid-until",
             "2099-01-01T00:00:00Z",
-        )
+        ]
+        if compute_mode == "included_subscription":
+            arguments.extend(["--subscription-plan-ref", "authority:synthetic-included-subscription-plan"])
+        if supersedes_record is not None:
+            arguments.extend(["--supersedes-authorization-record", str(supersedes_record)])
+        result = self.octon(*arguments)
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         return json.loads(result.stdout)
 
@@ -163,10 +179,10 @@ class AutonomousDeliveryTests(unittest.TestCase):
             "schema_version": "harness.autonomous-delivery-confirmation.v1",
             "artifact_kind": "standing_authorization_confirmation_evidence",
             "permission_grant": False,
-            "authorization_id": "SAC-01",
+            "authorization_id": contract["authorization_id"],
             "contract_digest": contract["canonical_contract_digest"],
             "confirmation_method": "independent_exact_digest_statement",
-            "confirmation_statement": module.expected_confirmation_statement(contract["canonical_contract_digest"]),
+            "confirmation_statement": module.expected_confirmation_statement(contract["canonical_contract_digest"], contract["authorization_id"]),
             "authority_source": "authority:synthetic-disposable-operator",
             "confirmed_by_role": "synthetic-disposable-operator",
             "confirmed_at": "2026-08-22T00:05:00Z",
@@ -174,33 +190,57 @@ class AutonomousDeliveryTests(unittest.TestCase):
         value["confirmation_fingerprint"] = module.digest(value)
         return value
 
-    def cost_evidence(self) -> dict[str, object]:
+    def compute_evidence(self, contract: dict[str, object], used_percent: float = 25.0) -> dict[str, object]:
         module = load_module(
             self.target / ".agent/scripts/octon_autonomous_delivery.py",
             "octon_autonomous_delivery_test_cost",
         )
+        observed = module.utc_now()
+        mode = contract["compute_control"]["mode"]
         value = {
-            "schema_version": "harness.autonomous-delivery-cost-enforcement.v1",
-            "artifact_kind": "external_host_cost_enforcement_evidence",
+            "schema_version": "harness.autonomous-delivery-compute-enforcement.v2",
+            "artifact_kind": "external_host_compute_enforcement_evidence",
+            "compute_mode": mode,
             "host_enforced": True,
-            "unknown_cost": False,
-            "per_run_usd": 250.0,
-            "per_authorization_usd": 1000.0,
-            "observed_at": "2026-08-22T00:05:00Z",
-            "valid_until": "2099-01-01T00:00:00Z",
+            "observed_at": module.utc_text(observed),
+            "valid_until": module.utc_text(observed + timedelta(minutes=10)),
+            "metered_api": {
+                "unknown_cost": False,
+                "per_run_usd": 250.0,
+                "per_authorization_usd": 1000.0,
+            } if mode == "metered_api" else None,
+            "included_subscription": {
+                "plan_ref": contract["compute_control"]["included_subscription"]["plan_ref"],
+                "usage_status_readable": True,
+                "allowance_status": "available",
+                "all_applicable_windows_reported": True,
+                "included_allowance_only": True,
+                "separately_purchased_credits_in_use": False,
+                "api_billing_in_use": False,
+                "pay_as_you_go_in_use": False,
+                "add_ons_in_use": False,
+                "plan_upgrade_in_progress": False,
+                "billing_mode_changed": False,
+                "quota_windows": [{
+                    "id": "rolling-provider-window",
+                    "used_percent": used_percent,
+                    "status": "available",
+                    "resets_at": module.utc_text(observed + timedelta(hours=1)),
+                }],
+            } if mode == "included_subscription" else None,
         }
         value["evidence_fingerprint"] = module.digest(value)
         return value
 
-    def accepted_records(self) -> tuple[Path, Path, Path, dict[str, object]]:
-        contract = self.draft()
+    def accepted_records(self, compute_mode: str = "metered_api") -> tuple[Path, Path, Path, dict[str, object]]:
+        contract = self.draft(compute_mode=compute_mode)
         draft_path = self.area / "SAC-01.draft.json"
         confirmation_path = self.control / "SAC-01.confirmation.json"
         record_path = self.control / "SAC-01.json"
         cost_path = self.control / "cost.json"
         write_json(draft_path, contract)
         write_json(confirmation_path, self.confirmation(contract))
-        write_json(cost_path, self.cost_evidence())
+        write_json(cost_path, self.compute_evidence(contract))
         result = self.octon(
             "delivery",
             "authorization",
@@ -316,9 +356,123 @@ class AutonomousDeliveryTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertFalse(first["permission_grant"])
         self.assertEqual(first["status"], "proposed_unconfirmed")
-        self.assertEqual(first["costs"]["direct_external_spending_usd"], 0)
+        self.assertEqual(first["compute_control"]["mode"], "metered_api")
+        self.assertEqual(first["compute_control"]["direct_external_spending_usd"], 0)
+        self.assertIsNotNone(first["compute_control"]["metered_api"])
+        self.assertIsNone(first["compute_control"]["included_subscription"])
         self.assertEqual(first["valid_until"], "2026-11-20T00:00:00Z")
         self.assertEqual(first["limits"]["warning_percentages"], [70, 85, 95])
+
+    def test_compute_mode_is_explicit_and_subscription_never_overlaps_metered_api(self) -> None:
+        missing = self.octon("delivery", "authorization", "draft", "--profile", "fast_delivery")
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("--compute-mode", missing.stderr)
+        subscription = self.draft(compute_mode="included_subscription")
+        self.assertEqual(subscription["compute_control"]["mode"], "included_subscription")
+        self.assertIsNone(subscription["compute_control"]["metered_api"])
+        self.assertFalse(subscription["compute_control"]["included_subscription"]["separately_purchased_credits_allowed"])
+
+    def test_included_subscription_activation_requires_readable_included_allowance_only(self) -> None:
+        record_path, confirmation_path, compute_path, _contract = self.accepted_records("included_subscription")
+        planned = self.octon(
+            "delivery", "activate", "plan",
+            "--authorization-record", str(record_path),
+            "--confirmation-artifact", str(confirmation_path),
+            "--compute-enforcement-artifact", str(compute_path),
+            "--adoption-decision-ref", "DEC-9100",
+        )
+        self.assertEqual(planned.returncode, 0, planned.stderr or planned.stdout)
+        plan = json.loads(planned.stdout)
+        self.assertEqual(plan["compute_mode"], "included_subscription")
+        validator = load_module(self.target / ".agent/scripts/validate.py", "octon_subscription_plan_schema")
+        schema = json.loads((self.target / ".agent/schemas/harness-autonomous-delivery.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(validator.validate_schema(plan, schema["$defs"]["activation_plan"], root_schema=schema), [])
+        compute = json.loads(compute_path.read_text(encoding="utf-8"))
+        compute["included_subscription"]["separately_purchased_credits_in_use"] = True
+        module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_subscription_rehash")
+        compute["evidence_fingerprint"] = module.digest({key: value for key, value in compute.items() if key != "evidence_fingerprint"})
+        write_json(compute_path, compute)
+        blocked = self.octon(
+            "delivery", "activate", "plan",
+            "--authorization-record", str(record_path),
+            "--confirmation-artifact", str(confirmation_path),
+            "--compute-enforcement-artifact", str(compute_path),
+            "--adoption-decision-ref", "DEC-9100",
+        )
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("paid capacity", blocked.stderr)
+
+    def test_confirmed_v1_metered_record_remains_valid_legacy_evidence(self) -> None:
+        module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_legacy_record")
+        current = self.draft()
+        legacy = dict(current)
+        legacy["schema_version"] = module.CONTRACT_SCHEMA_V1
+        legacy.pop("compute_control")
+        legacy.pop("supersedes")
+        legacy["costs"] = {
+            "host_enforcement_required": True,
+            "ai_provider_usd_per_run": 250.0,
+            "ai_provider_usd_per_authorization": 1000.0,
+            "unknown_cost_behavior": "block_activation_or_require_human_approved_custom_treatment",
+            "direct_external_spending_usd": 0,
+            "purchases_prohibited": module.PURCHASE_DENIES,
+        }
+        legacy["canonical_contract_digest"] = module.digest({key: value for key, value in legacy.items() if key != "canonical_contract_digest"})
+        confirmation = self.confirmation(legacy)
+        record = module.accepted_record(legacy, confirmation)
+        self.assertEqual(record["schema_version"], module.RECORD_SCHEMA_V1)
+        self.assertEqual(module.compute_mode(module.validate_record(record)["contract"]), "metered_api")
+
+    def test_successor_uses_new_id_and_requires_exact_predecessor_revocation(self) -> None:
+        predecessor_path, _predecessor_confirmation, _predecessor_compute, _ = self.accepted_records()
+        predecessor = json.loads(predecessor_path.read_text(encoding="utf-8"))
+        successor = self.draft(
+            compute_mode="included_subscription",
+            authorization_id="SAC-02",
+            supersedes_record=predecessor_path,
+        )
+        self.assertEqual(successor["supersedes"]["authorization_id"], "SAC-01")
+        self.assertEqual(successor["supersedes"]["accepted_record_digest"], predecessor["accepted_record_digest"])
+        successor_draft = self.area / "SAC-02.draft.json"
+        successor_confirmation = self.control / "SAC-02.confirmation.json"
+        successor_record = self.control / "SAC-02.json"
+        successor_compute = self.control / "SAC-02.compute.json"
+        write_json(successor_draft, successor)
+        write_json(successor_confirmation, self.confirmation(successor))
+        write_json(successor_compute, self.compute_evidence(successor))
+        recorded = self.octon(
+            "delivery", "authorization", "record",
+            "--draft", str(successor_draft),
+            "--confirmation-artifact", str(successor_confirmation),
+            "--output", str(successor_record),
+        )
+        self.assertEqual(recorded.returncode, 0, recorded.stderr or recorded.stdout)
+        blocked = self.octon(
+            "delivery", "activate", "plan",
+            "--authorization-record", str(successor_record),
+            "--confirmation-artifact", str(successor_confirmation),
+            "--compute-enforcement-artifact", str(successor_compute),
+            "--adoption-decision-ref", "DEC-9100",
+        )
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("required external record is absent", blocked.stderr)
+        superseded = self.octon(
+            "delivery", "authorization", "supersede",
+            "--predecessor-record", str(predecessor_path),
+            "--successor-record", str(successor_record),
+            "--output", str(self.control / "SAC-01.revoked.json"),
+        )
+        self.assertEqual(superseded.returncode, 0, superseded.stderr or superseded.stdout)
+        revocation = json.loads((self.control / "SAC-01.revoked.json").read_text(encoding="utf-8"))
+        self.assertEqual(revocation["successor_authorization_id"], "SAC-02")
+        planned = self.octon(
+            "delivery", "activate", "plan",
+            "--authorization-record", str(successor_record),
+            "--confirmation-artifact", str(successor_confirmation),
+            "--compute-enforcement-artifact", str(successor_compute),
+            "--adoption-decision-ref", "DEC-9100",
+        )
+        self.assertEqual(planned.returncode, 0, planned.stderr or planned.stdout)
 
     def test_profile_recommendation_never_selects_or_activates(self) -> None:
         result = self.octon("delivery", "activation-preview", "--profile", "fast_delivery")
@@ -354,8 +508,10 @@ class AutonomousDeliveryTests(unittest.TestCase):
         validator = load_module(self.target / ".agent/scripts/validate.py", "octon_autonomous_schema_validator")
         schema = json.loads((self.target / ".agent/schemas/harness-autonomous-delivery.schema.json").read_text(encoding="utf-8"))
         self.assertEqual(validator.validate_schema(contract, schema["$defs"]["contract"], root_schema=schema), [])
+        compute = self.compute_evidence(contract)
+        self.assertEqual(validator.validate_schema(compute, schema["$defs"]["compute_enforcement"], root_schema=schema), [])
         duplicate = self.area / "duplicate-draft.json"
-        duplicate.write_text('{"schema_version":"harness.autonomous-delivery-standing-authorization.v1","schema_version":"duplicate"}\n', encoding="utf-8")
+        duplicate.write_text('{"schema_version":"harness.autonomous-delivery-standing-authorization.v2","schema_version":"duplicate"}\n', encoding="utf-8")
         confirmation = self.area / "confirmation.json"
         write_json(confirmation, self.confirmation(contract))
         result = self.octon(
@@ -370,7 +526,7 @@ class AutonomousDeliveryTests(unittest.TestCase):
     def test_unknown_or_unenforced_cost_blocks_activation(self) -> None:
         record_path, confirmation_path, cost_path, _contract = self.accepted_records()
         cost = json.loads(cost_path.read_text(encoding="utf-8"))
-        cost["unknown_cost"] = True
+        cost["metered_api"]["unknown_cost"] = True
         module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_cost_rehash")
         cost["evidence_fingerprint"] = module.digest({key: value for key, value in cost.items() if key != "evidence_fingerprint"})
         write_json(cost_path, cost)
@@ -382,7 +538,7 @@ class AutonomousDeliveryTests(unittest.TestCase):
             "--adoption-decision-ref", "DEC-9100",
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("cannot prove enforcement", result.stderr)
+        self.assertIn("remain unknown", result.stderr)
 
     def test_revocation_and_emergency_stop_block_activation(self) -> None:
         for control_name in ["SAC-01.revoked.json", "STOP"]:
@@ -443,7 +599,8 @@ class AutonomousDeliveryTests(unittest.TestCase):
                 [
                     sys.executable, "-B", str(SKILL_ROOT / "assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl"),
                     "--target", str(REPO_ROOT), "authorization", "draft",
-                    "--profile", "fast_delivery", "--repository-root", str(REPO_ROOT),
+                    "--profile", "fast_delivery", "--compute-mode", "metered_api",
+                    "--repository-root", str(REPO_ROOT),
                     "--repository-identity", "cooperonlineenterprises/octon-mini",
                     "--remote", "origin", "--default-branch", "main",
                     "--task-branch-pattern", "chore/autonomous-*",
@@ -479,12 +636,16 @@ class AutonomousDeliveryTests(unittest.TestCase):
             )
             self.assertEqual(recorded.returncode, 0, recorded.stderr or recorded.stdout)
             cost = {
-                "schema_version": "harness.autonomous-delivery-cost-enforcement.v1",
-                "artifact_kind": "external_host_cost_enforcement_evidence",
+                "schema_version": "harness.autonomous-delivery-compute-enforcement.v2",
+                "artifact_kind": "external_host_compute_enforcement_evidence",
+                "compute_mode": "metered_api",
                 "host_enforced": True,
-                "unknown_cost": False,
-                "per_run_usd": 250.0,
-                "per_authorization_usd": 1000.0,
+                "metered_api": {
+                    "unknown_cost": False,
+                    "per_run_usd": 250.0,
+                    "per_authorization_usd": 1000.0,
+                },
+                "included_subscription": None,
                 "observed_at": "2026-08-22T00:05:00Z",
                 "valid_until": "2026-09-10T23:59:59-05:00",
             }
@@ -525,33 +686,77 @@ class AutonomousDeliveryTests(unittest.TestCase):
         self.assertEqual(module.usage_warning(100, 100), "exhausted")
 
     def test_usage_state_is_digest_bound_warned_and_stops_at_full_limit(self) -> None:
-        record_path, _confirmation_path, _cost_path, _contract = self.accepted_records()
+        record_path, _confirmation_path, cost_path, _contract = self.accepted_records()
         record = json.loads(record_path.read_text(encoding="utf-8"))
+        compute = json.loads(cost_path.read_text(encoding="utf-8"))
         module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_usage_validation")
         counts = {key: 0 for key in module.USAGE_KEYS}
         counts["work_iterations"] = 350
         value = {
-            "schema_version": "harness.autonomous-delivery-usage.v1",
+            "schema_version": "harness.autonomous-delivery-usage.v2",
             "artifact_kind": "autonomous_delivery_usage_state",
             "permission_grant": False,
             "authorization_record_digest": record["accepted_record_digest"],
             "run_id": "synthetic-run",
             "counts": counts,
-            "ai_provider_cost_usd": 175.0,
-            "cost_state": "known_host_enforced",
-            "warnings": ["ai_provider_cost_usd:warning_70_percent", "work_iterations:warning_70_percent"],
+            "compute_mode": "metered_api",
+            "compute_evidence_fingerprint": compute["evidence_fingerprint"],
+            "metered_api_usage": {"run_usd": 175.0, "authorization_usd": 175.0},
+            "included_subscription_usage": None,
+            "warnings": ["metered_api_run_usd:warning_70_percent", "work_iterations:warning_70_percent"],
             "exhausted": False,
             "observed_at": module.utc_text(),
         }
         value["usage_digest"] = module.digest(value)
-        self.assertEqual(module.validate_usage(value, record), value)
+        validator = load_module(self.target / ".agent/scripts/validate.py", "octon_metered_usage_schema")
+        schema = json.loads((self.target / ".agent/schemas/harness-autonomous-delivery.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(validator.validate_schema(value, schema["$defs"]["usage"], root_schema=schema), [])
+        self.assertEqual(module.validate_usage(value, record, compute), value)
         exhausted = json.loads(json.dumps(value))
         exhausted["counts"]["work_iterations"] = 500
-        exhausted["warnings"] = ["ai_provider_cost_usd:warning_70_percent", "work_iterations:exhausted"]
+        exhausted["warnings"] = ["metered_api_run_usd:warning_70_percent", "work_iterations:exhausted"]
         exhausted["exhausted"] = True
         exhausted["usage_digest"] = module.digest({key: item for key, item in exhausted.items() if key != "usage_digest"})
         with self.assertRaisesRegex(module.DeliveryError, "usage is exhausted"):
-            module.validate_usage(exhausted, record)
+            module.validate_usage(exhausted, record, compute)
+
+    def test_subscription_usage_is_bound_to_current_readable_quota_windows(self) -> None:
+        record_path, _confirmation_path, compute_path, _contract = self.accepted_records("included_subscription")
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        compute = json.loads(compute_path.read_text(encoding="utf-8"))
+        module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_subscription_usage")
+        compute["included_subscription"]["quota_windows"][0]["used_percent"] = 70.0
+        compute["evidence_fingerprint"] = module.digest({key: item for key, item in compute.items() if key != "evidence_fingerprint"})
+        write_json(compute_path, compute)
+        counts = {key: 0 for key in module.USAGE_KEYS}
+        value = {
+            "schema_version": module.USAGE_SCHEMA,
+            "artifact_kind": "autonomous_delivery_usage_state",
+            "permission_grant": False,
+            "authorization_record_digest": record["accepted_record_digest"],
+            "run_id": "synthetic-subscription-run",
+            "counts": counts,
+            "compute_mode": "included_subscription",
+            "compute_evidence_fingerprint": compute["evidence_fingerprint"],
+            "metered_api_usage": None,
+            "included_subscription_usage": {
+                "maximum_used_percent": 70.0,
+                "quota_window_ids": ["rolling-provider-window"],
+            },
+            "warnings": ["included_subscription_allowance:warning_70_percent"],
+            "exhausted": False,
+            "observed_at": module.utc_text(),
+        }
+        value["usage_digest"] = module.digest(value)
+        validator = load_module(self.target / ".agent/scripts/validate.py", "octon_subscription_usage_schema")
+        schema = json.loads((self.target / ".agent/schemas/harness-autonomous-delivery.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(validator.validate_schema(value, schema["$defs"]["usage"], root_schema=schema), [])
+        self.assertEqual(module.validate_usage(value, record, compute), value)
+        stale = dict(value)
+        stale["compute_evidence_fingerprint"] = "0" * 64
+        stale["usage_digest"] = module.digest({key: item for key, item in stale.items() if key != "usage_digest"})
+        with self.assertRaisesRegex(module.DeliveryError, "stale compute observation"):
+            module.validate_usage(stale, record, compute)
 
     def test_deactivate_and_remove_retains_dormant_surface_and_external_record(self) -> None:
         self.activate()

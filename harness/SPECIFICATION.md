@@ -730,8 +730,12 @@ runtime.
 Locally reversible work retains transaction semantics. Public effects are
 monotonic: inspect, persist an attempted marker, execute once, read back,
 receipt, and fix forward. An unknown outcome stops with zero automatic retries.
-Direct spending is zero, and the external host must enforce accepted
-AI/provider compute limits. See `docs/AUTONOMOUS_DELIVERY.md`.
+Direct spending is zero. Each standing contract selects exactly one compute
+mode: host-enforced metered API ceilings, or current readable
+provider-enforced included-subscription allowance only. Paid credits,
+API/pay-as-you-go billing, add-ons, and upgrades are prohibited in subscription
+mode. Unknown, exhausted, unreadable, or changed compute state blocks. See
+`docs/AUTONOMOUS_DELIVERY.md`.
 
 ## 8. Record and state model
 
@@ -1431,7 +1435,8 @@ A harness is complete only when these demonstrations pass:
     deterministic; changed or missing confirmation blocks; activation installs
     exact local bytes through one transaction; current revocation, emergency
     stop, repository, branch, task, action, release, evidence, warning, limit,
-    and host-cost bindings are revalidated; direct spending remains zero; and
+    and selected compute-mode bindings are revalidated; both metered API and
+    included-subscription paths fail closed; direct spending remains zero; and
     forbidden force, bypass, deployment, package-publication, communication,
     credential, settings, external-project, purchase, and tag-movement actions
     are absent or rejected.

@@ -40,8 +40,10 @@ accepted `SRC-DEC-0019` and standing release-evidence policy
 `SRC-DEC-0020`. Every snapshot exposes a dormant, read-only delivery surface
 and exact inert offline payloads. Write-capable work and external effects remain
 locked until an operator independently confirms the complete deterministic
-standing contract digest and activates it. Direct spending is zero, unknown
-cost is never zero, and ambiguous external effects are never replayed.
+standing contract digest and activates it. Each contract selects either
+host-enforced metered API ceilings or included-subscription allowance only.
+Direct spending is zero, unknown or unreadable compute state blocks, and
+ambiguous external effects are never replayed.
 
 Released 4.1 added the optional, trigger-installed long-running-work
 capability. It governs one external worker under an existing task through

@@ -75,9 +75,10 @@ or adopted.
 Activation first drafts and displays a complete non-authorizing contract. A
 human must independently confirm its exact digest; a flag, setup answer,
 profile, plan, or record cannot do so. The accepted record and confirmation
-stay outside the repository. Activation binds them, current host cost-
-enforcement evidence, an accepted project adoption decision, target bytes, and
-package digests into the existing transaction system. Upgrade advertises but
+stay outside the repository. Activation binds them, current evidence for the
+one selected metered-API or included-subscription compute mode, an accepted
+project adoption decision, target bytes, and package digests into the existing
+transaction system. Upgrade advertises but
 never activates, renews, or broadens this state.
 
 ## Routine work and maintenance

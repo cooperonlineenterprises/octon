@@ -32,6 +32,7 @@ def main() -> int:
         "validator": ".agent/capabilities/autonomous-delivery/validate.py",
         "dependencies": ["long-running-work", "work.finish", "transactions", "project-checks", "continuation"],
         "external_effects": "closed_git_github_source_delivery_only_after_exact_standing_authorization_projection",
+        "compute_modes": ["metered_api", "included_subscription"],
         "direct_external_spending_usd": 0,
         "limitations": [
             "The package is inert until an independently confirmed exact standing-authorization record is activated.",

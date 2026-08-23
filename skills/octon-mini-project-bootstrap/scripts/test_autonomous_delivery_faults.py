@@ -208,8 +208,11 @@ class AutonomousDeliveryFaultTests(unittest.TestCase):
         ids = {item["id"] for item in value["cases"]}
         self.assertTrue({
             "profile-silent-selection", "flag-authority", "changed-contract",
+            "successor-id-reuse", "successor-without-revocation",
             "worker-control-write", "expired-authority", "revoked-authority",
             "emergency-stop", "unknown-cost-zero", "direct-spending",
+            "compute-mode-overlap", "subscription-unreadable",
+            "subscription-paid-credits", "subscription-billing-change",
             "force-push", "direct-main-push", "threshold-weakening",
             "tag-movement", "credential-forwarding", "deployment",
             "package-publication", "external-project", "communication",

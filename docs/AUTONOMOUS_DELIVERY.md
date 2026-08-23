@@ -54,7 +54,7 @@ does not require a model or network.
 ## Authority creation and activation
 
 1. Gather repository, branch, profile, action, release, limit, evidence,
-   expiration, revocation, emergency-stop, and host-cost settings.
+   expiration, revocation, emergency-stop, and exactly one compute mode.
 2. Produce byte-identical draft bytes for identical inputs.
 3. Display every field and the canonical SHA-256 digest.
 4. Obtain independent human confirmation of that exact digest.
@@ -62,13 +62,23 @@ does not require a model or network.
 6. Store the record and confirmation outside the repository in an
    operator-controlled location.
 7. Bind a read-only activation plan to the exact record, confirmation, package
-   bytes, accepted project adoption decision, cost-enforcement evidence, and
-   project fingerprint.
+   bytes, accepted project adoption decision, current mode-matching compute
+   evidence, and project fingerprint.
 8. Apply only that digest through the existing transaction system.
 
 The draft, profile, setup answer, plan, projection, receipt, and stored record
 do not create authority. The independent human confirmation is the authority
 source; the record is evidence of that grant.
+
+An accepted record is immutable. A changed compute mode or other binding uses a
+new stable `SAC-##` ID and names the exact predecessor record and contract
+digests. Activation of the successor additionally requires an
+operator-controlled revocation record for that predecessor naming the new
+authorization ID. The worker cannot write either control record.
+After exact successor confirmation, `octon delivery authorization supersede`
+can serialize that revocation only at the predecessor path already bound in the
+successor contract; it derives the authority source and successor identity from
+the confirmed records rather than accepting a permissive flag.
 
 Octon Mini validates bytes, paths, digests, timing, and declared authority
 source; it cannot cryptographically prove that a human authored a file. The
@@ -117,12 +127,14 @@ file, run loop, or generic event platform.
 | Retries after unknown outcome | 0 |
 | Covered patch/minor releases | 12 |
 | Concurrent write-capable runs | 1 |
-| Host-enforced AI/provider budget | USD 250 per run and USD 1,000 per authorization period |
+| Metered API compute | Host-enforced USD 250 per run and USD 1,000 per authorization period |
+| Included-subscription compute | Current readable provider-enforced included allowance only; no paid credits, API/pay-as-you-go billing, add-ons, or upgrades |
 | Purchases or direct external spending | USD 0 |
 
-Warnings occur at 70%, 85%, and 95%; execution stops at 100%. Unknown cost is
-not zero. Activation blocks unless the external host proves enforcement of the
-selected compute ceilings or a human accepts a custom successor.
+Warnings occur at 70%, 85%, and 95%; execution stops at 100%. Each standing
+contract selects exactly one compute mode. Unknown metered cost is not zero.
+Unreadable, exhausted, or changed subscription usage blocks. A mode change
+requires a newly confirmed successor and never reinterprets an accepted record.
 
 The worker cannot purchase a service, subscription, infrastructure, paid API,
 domain, license, marketplace product, or other external good or service.
@@ -140,8 +152,8 @@ The adapter supports only:
 Work completion retains commit, task-branch push, PR, hosted-check, merge, and
 cleanup ownership. A plan-bound work-completion authorization may be derived
 only after the accepted standing record, confirmation, revocation, emergency
-stop, cost enforcement, repository, branch, task, operation list, and limits
-are revalidated.
+stop, selected compute enforcement and usage, repository, branch, task,
+operation list, and limits are revalidated.
 
 ## Recovery
 
@@ -172,7 +184,8 @@ or risk-policy change; product-boundary or standing-authority expansion;
 conflicting accepted authority; and any required human, specialist, security,
 legal, or external-project decision.
 
-Expiration, revocation, emergency stop, unknown cost, unavailable required
+Expiration, revocation, emergency stop, unknown metered cost, unreadable,
+exhausted, or changed subscription allowance, unavailable required
 authentication, failed safety gates, unavailable mandatory evidence,
 critical/high findings, unknown external outcomes, evidence-preservation
 failure, tag conflict, user-owned change conflict, and any excluded action also

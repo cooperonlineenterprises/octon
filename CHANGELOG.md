@@ -16,8 +16,9 @@ snapshots do not upgrade automatically.
   `custom` delivery-profile presets without silent selection;
 - deterministic non-authorizing standing-contract drafts, exact independent
   confirmation evidence, immutable external grant records, activation plans,
-  exact-plan authority projections, cost enforcement, revocation, emergency
-  stop, usage limits, and monotonic effect receipts;
+  exact-plan authority projections, dual metered-API or included-subscription
+  compute enforcement, revocation, emergency stop, usage limits, and monotonic
+  effect receipts;
 - locally bundled inert autonomous-delivery and long-running-work payloads for
   network-free activation; and
 - the closed workflow-dispatch, annotated-tag, tag-push, and GitHub source
@@ -30,6 +31,9 @@ snapshots do not upgrade automatically.
 - setup advertises autonomous delivery in initialization, adoption, and
   upgrade while defaulting to `available_not_activated` with writes and
   external effects locked;
+- each standing contract selects exactly one compute mode; confirmed v1 records
+  remain immutable legacy metered-API evidence, while v2 adds
+  included-subscription allowance-only enforcement;
 - work completion can consume a short-lived exact task/plan attestation derived
   only after revalidating a current independently confirmed standing record;
   and

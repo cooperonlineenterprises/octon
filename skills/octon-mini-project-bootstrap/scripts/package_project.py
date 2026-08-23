@@ -457,11 +457,12 @@ def installation_plan(
         project["packages"]["trigger_assessments"][assessment_key] = "not_assessed"
         if package_id == "autonomous-delivery":
             project["autonomous_delivery"] = {
-                "schema_version": "harness.autonomous-delivery-config.v1",
+                "schema_version": "harness.autonomous-delivery-config.v2",
                 "status": "available_not_activated",
                 "write_capability": "locked",
                 "external_effects": "locked",
                 "delivery_profile": None,
+                "compute_mode": None,
                 "adoption_decision_ref": None,
                 "authorization_record_ref": None,
                 "authorization_record_digest": None,

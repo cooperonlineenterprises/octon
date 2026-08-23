@@ -102,6 +102,7 @@ class Migration410To420Tests(unittest.TestCase):
             self.assertEqual(project["schema_version"], "harness.project.v8")
             self.assertEqual(project["autonomous_delivery"]["status"], "available_not_activated")
             self.assertEqual(project["autonomous_delivery"]["write_capability"], "locked")
+            self.assertIsNone(project["autonomous_delivery"]["compute_mode"])
             self.assertEqual(project["packages"]["trigger_assessments"]["autonomous_delivery"], "not_assessed")
             self.assertFalse(any(item["id"] == "autonomous-delivery" for item in packages["packages"]))
             available_catalog = json.loads((target / ".agent/available-packages/catalog.json").read_text(encoding="utf-8"))

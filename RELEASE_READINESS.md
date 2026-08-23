@@ -3,9 +3,9 @@
 ## 4.2.0 candidate — in progress
 
 Octon Mini 4.2.0 is unreleased. `SRC-DEC-0019` and `SRC-DEC-0020` are
-accepted for source implementation, while `SAC-01` standing external-action
-authority remains inactive pending independent confirmation of the final exact
-contract digest.
+accepted for source implementation. The confirmed v1 `SAC-01` record was not
+activated; its dual-mode successor remains unconfirmed, so standing external-
+action authority is inactive.
 
 Current source evidence may demonstrate implementation, deterministic safety,
 migration, recovery, and performance. It cannot establish release, target-

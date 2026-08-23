@@ -352,7 +352,7 @@ are explicitly authorized and completed.
 | Field | Accepted decision |
 |---|---|
 | Status | `accepted` |
-| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised autonomous-delivery architecture, delivery-profile model, standing-authorization drafting boundary, recovery model, and human-only gates |
+| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised autonomous-delivery architecture, delivery-profile model, standing-authorization drafting boundary, recovery model, and human-only gates; explicit repository-owner acceptance on 2026-08-23 of the dual-mode compute-control amendment |
 | Scope | One provider-neutral optional `workflow_capability` for autonomously delivering an already human-prioritized and architecturally authorized task |
 | Availability | Every new, adopted, and upgraded project exposes the smallest dormant delivery surface; its initial state is `available_not_activated` and externally locked |
 | Pre-activation boundary | Research, context building, applicability assessment, planning, status, explanation, and activation preview are read-only, execute no project hooks, mutate no repository or external state, create no receipt implying work, and create no authority |
@@ -364,29 +364,31 @@ are explicitly authorized and completed.
 | Execution boundary | A short-lived exact-plan coverage projection may prove that a current standing record covers one operation; the projection, plan, profile, receipt, or command cannot create or broaden authority |
 | Release adapter | The package may add only the closed Git/GitHub source-release operations accepted here; it is not a universal action runtime, deployment system, package publisher, credential broker, or external-project controller |
 | Recovery boundary | Repository-local transactions may be exactly reversible; commits and unpublished task branches are recoverable; pushes, merges, tags, and Releases are monotonic effects handled through read-before-act, receipts, read-back, reconciliation, and fix-forward; an unknown outcome stops with zero automatic retries |
-| Cost boundary | Direct autonomous-worker purchasing authority is zero; AI/provider compute must be limited and enforced by the external host, and unknown cost is never treated as zero |
-| Compatibility | Additive optional capability with reviewed migration; independent snapshots never acquire activation, repository facts, provider facts, credentials, project decisions, or standing authorization automatically |
+| Compute boundary | Each exact standing contract selects exactly one mode. `metered_api` requires host-enforced per-run and authorization-period USD ceilings and treats unknown cost as blocking. `included_subscription` permits only the selected existing plan's included allowance, requires current readable provider-enforced usage status, and prohibits separately purchased credits, API billing, pay-as-you-go capacity, add-ons, and upgrades. Unknown, unreadable, exhausted, or changed compute state blocks. Direct autonomous-worker purchasing and external spending remain zero in both modes |
+| Compatibility | Additive optional capability with reviewed migration; independent snapshots never acquire activation, repository facts, provider facts, credentials, project decisions, or standing authorization automatically. Confirmed v1 records remain immutable legacy metered-API evidence; selecting another mode requires a v2 successor with a new stable authorization ID, exact predecessor binding, operator-controlled predecessor revocation before activation, and new exact-digest confirmation |
 | Human-only gates | Humans retain product-priority selection, architecture acceptance or amendment, release-evidence and risk policy, product-boundary or standing-authority expansion, conflicting-authority resolution, and required specialist or external-project decisions |
 | `permission_grant` | `false` |
 
 This source decision accepts implementation architecture only. The operator's
 implementation prompt authorizes local source work, branches, commits,
-validation, disposable exercises, and deterministic generation of the final
-`SAC-01` draft. Standing external-action authority remains inactive until the
-operator independently confirms the exact final `SAC-01` digest.
+validation, disposable exercises, and deterministic generation of an exact
+standing-contract draft. The confirmed v1 `SAC-01` record was not activated;
+the dual-mode amendment requires a new-ID successor and independent exact-
+digest confirmation. A confirmed contract is never reinterpreted after a
+compute-mode change; a successor is drafted and confirmed instead.
 
 ## SRC-DEC-0020 — Standing source-release evidence policy
 
 | Field | Accepted decision |
 |---|---|
 | Status | `accepted` |
-| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised standing release-evidence and risk policy |
+| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised standing release-evidence and risk policy, with the dual-mode compute-control amendment accepted on 2026-08-23 |
 | Covered releases | Technically scoped final patch and minor Octon Mini source releases whose product priority was explicitly selected by a human and whose necessary architecture decisions are accepted |
 | Required gates | The release stays within accepted boundaries; all applicable tests, mutation tests, fault injection, migrations, benchmarks, hosted checks, exact read-backs, and unchanged thresholds pass; no critical or high finding remains; unsuccessful evidence is retained; limitations are disclosed |
 | Minor-release addition | Complete the applicable end-to-end disposable exercises and an authorized Octon Mini source exercise |
 | Independent-evidence boundary | Unavailable unfamiliar-operator, independent-reviewer, independent external-project, and human-usability evidence may be disclosed for technically scoped patch and minor releases, but cannot support independent maturity, adoption, usability, project readiness, or production readiness claims |
-| Standing-authority gate | Release requires an independently confirmed, current, exact standing-authorization record whose repository, branch, action, release type, limits, cost enforcement, revocation, emergency-stop, and evidence bindings cover the exact operation |
-| Cost gate | Direct autonomous-worker spending remains zero; the external host must prove enforcement of selected AI/provider compute ceilings, and unknown cost blocks activation or requires a custom human-approved successor |
+| Standing-authority gate | Release requires an independently confirmed, current, exact standing-authorization record whose repository, branch, action, release type, limits, selected compute mode, current compute evidence, revocation, emergency-stop, and evidence bindings cover the exact operation |
+| Compute gate | Direct autonomous-worker spending remains zero. Metered API mode requires current host enforcement of the selected USD ceilings. Included-subscription mode requires current readable provider-enforced included-allowance status and proves that paid credits, API or pay-as-you-go billing, add-ons, upgrades, and a billing-mode change are not in use. Unknown, unreadable, exhausted, or changed compute state blocks |
 | Human reconsideration | Required for major releases; product-boundary expansion; new standing-authority or external-effect families; security, privacy, legal, credential, or destructive-migration changes; deployment; external-project release; package publication; weakened tests, gates, reviews, or thresholds; unavailable mandatory safety evidence; unresolved critical/high findings; or claims exceeding evidence |
 | Historical boundary | The v4.1.0 `accept_disclosed_absence` choice remains release-specific and supplies no authority for this standing policy |
 | Permission effect | None; this policy defines evidence eligibility and cannot activate delivery, create standing authorization, or authorize an individual external effect |

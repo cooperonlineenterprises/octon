@@ -88,10 +88,13 @@ command identity with their generated-project command inventory.
   every field and digest, and require independent human confirmation of those
   exact bytes before serializing an external evidence record or activating the
   locally bundled package. Revalidate revocation, emergency stop, repository,
-  branch, task, plan, action, release, evidence, cost enforcement, and limits
-  before every effect. Direct spending is zero; an unknown effect has zero
-  automatic retries. Read `references/autonomous-delivery.md` for activation
-  or delivery work.
+  branch, task, plan, action, release, evidence, the one selected compute mode,
+  and limits before every effect. Metered API mode requires host-enforced
+  ceilings. Included-subscription mode permits only current readable included
+  allowance and no paid credits, API/pay-as-you-go billing, add-ons, or
+  upgrades. Direct spending is zero; unknown compute or effect state blocks,
+  and an unknown effect has zero automatic retries. Read
+  `references/autonomous-delivery.md` for activation or delivery work.
 - Governed completion: use `octon work finish plan|apply|resume` only after the
   project explicitly enables the shared engine and adopts the installed
   small-team Git workflow. Planning is read-only. Apply requires the exact

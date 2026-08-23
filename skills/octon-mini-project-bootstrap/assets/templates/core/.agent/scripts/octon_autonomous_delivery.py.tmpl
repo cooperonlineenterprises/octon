@@ -18,15 +18,23 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
-CONTRACT_SCHEMA = "harness.autonomous-delivery-standing-authorization.v1"
+CONTRACT_SCHEMA_V1 = "harness.autonomous-delivery-standing-authorization.v1"
+CONTRACT_SCHEMA = "harness.autonomous-delivery-standing-authorization.v2"
 CONFIRMATION_SCHEMA = "harness.autonomous-delivery-confirmation.v1"
-RECORD_SCHEMA = "harness.autonomous-delivery-authorization-record.v1"
-PLAN_SCHEMA = "harness.autonomous-delivery-activation-plan.v1"
-PROJECTION_SCHEMA = "harness.autonomous-delivery-authority-projection.v1"
-COST_SCHEMA = "harness.autonomous-delivery-cost-enforcement.v1"
+RECORD_SCHEMA_V1 = "harness.autonomous-delivery-authorization-record.v1"
+RECORD_SCHEMA = "harness.autonomous-delivery-authorization-record.v2"
+PLAN_SCHEMA_V1 = "harness.autonomous-delivery-activation-plan.v1"
+PLAN_SCHEMA = "harness.autonomous-delivery-activation-plan.v2"
+PROJECTION_SCHEMA_V1 = "harness.autonomous-delivery-authority-projection.v1"
+PROJECTION_SCHEMA = "harness.autonomous-delivery-authority-projection.v2"
+COST_SCHEMA_V1 = "harness.autonomous-delivery-cost-enforcement.v1"
+COMPUTE_SCHEMA = "harness.autonomous-delivery-compute-enforcement.v2"
+USAGE_SCHEMA_V1 = "harness.autonomous-delivery-usage.v1"
+USAGE_SCHEMA = "harness.autonomous-delivery-usage.v2"
 PACKAGE_ID = "autonomous-delivery"
 PACKAGE_VERSION = "1.0.0"
 STATUS_AVAILABLE = "available_not_activated"
+COMPUTE_MODES = {"metered_api", "included_subscription"}
 ALLOWED_PROFILES = {
     "review_first",
     "balanced_autonomous",
@@ -111,6 +119,7 @@ HUMAN_STOPS = [
     "emergency_stop_present",
     "repository_provider_branch_task_action_release_or_cost_outside_authorization",
     "host_cost_enforcement_unavailable",
+    "subscription_allowance_unreadable_exhausted_or_changed",
     "required_authentication_unavailable_or_changed",
     "safety_gate_failed",
     "mandatory_evidence_unavailable",
@@ -273,25 +282,27 @@ def project(root: Path) -> dict[str, Any]:
 def delivery_config(root: Path) -> dict[str, Any]:
     if not (root / ".agent/project.json").exists() and (root / "octon-mini.json").is_file() and (root / "VERSION").is_file():
         return {
-            "schema_version": "harness.autonomous-delivery-config.v1",
+            "schema_version": "harness.autonomous-delivery-config.v2",
             "status": STATUS_AVAILABLE,
             "write_capability": "locked",
             "external_effects": "locked",
             "delivery_profile": None,
+            "compute_mode": None,
             "adoption_decision_ref": None,
             "authorization_record_ref": None,
             "authorization_record_digest": None,
             "activation_receipt_ref": None,
-            "limitations": ["Octon Mini source delivery remains locally implemented but externally locked pending exact SAC confirmation."],
+            "limitations": ["Octon Mini source delivery remains locally implemented but externally locked pending an exact current SAC confirmation and matching compute evidence."],
         }
     value = project(root).get("autonomous_delivery")
     if value is None:
         return {
-            "schema_version": "harness.autonomous-delivery-config.v1",
+            "schema_version": "harness.autonomous-delivery-config.v2",
             "status": STATUS_AVAILABLE,
             "write_capability": "locked",
             "external_effects": "locked",
             "delivery_profile": None,
+            "compute_mode": None,
             "adoption_decision_ref": None,
             "authorization_record_ref": None,
             "authorization_record_digest": None,
@@ -326,6 +337,8 @@ def profile_preset(profile: str) -> dict[str, Any]:
         "profile": profile,
         "recommended_for_most_solo_developers": profile == "fast_delivery",
         "silently_selected": False,
+        "supported_compute_modes": sorted(COMPUTE_MODES),
+        "compute_mode_silently_selected": False,
         "permitted_actions": actions,
         "release_types": releases,
         "limits": limits,
@@ -345,7 +358,7 @@ def read_only_status(
     supplied = [authorization_record, confirmation_artifact, cost_enforcement_artifact, activation_receipt]
     if any(supplied):
         if not all(supplied):
-            raise DeliveryError("active source status requires authorization, confirmation, cost, and activation-receipt artifacts together")
+            raise DeliveryError("active source status requires authorization, confirmation, compute, and activation-receipt artifacts together")
         confirmation = load_json(external_path(root, str(confirmation_artifact), require_file=True))
         record = validate_record(load_json(external_path(root, str(authorization_record), require_file=True)), confirmation)
         active_controls(root, record["contract"])
@@ -363,6 +376,7 @@ def read_only_status(
         "write_capability": "authorized_within_exact_standing_contract" if source_active else config.get("write_capability", "locked"),
         "external_effects": "authorized_only_through_current_exact_plan_projections" if source_active else config.get("external_effects", "locked"),
         "delivery_profile": record["contract"]["delivery_profile"] if source_active else config.get("delivery_profile"),
+        "compute_mode": compute_mode(record["contract"]) if source_active else config.get("compute_mode"),
         "pre_activation_capabilities": [
             "research",
             "context_building",
@@ -502,8 +516,27 @@ def research_projection(query: str) -> dict[str, Any]:
     return value
 
 
-def contract_from(args: argparse.Namespace) -> dict[str, Any]:
+def contract_from(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     preset = profile_preset(args.profile)
+    if args.compute_mode not in COMPUTE_MODES:
+        raise DeliveryError("standing authorization must select exactly one supported compute mode")
+    if args.compute_mode == "included_subscription" and not args.subscription_plan_ref:
+        raise DeliveryError("included-subscription mode requires --subscription-plan-ref")
+    if args.compute_mode == "metered_api" and args.subscription_plan_ref:
+        raise DeliveryError("metered-API mode cannot bind a subscription plan reference")
+    supersedes = None
+    if args.supersedes_authorization_record:
+        predecessor = validate_record(load_json(external_path(root, args.supersedes_authorization_record, require_file=True)))
+        predecessor_contract = predecessor["contract"]
+        if predecessor_contract["authorization_id"] == args.authorization_id:
+            raise DeliveryError("a successor standing authorization requires a new stable authorization ID")
+        supersedes = {
+            "authorization_id": predecessor_contract["authorization_id"],
+            "accepted_record_digest": predecessor["accepted_record_digest"],
+            "contract_digest": predecessor_contract["canonical_contract_digest"],
+            "revocation_path": predecessor_contract["controls"]["revocation_path"],
+            "activation_requires_revocation": True,
+        }
     valid_from = timestamp(args.valid_from, "valid_from")
     requested_until = timestamp(args.valid_until, "valid_until")
     maximum_until = valid_from + timedelta(days=int(preset["limits"]["authorization_lifetime_days"]))
@@ -541,6 +574,7 @@ def contract_from(args: argparse.Namespace) -> dict[str, Any]:
         "priority_authority_required": True,
         "architecture_authority_required": True,
         "release_policy_ref": "SRC-DEC-0020",
+        "supersedes": supersedes,
         "repository": {
             "root": str(Path(args.repository_root).expanduser().resolve()),
             "identity": args.repository_identity,
@@ -552,11 +586,28 @@ def contract_from(args: argparse.Namespace) -> dict[str, Any]:
         "release_types": sorted(set(release_types)),
         "merge_method": "merge_commit",
         "limits": limits,
-        "costs": {
-            "host_enforcement_required": True,
-            "ai_provider_usd_per_run": args.ai_budget_per_run,
-            "ai_provider_usd_per_authorization": args.ai_budget_per_authorization,
-            "unknown_cost_behavior": "block_activation_or_require_human_approved_custom_treatment",
+        "compute_control": {
+            "mode": args.compute_mode,
+            "metered_api": {
+                "host_enforcement_required": True,
+                "ai_provider_usd_per_run": args.ai_budget_per_run,
+                "ai_provider_usd_per_authorization": args.ai_budget_per_authorization,
+                "unknown_cost_behavior": "block",
+            } if args.compute_mode == "metered_api" else None,
+            "included_subscription": {
+                "plan_ref": args.subscription_plan_ref,
+                "provider_limit_enforcement_required": True,
+                "usage_status_readback_required": True,
+                "included_allowance_only": True,
+                "separately_purchased_credits_allowed": False,
+                "api_billing_allowed": False,
+                "pay_as_you_go_allowed": False,
+                "add_ons_allowed": False,
+                "plan_upgrades_allowed": False,
+                "unreadable_exhausted_or_changed_behavior": "block",
+            } if args.compute_mode == "included_subscription" else None,
+            "unknown_usage_behavior": "block",
+            "mode_change_behavior": "require_confirmed_successor_authorization",
             "direct_external_spending_usd": 0,
             "purchases_prohibited": PURCHASE_DENIES,
         },
@@ -584,9 +635,7 @@ def contract_from(args: argparse.Namespace) -> dict[str, Any]:
     return value
 
 
-def validate_contract(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schema_version") != CONTRACT_SCHEMA:
-        raise DeliveryError("standing-authorization contract is malformed")
+def _validate_contract_common(value: dict[str, Any]) -> None:
     if value.get("canonical_contract_digest") != digest_without(value, "canonical_contract_digest"):
         raise DeliveryError("standing-authorization contract digest is invalid")
     if value.get("permission_grant") is not False or value.get("status") != "proposed_unconfirmed":
@@ -596,15 +645,6 @@ def validate_contract(value: Any) -> dict[str, Any]:
     actions = value.get("permitted_actions")
     if not isinstance(actions, list) or not actions or set(actions) - ALLOWED_ACTIONS:
         raise DeliveryError("standing-authorization actions are invalid")
-    costs = value.get("costs")
-    if not isinstance(costs, dict) or costs.get("direct_external_spending_usd") != 0:
-        raise DeliveryError("direct external spending must remain zero")
-    if costs.get("host_enforcement_required") is not True:
-        raise DeliveryError("AI/provider cost enforcement must remain host-owned")
-    if not isinstance(costs.get("ai_provider_usd_per_run"), (int, float)) or costs["ai_provider_usd_per_run"] <= 0 or not isinstance(costs.get("ai_provider_usd_per_authorization"), (int, float)) or costs["ai_provider_usd_per_authorization"] < costs["ai_provider_usd_per_run"]:
-        raise DeliveryError("AI/provider cost ceilings are malformed")
-    if costs.get("purchases_prohibited") != PURCHASE_DENIES:
-        raise DeliveryError("autonomous-delivery purchase denials differ from the hard boundary")
     limits = value.get("limits")
     if not isinstance(limits, dict) or set(limits) != set(FAST_LIMITS) or any(not isinstance(item, int) or item < 0 for key, item in limits.items() if key != "warning_percentages") or limits.get("unknown_outcome_retries") != 0 or limits.get("concurrent_write_runs") != 1:
         raise DeliveryError("hard delivery limits are invalid")
@@ -620,12 +660,105 @@ def validate_contract(value: Any) -> dict[str, Any]:
     controls = value.get("controls")
     if not isinstance(controls, dict) or controls.get("worker_may_write") is not False:
         raise DeliveryError("operator controls must remain worker-read-only")
+
+
+def _validate_legacy_costs(costs: Any) -> None:
+    if not isinstance(costs, dict) or costs.get("direct_external_spending_usd") != 0:
+        raise DeliveryError("direct external spending must remain zero")
+    if costs.get("host_enforcement_required") is not True:
+        raise DeliveryError("AI/provider cost enforcement must remain host-owned")
+    if not isinstance(costs.get("ai_provider_usd_per_run"), (int, float)) or costs["ai_provider_usd_per_run"] <= 0 or not isinstance(costs.get("ai_provider_usd_per_authorization"), (int, float)) or costs["ai_provider_usd_per_authorization"] < costs["ai_provider_usd_per_run"]:
+        raise DeliveryError("AI/provider cost ceilings are malformed")
+    if costs.get("purchases_prohibited") != PURCHASE_DENIES:
+        raise DeliveryError("autonomous-delivery purchase denials differ from the hard boundary")
+
+
+def _validate_compute_control(compute: Any) -> None:
+    expected = {
+        "mode", "metered_api", "included_subscription", "unknown_usage_behavior",
+        "mode_change_behavior", "direct_external_spending_usd", "purchases_prohibited",
+    }
+    if not isinstance(compute, dict) or set(compute) != expected:
+        raise DeliveryError("dual-mode compute control is absent or malformed")
+    if compute.get("mode") not in COMPUTE_MODES:
+        raise DeliveryError("standing authorization must select exactly one compute mode")
+    if compute.get("unknown_usage_behavior") != "block" or compute.get("mode_change_behavior") != "require_confirmed_successor_authorization":
+        raise DeliveryError("unknown or changed compute state must require a confirmed successor or block")
+    if compute.get("direct_external_spending_usd") != 0 or compute.get("purchases_prohibited") != PURCHASE_DENIES:
+        raise DeliveryError("direct spending and purchase denials differ from the hard boundary")
+    metered = compute.get("metered_api")
+    subscription = compute.get("included_subscription")
+    if compute["mode"] == "metered_api":
+        if subscription is not None or not isinstance(metered, dict) or set(metered) != {
+            "host_enforcement_required", "ai_provider_usd_per_run",
+            "ai_provider_usd_per_authorization", "unknown_cost_behavior",
+        }:
+            raise DeliveryError("metered-API compute control is malformed or overlaps subscription mode")
+        if metered.get("host_enforcement_required") is not True or metered.get("unknown_cost_behavior") != "block":
+            raise DeliveryError("metered-API cost enforcement must remain host-owned and fail closed")
+        per_run = metered.get("ai_provider_usd_per_run")
+        per_period = metered.get("ai_provider_usd_per_authorization")
+        if not isinstance(per_run, (int, float)) or isinstance(per_run, bool) or per_run <= 0 or not isinstance(per_period, (int, float)) or isinstance(per_period, bool) or per_period < per_run:
+            raise DeliveryError("metered-API compute ceilings are malformed")
+    else:
+        expected_subscription = {
+            "plan_ref", "provider_limit_enforcement_required", "usage_status_readback_required",
+            "included_allowance_only", "separately_purchased_credits_allowed",
+            "api_billing_allowed", "pay_as_you_go_allowed", "add_ons_allowed",
+            "plan_upgrades_allowed", "unreadable_exhausted_or_changed_behavior",
+        }
+        if metered is not None or not isinstance(subscription, dict) or set(subscription) != expected_subscription:
+            raise DeliveryError("included-subscription compute control is malformed or overlaps metered mode")
+        plan_ref = subscription.get("plan_ref")
+        if not isinstance(plan_ref, str) or not plan_ref.startswith(("authority:", "external:")):
+            raise DeliveryError("included-subscription mode requires an external or authority plan reference")
+        required_true = ["provider_limit_enforcement_required", "usage_status_readback_required", "included_allowance_only"]
+        if any(subscription.get(key) is not True for key in required_true):
+            raise DeliveryError("included-subscription allowance and read-back controls must remain enforced")
+        required_false = ["separately_purchased_credits_allowed", "api_billing_allowed", "pay_as_you_go_allowed", "add_ons_allowed", "plan_upgrades_allowed"]
+        if any(subscription.get(key) is not False for key in required_false):
+            raise DeliveryError("included-subscription paid capacity and plan changes must remain prohibited")
+        if subscription.get("unreadable_exhausted_or_changed_behavior") != "block":
+            raise DeliveryError("unreadable, exhausted, or changed subscription usage must block")
+
+
+def _validate_supersession(value: dict[str, Any]) -> None:
+    predecessor = value.get("supersedes")
+    if predecessor is None:
+        return
+    expected = {
+        "authorization_id", "accepted_record_digest", "contract_digest",
+        "revocation_path", "activation_requires_revocation",
+    }
+    if not isinstance(predecessor, dict) or set(predecessor) != expected:
+        raise DeliveryError("standing-authorization predecessor binding is malformed")
+    if not isinstance(predecessor.get("authorization_id"), str) or re.fullmatch(r"SAC-[0-9]{2}", predecessor["authorization_id"]) is None or predecessor["authorization_id"] == value.get("authorization_id"):
+        raise DeliveryError("standing-authorization successor requires a different valid predecessor ID")
+    if any(not isinstance(predecessor.get(key), str) or re.fullmatch(r"[a-f0-9]{64}", predecessor[key]) is None for key in ["accepted_record_digest", "contract_digest"]):
+        raise DeliveryError("standing-authorization predecessor digests are malformed")
+    if not isinstance(predecessor.get("revocation_path"), str) or not Path(predecessor["revocation_path"]).is_absolute() or predecessor.get("activation_requires_revocation") is not True:
+        raise DeliveryError("standing-authorization successor must require an external predecessor revocation")
+
+
+def validate_contract(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") not in {CONTRACT_SCHEMA_V1, CONTRACT_SCHEMA}:
+        raise DeliveryError("standing-authorization contract is malformed")
+    _validate_contract_common(value)
+    if value["schema_version"] == CONTRACT_SCHEMA_V1:
+        _validate_legacy_costs(value.get("costs"))
+    else:
+        _validate_compute_control(value.get("compute_control"))
+        _validate_supersession(value)
     return value
 
 
-def expected_confirmation_statement(contract_digest: str) -> str:
+def compute_mode(contract: dict[str, Any]) -> str:
+    return "metered_api" if contract.get("schema_version") == CONTRACT_SCHEMA_V1 else contract["compute_control"]["mode"]
+
+
+def expected_confirmation_statement(contract_digest: str, authorization_id: str = "SAC-01") -> str:
     return (
-        f"I confirm exact SAC-01 digest `{contract_digest}` as presented and activate it within "
+        f"I confirm exact {authorization_id} digest `{contract_digest}` as presented and activate it within "
         "its accepted scope, limits, expiration, release policy, revocation, emergency-stop, "
         "evidence, and human-stop conditions."
     )
@@ -639,7 +772,9 @@ def validate_confirmation(value: Any, contract: dict[str, Any]) -> dict[str, Any
     contract_digest = contract["canonical_contract_digest"]
     if value.get("contract_digest") != contract_digest:
         raise DeliveryError("confirmation evidence covers a different contract digest")
-    if value.get("confirmation_statement") != expected_confirmation_statement(contract_digest):
+    if value.get("authorization_id") != contract["authorization_id"]:
+        raise DeliveryError("confirmation evidence names a different standing authorization")
+    if value.get("confirmation_statement") != expected_confirmation_statement(contract_digest, contract["authorization_id"]):
         raise DeliveryError("confirmation statement is not the exact accepted digest statement")
     if value.get("confirmation_method") != "independent_exact_digest_statement":
         raise DeliveryError("confirmation method is not independent exact-digest confirmation")
@@ -652,7 +787,7 @@ def accepted_record(contract: dict[str, Any], confirmation: dict[str, Any]) -> d
     validate_contract(contract)
     validate_confirmation(confirmation, contract)
     value = {
-        "schema_version": RECORD_SCHEMA,
+        "schema_version": RECORD_SCHEMA_V1 if contract["schema_version"] == CONTRACT_SCHEMA_V1 else RECORD_SCHEMA,
         "artifact_kind": "standing_authorization_evidence_record",
         "permission_grant": False,
         "contract": contract,
@@ -667,24 +802,26 @@ def accepted_record(contract: dict[str, Any], confirmation: dict[str, Any]) -> d
 
 
 def validate_record(value: Any, confirmation: dict[str, Any] | None = None) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schema_version") != RECORD_SCHEMA:
+    if not isinstance(value, dict) or value.get("schema_version") not in {RECORD_SCHEMA_V1, RECORD_SCHEMA}:
         raise DeliveryError("accepted standing-authorization record is absent or malformed")
     if value.get("accepted_record_digest") != digest_without(value, "accepted_record_digest"):
         raise DeliveryError("accepted standing-authorization record digest is invalid")
     contract = validate_contract(value.get("contract"))
+    if (value["schema_version"] == RECORD_SCHEMA_V1) != (contract["schema_version"] == CONTRACT_SCHEMA_V1):
+        raise DeliveryError("accepted record and standing-contract versions do not match")
     embedded = validate_confirmation(value.get("confirmation"), contract)
     if confirmation is not None and confirmation != embedded:
         raise DeliveryError("separate confirmation artifact differs from the accepted record")
     return value
 
 
-def validate_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
+def _validate_legacy_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != {
         "schema_version", "artifact_kind", "host_enforced", "unknown_cost", "per_run_usd",
         "per_authorization_usd", "observed_at", "valid_until", "evidence_fingerprint"
     }:
         raise DeliveryError("host cost-enforcement evidence is absent or malformed")
-    if value.get("schema_version") != COST_SCHEMA or value.get("host_enforced") is not True or value.get("unknown_cost") is not False:
+    if value.get("schema_version") != COST_SCHEMA_V1 or value.get("host_enforced") is not True or value.get("unknown_cost") is not False:
         raise DeliveryError("host cannot prove enforcement of known AI/provider cost limits")
     if value.get("evidence_fingerprint") != digest_without(value, "evidence_fingerprint"):
         raise DeliveryError("cost-enforcement evidence fingerprint is invalid")
@@ -694,6 +831,86 @@ def validate_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, An
     if timestamp(value.get("valid_until"), "cost valid_until") < utc_now():
         raise DeliveryError("host cost-enforcement evidence is expired")
     return value
+
+
+def validate_compute_evidence(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
+    if contract.get("schema_version") == CONTRACT_SCHEMA_V1:
+        return _validate_legacy_cost_evidence(value, contract)
+    expected = {
+        "schema_version", "artifact_kind", "compute_mode", "host_enforced",
+        "observed_at", "valid_until", "metered_api", "included_subscription",
+        "evidence_fingerprint",
+    }
+    if not isinstance(value, dict) or set(value) != expected:
+        raise DeliveryError("host compute-enforcement evidence is absent or malformed")
+    if value.get("schema_version") != COMPUTE_SCHEMA or value.get("artifact_kind") != "external_host_compute_enforcement_evidence" or value.get("host_enforced") is not True:
+        raise DeliveryError("host cannot prove enforcement of the selected compute mode")
+    if value.get("evidence_fingerprint") != digest_without(value, "evidence_fingerprint"):
+        raise DeliveryError("compute-enforcement evidence fingerprint is invalid")
+    mode = compute_mode(contract)
+    if value.get("compute_mode") != mode:
+        raise DeliveryError("host compute evidence covers a different billing mode")
+    observed = timestamp(value.get("observed_at"), "compute observed_at")
+    valid_until = timestamp(value.get("valid_until"), "compute valid_until")
+    current = utc_now()
+    if observed > current + timedelta(minutes=1) or valid_until < current or valid_until <= observed:
+        raise DeliveryError("host compute-enforcement evidence is stale, future-dated, or contradictory")
+    metered = value.get("metered_api")
+    subscription = value.get("included_subscription")
+    control = contract["compute_control"]
+    if mode == "metered_api":
+        if subscription is not None or not isinstance(metered, dict) or set(metered) != {"unknown_cost", "per_run_usd", "per_authorization_usd"}:
+            raise DeliveryError("metered-API host evidence is malformed or overlaps subscription mode")
+        expected_limits = control["metered_api"]
+        if metered.get("unknown_cost") is not False or metered.get("per_run_usd") != expected_limits["ai_provider_usd_per_run"] or metered.get("per_authorization_usd") != expected_limits["ai_provider_usd_per_authorization"]:
+            raise DeliveryError("host metered-API ceilings differ from the accepted contract or remain unknown")
+        return value
+    expected_subscription = {
+        "plan_ref", "usage_status_readable", "allowance_status",
+        "all_applicable_windows_reported", "included_allowance_only",
+        "separately_purchased_credits_in_use", "api_billing_in_use",
+        "pay_as_you_go_in_use", "add_ons_in_use", "plan_upgrade_in_progress",
+        "billing_mode_changed", "quota_windows",
+    }
+    if metered is not None or not isinstance(subscription, dict) or set(subscription) != expected_subscription:
+        raise DeliveryError("included-subscription host evidence is malformed or overlaps metered mode")
+    selected = control["included_subscription"]
+    if subscription.get("plan_ref") != selected["plan_ref"] or subscription.get("usage_status_readable") is not True or subscription.get("all_applicable_windows_reported") is not True or subscription.get("included_allowance_only") is not True:
+        raise DeliveryError("included-subscription plan or complete usage read-back is unavailable or changed")
+    if subscription.get("allowance_status") != "available":
+        raise DeliveryError("included-subscription allowance is exhausted or unknown")
+    forbidden_states = [
+        "separately_purchased_credits_in_use", "api_billing_in_use",
+        "pay_as_you_go_in_use", "add_ons_in_use", "plan_upgrade_in_progress",
+        "billing_mode_changed",
+    ]
+    if any(subscription.get(key) is not False for key in forbidden_states):
+        raise DeliveryError("subscription evidence reports paid capacity, a plan change, or another prohibited billing path")
+    windows = subscription.get("quota_windows")
+    if not isinstance(windows, list) or not windows:
+        raise DeliveryError("included-subscription usage windows are absent or unreadable")
+    identifiers: set[str] = set()
+    for window in windows:
+        if not isinstance(window, dict) or set(window) != {"id", "used_percent", "status", "resets_at"}:
+            raise DeliveryError("included-subscription usage window is malformed")
+        identifier = window.get("id")
+        used = window.get("used_percent")
+        reset = timestamp(window.get("resets_at"), "subscription window resets_at")
+        if not isinstance(identifier, str) or not identifier or identifier in identifiers:
+            raise DeliveryError("included-subscription usage window identity is absent or duplicated")
+        identifiers.add(identifier)
+        if not isinstance(used, (int, float)) or isinstance(used, bool) or not 0 <= used < 100 or window.get("status") != "available":
+            raise DeliveryError("included-subscription usage is exhausted, unknown, or malformed")
+        if reset < valid_until:
+            raise DeliveryError("subscription evidence validity extends beyond a reported quota reset")
+    if valid_until > observed + timedelta(minutes=15):
+        raise DeliveryError("included-subscription usage read-back exceeds the fifteen-minute freshness boundary")
+    return value
+
+
+def validate_cost_evidence(value: Any, contract: dict[str, Any]) -> dict[str, Any]:
+    """Backward-compatible alias for callers generated before dual-mode compute control."""
+    return validate_compute_evidence(value, contract)
 
 
 def package_inventory(root: Path, package_id: str) -> tuple[dict[str, bytes], str]:
@@ -761,6 +978,48 @@ def project_fingerprint(root: Path) -> str:
     return value.hexdigest()
 
 
+def validate_revocation(value: Any, predecessor: dict[str, Any], successor_id: str) -> dict[str, Any]:
+    expected = {
+        "schema_version", "artifact_kind", "permission_grant", "authorization_id",
+        "accepted_record_digest", "revoked_at", "authority_source", "reason",
+        "successor_authorization_id", "revocation_fingerprint",
+    }
+    if not isinstance(value, dict) or set(value) != expected or value.get("schema_version") != "harness.autonomous-delivery-revocation.v1" or value.get("artifact_kind") != "operator_controlled_standing_authorization_revocation" or value.get("permission_grant") is not False:
+        raise DeliveryError("predecessor revocation evidence is absent or malformed")
+    if value.get("revocation_fingerprint") != digest_without(value, "revocation_fingerprint"):
+        raise DeliveryError("predecessor revocation fingerprint is invalid")
+    if value.get("authorization_id") != predecessor["authorization_id"] or value.get("accepted_record_digest") != predecessor["accepted_record_digest"] or value.get("successor_authorization_id") != successor_id:
+        raise DeliveryError("predecessor revocation does not bind this exact successor")
+    if not isinstance(value.get("authority_source"), str) or not value["authority_source"].startswith(("authority:", "external:")) or not isinstance(value.get("reason"), str) or not value["reason"]:
+        raise DeliveryError("predecessor revocation lacks an external authority source or reason")
+    if timestamp(value.get("revoked_at"), "revoked_at") > utc_now() + timedelta(minutes=1):
+        raise DeliveryError("predecessor revocation is future-dated")
+    return value
+
+
+def predecessor_revocation_record(predecessor_record: dict[str, Any], successor_record: dict[str, Any]) -> dict[str, Any]:
+    predecessor_record = validate_record(predecessor_record)
+    successor_record = validate_record(successor_record)
+    predecessor = predecessor_record["contract"]
+    successor = successor_record["contract"]
+    binding = successor.get("supersedes")
+    if not isinstance(binding, dict) or binding.get("authorization_id") != predecessor["authorization_id"] or binding.get("accepted_record_digest") != predecessor_record["accepted_record_digest"] or binding.get("contract_digest") != predecessor["canonical_contract_digest"]:
+        raise DeliveryError("successor record does not bind the exact predecessor authorization")
+    value = {
+        "schema_version": "harness.autonomous-delivery-revocation.v1",
+        "artifact_kind": "operator_controlled_standing_authorization_revocation",
+        "permission_grant": False,
+        "authorization_id": predecessor["authorization_id"],
+        "accepted_record_digest": predecessor_record["accepted_record_digest"],
+        "revoked_at": utc_text(),
+        "authority_source": successor_record["confirmation"]["authority_source"],
+        "reason": "Superseded by an independently confirmed exact dual-mode standing authorization.",
+        "successor_authorization_id": successor["authorization_id"],
+    }
+    value["revocation_fingerprint"] = digest(value)
+    return validate_revocation(value, binding, successor["authorization_id"])
+
+
 def active_controls(root: Path, contract: dict[str, Any]) -> None:
     controls = contract["controls"]
     for field in ["authorization_path", "confirmation_path", "revocation_path", "emergency_stop_path"]:
@@ -772,6 +1031,10 @@ def active_controls(root: Path, contract: dict[str, Any]) -> None:
     now = utc_now()
     if not timestamp(contract["valid_from"], "valid_from") <= now <= timestamp(contract["valid_until"], "valid_until"):
         raise DeliveryError("standing authorization is not currently valid")
+    predecessor = contract.get("supersedes")
+    if predecessor is not None:
+        revocation_path = external_path(root, predecessor["revocation_path"], require_file=True)
+        validate_revocation(load_json(revocation_path), predecessor, contract["authorization_id"])
 
 
 def accepted_project_decision(root: Path, decision_ref: str) -> Path:
@@ -804,13 +1067,13 @@ def build_activation_plan(
     root: Path,
     record: dict[str, Any],
     confirmation: dict[str, Any],
-    cost_evidence: dict[str, Any],
+    compute_evidence: dict[str, Any],
     adoption_decision_ref: str,
 ) -> dict[str, Any]:
     record = validate_record(record, confirmation)
     contract = record["contract"]
     active_controls(root, contract)
-    validate_cost_evidence(cost_evidence, contract)
+    validate_compute_evidence(compute_evidence, contract)
     accepted_project_decision(root, adoption_decision_ref)
     if Path(contract["repository"]["root"]).resolve() != root:
         raise DeliveryError("standing authorization covers a different repository root")
@@ -831,7 +1094,7 @@ def build_activation_plan(
             raise DeliveryError("offline package payload digest differs from the generated catalog")
     package_digest = digest({"autonomous-delivery": autonomous_digest, "long-running-work": long_digest})
     value = {
-        "schema_version": PLAN_SCHEMA,
+        "schema_version": PLAN_SCHEMA_V1 if contract["schema_version"] == CONTRACT_SCHEMA_V1 else PLAN_SCHEMA,
         "artifact_kind": "autonomous_delivery_activation_plan",
         "permission_grant": False,
         "read_only": True,
@@ -853,6 +1116,9 @@ def build_activation_plan(
         ],
         "limitations": LIMITATIONS,
     }
+    if contract["schema_version"] != CONTRACT_SCHEMA_V1:
+        value["compute_mode"] = compute_mode(contract)
+        value["compute_evidence_fingerprint"] = compute_evidence["evidence_fingerprint"]
     value["canonical_plan_digest"] = digest(value)
     return value
 
@@ -913,11 +1179,12 @@ def activation_operations(root: Path, plan: dict[str, Any], record_path: str, re
     if not isinstance(config, dict) or config.get("status") != STATUS_AVAILABLE:
         raise DeliveryError("activation requires the exact available-not-activated project state")
     project_value["autonomous_delivery"] = {
-        "schema_version": "harness.autonomous-delivery-config.v1",
+        "schema_version": "harness.autonomous-delivery-config.v2",
         "status": "active",
         "write_capability": "authorized_within_exact_standing_contract",
         "external_effects": "authorized_only_through_current_exact_plan_projections",
         "delivery_profile": record_path and load_json(Path(record_path))["contract"]["delivery_profile"],
+        "compute_mode": plan.get("compute_mode", "metered_api"),
         "adoption_decision_ref": plan["adoption_decision_ref"],
         "authorization_record_ref": record_path,
         "authorization_record_digest": plan["authorization_record_digest"],
@@ -971,11 +1238,11 @@ def activation_operations(root: Path, plan: dict[str, Any], record_path: str, re
     return operations, package_digest
 
 
-def apply_activation(root: Path, plan: dict[str, Any], accepted_digest: str, record_path: str, confirmation_path: str, cost_path: str, activation_receipt_output: str | None = None) -> dict[str, Any]:
-    if plan.get("schema_version") != PLAN_SCHEMA or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or accepted_digest != plan.get("canonical_plan_digest"):
+def apply_activation(root: Path, plan: dict[str, Any], accepted_digest: str, record_path: str, confirmation_path: str, compute_path: str, activation_receipt_output: str | None = None) -> dict[str, Any]:
+    if plan.get("schema_version") not in {PLAN_SCHEMA_V1, PLAN_SCHEMA} or plan.get("canonical_plan_digest") != digest_without(plan, "canonical_plan_digest") or accepted_digest != plan.get("canonical_plan_digest"):
         raise DeliveryError("activation apply requires the exact current reviewed plan digest")
     record = validate_record(load_json(external_path(root, record_path, require_file=True)), load_json(external_path(root, confirmation_path, require_file=True)))
-    current = build_activation_plan(root, record, record["confirmation"], load_json(external_path(root, cost_path, require_file=True)), plan.get("adoption_decision_ref"))
+    current = build_activation_plan(root, record, record["confirmation"], load_json(external_path(root, compute_path, require_file=True)), plan.get("adoption_decision_ref"))
     if current != plan:
         raise DeliveryError("activation inputs or target state changed after planning")
     if plan.get("activation_target") == "octon_mini_source_repository":
@@ -1119,8 +1386,22 @@ USAGE_KEYS = {
 }
 
 
-def validate_usage(value: Any, record: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schema_version") != "harness.autonomous-delivery-usage.v1":
+def _count_usage_warnings(value: Any, contract: dict[str, Any]) -> tuple[list[str], bool]:
+    counts = value.get("counts") if isinstance(value, dict) else None
+    if not isinstance(counts, dict) or set(counts) != set(USAGE_KEYS) or any(not isinstance(item, int) or item < 0 for item in counts.values()):
+        raise DeliveryError("delivery usage counts are malformed")
+    warnings: list[str] = []
+    exhausted = False
+    for count_key, limit_key in USAGE_KEYS.items():
+        warning = usage_warning(counts[count_key], contract["limits"][limit_key])
+        if warning:
+            warnings.append(f"{count_key}:{warning}")
+        exhausted = exhausted or warning == "exhausted"
+    return warnings, exhausted
+
+
+def _validate_legacy_usage(value: Any, record: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema_version") != USAGE_SCHEMA_V1:
         raise DeliveryError("delivery usage state is absent or malformed")
     if value.get("usage_digest") != digest_without(value, "usage_digest"):
         raise DeliveryError("delivery usage digest is invalid")
@@ -1131,16 +1412,7 @@ def validate_usage(value: Any, record: dict[str, Any]) -> dict[str, Any]:
     contract = record["contract"]
     if value["ai_provider_cost_usd"] < 0 or value["ai_provider_cost_usd"] > contract["costs"]["ai_provider_usd_per_run"]:
         raise DeliveryError("delivery run AI/provider cost limit is exhausted or malformed")
-    counts = value.get("counts")
-    if not isinstance(counts, dict) or set(counts) != set(USAGE_KEYS) or any(not isinstance(item, int) or item < 0 for item in counts.values()):
-        raise DeliveryError("delivery usage counts are malformed")
-    expected_warnings: list[str] = []
-    exhausted = False
-    for count_key, limit_key in USAGE_KEYS.items():
-        warning = usage_warning(counts[count_key], contract["limits"][limit_key])
-        if warning:
-            expected_warnings.append(f"{count_key}:{warning}")
-        exhausted = exhausted or warning == "exhausted"
+    expected_warnings, exhausted = _count_usage_warnings(value, contract)
     cost_warning = usage_warning(int(value["ai_provider_cost_usd"] * 100), int(contract["costs"]["ai_provider_usd_per_run"] * 100))
     if cost_warning:
         expected_warnings.append(f"ai_provider_cost_usd:{cost_warning}")
@@ -1154,12 +1426,76 @@ def validate_usage(value: Any, record: dict[str, Any]) -> dict[str, Any]:
     return value
 
 
+def validate_usage(value: Any, record: dict[str, Any], compute_evidence: dict[str, Any] | None = None) -> dict[str, Any]:
+    contract = record["contract"]
+    if contract.get("schema_version") == CONTRACT_SCHEMA_V1:
+        return _validate_legacy_usage(value, record)
+    required = {
+        "schema_version", "artifact_kind", "permission_grant",
+        "authorization_record_digest", "run_id", "counts", "compute_mode",
+        "compute_evidence_fingerprint", "metered_api_usage",
+        "included_subscription_usage", "warnings", "exhausted", "observed_at",
+        "usage_digest",
+    }
+    if not isinstance(value, dict) or set(value) != required or value.get("schema_version") != USAGE_SCHEMA or value.get("permission_grant") is not False:
+        raise DeliveryError("dual-mode delivery usage state is absent or malformed")
+    if value.get("usage_digest") != digest_without(value, "usage_digest"):
+        raise DeliveryError("delivery usage digest is invalid")
+    if value.get("authorization_record_digest") != record["accepted_record_digest"]:
+        raise DeliveryError("delivery usage belongs to another standing authorization")
+    if compute_evidence is None:
+        raise DeliveryError("current compute-enforcement evidence is required for dual-mode usage")
+    compute_evidence = validate_compute_evidence(compute_evidence, contract)
+    mode = compute_mode(contract)
+    if value.get("compute_mode") != mode or value.get("compute_evidence_fingerprint") != compute_evidence["evidence_fingerprint"]:
+        raise DeliveryError("delivery usage is bound to another or stale compute observation")
+    expected_warnings, exhausted = _count_usage_warnings(value, contract)
+    metered = value.get("metered_api_usage")
+    subscription = value.get("included_subscription_usage")
+    if mode == "metered_api":
+        if subscription is not None or not isinstance(metered, dict) or set(metered) != {"run_usd", "authorization_usd"}:
+            raise DeliveryError("metered-API usage is absent, malformed, or overlaps subscription mode")
+        run_used = metered.get("run_usd")
+        period_used = metered.get("authorization_usd")
+        limits = contract["compute_control"]["metered_api"]
+        if not isinstance(run_used, (int, float)) or isinstance(run_used, bool) or run_used < 0 or not isinstance(period_used, (int, float)) or isinstance(period_used, bool) or period_used < run_used:
+            raise DeliveryError("metered-API usage is unknown or malformed")
+        for label, used, limit in [
+            ("metered_api_run_usd", run_used, limits["ai_provider_usd_per_run"]),
+            ("metered_api_authorization_usd", period_used, limits["ai_provider_usd_per_authorization"]),
+        ]:
+            warning = usage_warning(int(used * 100), int(limit * 100))
+            if warning:
+                expected_warnings.append(f"{label}:{warning}")
+            exhausted = exhausted or warning == "exhausted"
+    else:
+        if metered is not None or not isinstance(subscription, dict) or set(subscription) != {"maximum_used_percent", "quota_window_ids"}:
+            raise DeliveryError("subscription usage is absent, malformed, or overlaps metered mode")
+        windows = compute_evidence["included_subscription"]["quota_windows"]
+        identifiers = sorted(item["id"] for item in windows)
+        maximum = max(item["used_percent"] for item in windows)
+        if subscription.get("quota_window_ids") != identifiers or subscription.get("maximum_used_percent") != maximum:
+            raise DeliveryError("subscription usage does not exactly match the current host read-back")
+        warning = usage_warning(int(maximum * 100), 10000)
+        if warning:
+            expected_warnings.append(f"included_subscription_allowance:{warning}")
+        exhausted = exhausted or warning == "exhausted"
+    if value.get("warnings") != sorted(expected_warnings) or value.get("exhausted") is not exhausted:
+        raise DeliveryError("delivery usage warnings or exhaustion state is not derived exactly")
+    observed = timestamp(value.get("observed_at"), "usage observed_at")
+    if observed > utc_now() + timedelta(minutes=1) or utc_now() - observed > timedelta(minutes=15):
+        raise DeliveryError("delivery usage observation is stale or future-dated")
+    if exhausted:
+        raise DeliveryError("standing authorization usage is exhausted")
+    return value
+
+
 def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     confirmation = load_json(external_path(root, args.confirmation_artifact, require_file=True))
     record = validate_record(load_json(external_path(root, args.authorization_record, require_file=True)), confirmation)
     contract = record["contract"]
     active_controls(root, contract)
-    validate_cost_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    compute_evidence = validate_compute_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
     repository = contract["repository"]
     if Path(repository["root"]).resolve() != root or args.repository_identity != repository["identity"]:
         raise DeliveryError("authority projection repository binding is outside the standing contract")
@@ -1171,7 +1507,7 @@ def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]
         raise DeliveryError("authority projection release type is outside the standing contract")
     if not re.fullmatch(r"[a-f0-9]{64}", args.plan_digest):
         raise DeliveryError("authority projection requires an exact plan digest")
-    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record)
+    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record, compute_evidence)
     remaining: dict[str, Any] = {}
     for key, limit in contract["limits"].items():
         if key == "warning_percentages":
@@ -1184,9 +1520,34 @@ def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]
             if warning == "exhausted":
                 raise DeliveryError(f"standing authorization limit is exhausted: {key}")
             remaining[key] = {"used": used, "limit": limit, "remaining": limit - used, "warning": warning}
+    if contract["schema_version"] != CONTRACT_SCHEMA_V1:
+        mode = compute_mode(contract)
+        if mode == "metered_api":
+            metered_usage = usage["metered_api_usage"]
+            metered_limits = contract["compute_control"]["metered_api"]
+            remaining["compute"] = {
+                "mode": mode,
+                "run": {
+                    "used_usd": metered_usage["run_usd"],
+                    "limit_usd": metered_limits["ai_provider_usd_per_run"],
+                    "remaining_usd": metered_limits["ai_provider_usd_per_run"] - metered_usage["run_usd"],
+                },
+                "authorization_period": {
+                    "used_usd": metered_usage["authorization_usd"],
+                    "limit_usd": metered_limits["ai_provider_usd_per_authorization"],
+                    "remaining_usd": metered_limits["ai_provider_usd_per_authorization"] - metered_usage["authorization_usd"],
+                },
+            }
+        else:
+            remaining["compute"] = {
+                "mode": mode,
+                "maximum_used_percent": usage["included_subscription_usage"]["maximum_used_percent"],
+                "quota_window_ids": usage["included_subscription_usage"]["quota_window_ids"],
+                "paid_capacity_allowed": False,
+            }
     started = utc_now()
     value = {
-        "schema_version": PROJECTION_SCHEMA,
+        "schema_version": PROJECTION_SCHEMA_V1 if contract["schema_version"] == CONTRACT_SCHEMA_V1 else PROJECTION_SCHEMA,
         "artifact_kind": "derived_exact_plan_authority_coverage",
         "permission_grant": False,
         "authorization_record_digest": record["accepted_record_digest"],
@@ -1204,6 +1565,9 @@ def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]
         "remaining_budget": remaining,
         "limitations": LIMITATIONS,
     }
+    if contract["schema_version"] != CONTRACT_SCHEMA_V1:
+        value["compute_mode"] = compute_mode(contract)
+        value["compute_evidence_fingerprint"] = compute_evidence["evidence_fingerprint"]
     value["projection_digest"] = digest(value)
     return value
 
@@ -1213,8 +1577,8 @@ def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[
     record = validate_record(load_json(external_path(root, args.authorization_record, require_file=True)), confirmation)
     contract = record["contract"]
     active_controls(root, contract)
-    validate_cost_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
-    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record)
+    compute_evidence = validate_compute_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record, compute_evidence)
     plan = load_json(confined(root, args.work_plan, require_file=True))
     if not isinstance(plan, dict) or plan.get("schema_version") != "harness.work-completion-plan.v1":
         raise DeliveryError("work-completion plan is absent or malformed")
@@ -1271,10 +1635,12 @@ def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[
             f"confirmation_fingerprint:{confirmation['confirmation_fingerprint']}",
             f"authorization_record_ref:{str(external_path(root, args.authorization_record, require_file=True))}",
             f"confirmation_artifact_ref:{str(external_path(root, args.confirmation_artifact, require_file=True))}",
-            f"cost_enforcement_artifact_ref:{str(external_path(root, args.cost_enforcement_artifact, require_file=True))}",
+            f"compute_enforcement_artifact_ref:{str(external_path(root, args.cost_enforcement_artifact, require_file=True))}",
+            f"compute_mode:{compute_mode(contract)}",
+            f"compute_evidence_fingerprint:{compute_evidence['evidence_fingerprint']}",
             f"usage_artifact_ref:{str(external_path(root, args.usage, require_file=True))}",
             f"usage_digest:{usage['usage_digest']}",
-            "revalidate_revocation_emergency_stop_cost_limits_and_live_state_before_every_effect",
+            "revalidate_revocation_emergency_stop_compute_limits_and_live_state_before_every_effect",
             "unknown_external_outcome_has_zero_automatic_retries",
         ],
     }
@@ -1292,7 +1658,7 @@ def parser() -> argparse.ArgumentParser:
         if name in {"status", "explain", "resume"}:
             item.add_argument("--authorization-record")
             item.add_argument("--confirmation-artifact")
-            item.add_argument("--cost-enforcement-artifact")
+            item.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact")
             item.add_argument("--activation-receipt")
     research = commands.add_parser("research")
     research.add_argument("--query", required=True)
@@ -1307,6 +1673,9 @@ def parser() -> argparse.ArgumentParser:
     draft = authorization_commands.add_parser("draft")
     draft.add_argument("--authorization-id", default="SAC-01")
     draft.add_argument("--profile", choices=sorted(ALLOWED_PROFILES), required=True)
+    draft.add_argument("--compute-mode", choices=sorted(COMPUTE_MODES), required=True)
+    draft.add_argument("--subscription-plan-ref")
+    draft.add_argument("--supersedes-authorization-record")
     draft.add_argument("--repository-root", required=True)
     draft.add_argument("--repository-identity", required=True)
     draft.add_argument("--remote", default="origin")
@@ -1324,10 +1693,14 @@ def parser() -> argparse.ArgumentParser:
     record.add_argument("--draft", required=True)
     record.add_argument("--confirmation-artifact", required=True)
     record.add_argument("--output", required=True)
+    supersede = authorization_commands.add_parser("supersede")
+    supersede.add_argument("--predecessor-record", required=True)
+    supersede.add_argument("--successor-record", required=True)
+    supersede.add_argument("--output", required=True)
     projection = authorization_commands.add_parser("project")
     projection.add_argument("--authorization-record", required=True)
     projection.add_argument("--confirmation-artifact", required=True)
-    projection.add_argument("--cost-enforcement-artifact", required=True)
+    projection.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
     projection.add_argument("--task-ref", required=True)
     projection.add_argument("--priority-authority-ref", required=True)
     projection.add_argument("--architecture-decision-ref", action="append", required=True)
@@ -1341,7 +1714,7 @@ def parser() -> argparse.ArgumentParser:
     completion = authorization_commands.add_parser("work-completion")
     completion.add_argument("--authorization-record", required=True)
     completion.add_argument("--confirmation-artifact", required=True)
-    completion.add_argument("--cost-enforcement-artifact", required=True)
+    completion.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
     completion.add_argument("--usage", required=True)
     completion.add_argument("--work-plan", required=True)
     completion.add_argument("--output")
@@ -1351,7 +1724,7 @@ def parser() -> argparse.ArgumentParser:
     activate_plan = activation_commands.add_parser("plan")
     activate_plan.add_argument("--authorization-record", required=True)
     activate_plan.add_argument("--confirmation-artifact", required=True)
-    activate_plan.add_argument("--cost-enforcement-artifact", required=True)
+    activate_plan.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
     activate_plan.add_argument("--adoption-decision-ref", required=True)
     activate_plan.add_argument("--output")
     activate_apply = activation_commands.add_parser("apply")
@@ -1359,7 +1732,7 @@ def parser() -> argparse.ArgumentParser:
     activate_apply.add_argument("--accept-digest", required=True)
     activate_apply.add_argument("--authorization-record", required=True)
     activate_apply.add_argument("--confirmation-artifact", required=True)
-    activate_apply.add_argument("--cost-enforcement-artifact", required=True)
+    activate_apply.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
     activate_apply.add_argument("--activation-receipt-output")
     deactivate = commands.add_parser("deactivate")
     deactivation_commands = deactivate.add_subparsers(dest="deactivation_command", required=True)
@@ -1395,11 +1768,18 @@ def main() -> int:
     elif args.command == "activation-preview":
         print(json.dumps({"schema_version": "harness.autonomous-delivery-activation-preview.v1", "permission_grant": False, "read_only": True, "current": read_only_status(root), "preset": profile_preset(args.profile), "confirmation_required": True, "project_hooks_executed": False, "repository_mutated": False, "external_state_mutated": False, "limitations": LIMITATIONS}, indent=2, sort_keys=True))
     elif args.command == "authorization" and args.authorization_command == "draft":
-        emit(contract_from(args), args.output, root)
+        emit(contract_from(args, root), args.output, root)
     elif args.command == "authorization" and args.authorization_command == "record":
         contract = validate_contract(load_json(external_path(root, args.draft, require_file=True)))
         confirmation = validate_confirmation(load_json(external_path(root, args.confirmation_artifact, require_file=True)), contract)
         emit(accepted_record(contract, confirmation), args.output, root)
+    elif args.command == "authorization" and args.authorization_command == "supersede":
+        predecessor = validate_record(load_json(external_path(root, args.predecessor_record, require_file=True)))
+        successor = validate_record(load_json(external_path(root, args.successor_record, require_file=True)))
+        binding = successor["contract"].get("supersedes")
+        if not isinstance(binding, dict) or external_path(root, args.output) != external_path(root, binding["revocation_path"]):
+            raise DeliveryError("predecessor revocation output must equal the exact successor-bound control path")
+        emit(predecessor_revocation_record(predecessor, successor), args.output, root)
     elif args.command == "authorization" and args.authorization_command == "project":
         emit(authority_projection(args, root), args.output, root)
     elif args.command == "authorization" and args.authorization_command == "work-completion":

@@ -48,7 +48,8 @@ When governed autonomous delivery is the subject, additionally exercise all
 four delivery profiles; locked research/context/planning; initialization,
 adoption, and upgrade visibility; deterministic draft and confirmation
 matching; offline activation; revocation, emergency stop, expiry, warning and
-limit exhaustion; host-cost enforcement and zero direct spending; work-
+limit exhaustion; both metered-API and included-subscription compute
+enforcement paths plus zero direct spending; work-
 completion projection; exact workflow/tag/Release adapter fixtures; and
 interruption before and after every meaningful external boundary. Use local
 provider fixtures unless a real effect has separate exact authorization.

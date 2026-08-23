@@ -716,7 +716,7 @@
             "transaction_bundle": {"const": "harness.transaction-bundle.v1"},
             "decision_reuse": {"const": "harness.decision-reuse-registry.v1"},
             "validation_proof": {"const": "harness.validation-proof.v1"},
-            "autonomous_delivery": {"const": "harness.autonomous-delivery-standing-authorization.v1"}
+            "autonomous_delivery": {"const": "harness.autonomous-delivery-standing-authorization.v2"}
           }
         },
         "id_patterns": {
@@ -1219,6 +1219,7 @@
             "write_capability",
             "external_effects",
             "delivery_profile",
+            "compute_mode",
             "adoption_decision_ref",
             "authorization_record_ref",
             "authorization_record_digest",
@@ -1226,11 +1227,12 @@
             "limitations"
           ],
           "properties": {
-            "schema_version": {"const": "harness.autonomous-delivery-config.v1"},
+            "schema_version": {"const": "harness.autonomous-delivery-config.v2"},
             "status": {"enum": ["available_not_activated", "active", "disabled", "revoked", "expired"]},
             "write_capability": {"enum": ["locked", "authorized_within_exact_standing_contract"]},
             "external_effects": {"enum": ["locked", "authorized_only_through_current_exact_plan_projections"]},
             "delivery_profile": {"type": ["string", "null"], "enum": [null, "review_first", "balanced_autonomous", "fast_delivery", "custom"]},
+            "compute_mode": {"type": ["string", "null"], "enum": [null, "metered_api", "included_subscription"]},
             "adoption_decision_ref": {"type": ["string", "null"], "pattern": "^DEC-[0-9]{4}$"},
             "authorization_record_ref": {"type": ["string", "null"]},
             "authorization_record_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},

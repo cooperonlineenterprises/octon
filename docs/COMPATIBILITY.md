@@ -122,7 +122,12 @@ payloads for network-free activation. Every new snapshot starts
 delivery profile, no authorization reference, and an unassessed trigger.
 
 The delivery profile is independent from assurance, collaboration,
-concurrency, and layout. Upgrade advertises the capability but never installs,
+concurrency, layout, and compute mode. A v2 standing contract selects exactly
+one of host-enforced metered API limits or readable included-subscription
+allowance only. Confirmed v1 records remain immutable metered-API evidence. A
+mode change uses a new stable authorization ID, exact predecessor binding, and
+operator-controlled predecessor revocation before successor activation.
+Upgrade advertises the capability but never installs,
 activates, renews, or broadens authority. Existing delivery configuration is
 preserved only while exact bindings remain current; every more-permissive or
 changed contract requires a human-confirmed successor.

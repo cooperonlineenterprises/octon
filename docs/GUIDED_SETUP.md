@@ -41,7 +41,12 @@ delivery as an independent delivery axis. Its initial state is
 > - Leave locked for now
 
 `fast_delivery` may be recommended for most solo developers but is never
-preselected. If deferred, setup records locked writes and external effects and
+preselected. When activation is requested, setup separately requires exactly
+one compute mode: host-enforced metered API ceilings, or current readable
+included-subscription allowance only. It never selects a mode from the delivery
+profile. Subscription mode prohibits paid credits, API/pay-as-you-go billing,
+add-ons, and upgrades; unknown, exhausted, unreadable, or changed status
+blocks. If deferred, setup records locked writes and external effects and
 prints `./octon delivery activate --profile fast_delivery --authority-dir
 <absolute-operator-controlled-directory>` as the exact later entry point.
 

@@ -296,6 +296,7 @@ adoption, external authority, release, or readiness.
    ```text
    ./octon delivery authorization draft \
      --profile fast_delivery \
+     --compute-mode metered_api \
      --repository-root /absolute/project \
      --repository-identity owner/repository \
      --authority-dir /absolute/operator-control \
@@ -309,8 +310,22 @@ adoption, external authority, release, or readiness.
    confirmation. Serialize the accepted external record only from matching
    confirmation evidence.
 
-4. Plan activation from the accepted record, confirmation, host cost evidence,
-   and accepted project adoption decision; then apply only the exact digest.
+   For a successor, use a new `SAC-##` ID and bind the exact predecessor with
+   `--supersedes-authorization-record`. After the confirmed successor record
+   exists, `octon delivery authorization supersede` can serialize the required
+   predecessor revocation only at the exact control path bound by that
+   successor.
+
+   For an existing subscription, instead select
+   `--compute-mode included_subscription` and supply a safe external or
+   authority `--subscription-plan-ref`. The resulting contract permits only
+   included allowance and requires a fresh readable host quota report.
+
+4. Plan activation from the accepted record, confirmation, current evidence
+   for the selected compute mode, and accepted project adoption decision; then
+   apply only the exact digest. `--compute-enforcement-artifact` accepts the
+   mode-specific evidence; the legacy `--cost-enforcement-artifact` spelling is
+   retained only for confirmed v1 metered records.
 
 5. Use existing long-running work, transactions, project checks, and work
    completion for ordinary delivery. Use the closed adapter only for exact

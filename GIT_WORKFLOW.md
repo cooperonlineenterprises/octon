@@ -124,8 +124,11 @@ Accepted `SRC-DEC-0019` permits implementation of one optional delivery
 capability, and `SRC-DEC-0020` defines eligible standing patch/minor source-
 release evidence. Neither decision supplies Git or GitHub authority.
 
-Source-specific `SAC-01` remains inactive until the repository owner
-independently confirms its final exact digest. Before that confirmation, the
+The source-specific v1 `SAC-01` record was independently confirmed but never
+activated. The accepted dual-mode amendment requires a v2 successor selecting
+exactly one compute mode; standing authority remains inactive until the
+repository owner independently confirms that successor's final exact digest.
+Before that confirmation, the
 authorized implementation program may create local branch
 `chore/autonomous-delivery`, local commits, tests, benchmarks, disposable
 fixtures, and external draft evidence only. It may not push, create or update a

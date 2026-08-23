@@ -20,6 +20,10 @@ class AutonomousDeliveryPackageTests(unittest.TestCase):
         self.assertEqual(set(profile["modes"]), {"initialization", "adoption", "upgrade"})
         self.assertIn("available but externally locked", profile["prompt"])
         self.assertEqual(profile["recommendation"]["rule"], "recommend fast_delivery for most solo developers without selecting it")
+        compute = by_id["setup.autonomous-delivery-compute-mode"]
+        self.assertEqual(set(compute["answer"]["valid_values"]), {"metered_api", "included_subscription"})
+        self.assertTrue(any("exactly one mode" in item for item in compute["validation_rules"]))
+        self.assertIn("setup.autonomous-delivery-compute-mode", by_id["setup.autonomous-delivery-settings"]["dependencies"])
         authorization = by_id["setup.autonomous-delivery-authorization"]
         self.assertEqual(authorization["information_role"], "runtime_authorization_forbidden")
         self.assertIn("a command-line flag cannot confirm authority", authorization["validation_rules"])
@@ -41,6 +45,7 @@ class AutonomousDeliveryPackageTests(unittest.TestCase):
                     self.assertEqual(project["autonomous_delivery"]["write_capability"], "locked")
                     self.assertEqual(project["autonomous_delivery"]["external_effects"], "locked")
                     self.assertIsNone(project["autonomous_delivery"]["delivery_profile"])
+                    self.assertIsNone(project["autonomous_delivery"]["compute_mode"])
                     self.assertEqual(project["packages"]["trigger_assessments"]["autonomous_delivery"], "not_assessed")
                     self.assertFalse(registry["packages"])
                     catalog = json.loads((target / ".agent/available-packages/catalog.json").read_text(encoding="utf-8"))

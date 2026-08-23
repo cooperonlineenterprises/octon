@@ -551,9 +551,10 @@ approval.
 The separately activated autonomous-delivery adapter may add only exact
 workflow dispatch, annotated source tag, tag push, GitHub source Release, and
 read-back operations covered by a current independently confirmed standing
-record. It must revalidate revocation, emergency stop, host cost enforcement,
-repository, branch, task, exact plan, action, release type, evidence, and
-remaining limits before every effect. It persists an attempted marker before
+record. It must revalidate revocation, emergency stop, current evidence for the
+one selected metered-API or included-subscription compute mode, repository,
+branch, task, exact plan, action, release type, evidence, and remaining limits
+before every effect. It persists an attempted marker before
 the call and never replays an unknown outcome. Direct external spending is
 always zero.
 

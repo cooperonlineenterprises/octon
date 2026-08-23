@@ -7,8 +7,10 @@ or readiness evidence by itself.
 Required coverage includes deterministic draft generation, independent
 confirmation matching, offline activation, all delivery profiles, setup and
 upgrade deferral, strict schemas, duplicate-key rejection, limit warnings and
-exhaustion, host-enforced compute cost, zero direct spending, protected control
-paths, revocation, emergency stop, exact-plan projections, work-completion
+exhaustion, both host-enforced metered API ceilings and readable
+included-subscription allowance-only behavior, zero direct spending, protected
+control paths, new-ID successor/predecessor binding, operator-controlled
+predecessor revocation, emergency stop, exact-plan projections, work-completion
 integration, closed release actions, interruption at every external boundary,
 zero ambiguous-effect replay, package lifecycle, migration, clean runtime,
 generated-snapshot independence, read-only no-change proofs, and unchanged
