@@ -67,7 +67,7 @@ class SourceWorkCompletionTests(unittest.TestCase):
         (self.root / "VERSION").write_text("4.2.0\n", encoding="utf-8")
         (self.root / "AGENTS.md").write_text("# Synthetic source instructions\n", encoding="utf-8")
         (self.root / "ARCHITECTURE_DECISIONS.md").write_text(
-            "## SRC-DEC-0019 — Governed autonomous-delivery capability\n\n| Status | `accepted` |\n\nsource-repository mode\n\n## SRC-DEC-0020 — Standing source-release evidence policy\n",
+            "## SRC-DEC-0019 — Governed autonomous-delivery capability\n\n| Status | `accepted` |\n\n| Source-repository mode | Synthetic accepted source mode |\n\n## SRC-DEC-0020 — Standing source-release evidence policy\n",
             encoding="utf-8",
         )
         (self.root / "GIT_WORKFLOW.md").write_text(

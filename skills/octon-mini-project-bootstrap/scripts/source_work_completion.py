@@ -204,7 +204,7 @@ def validate_task_reference(value: Any, root: Path, completion: types.ModuleType
 def require_source_authority_documents(root: Path) -> None:
     architecture = (root / "ARCHITECTURE_DECISIONS.md").read_text(encoding="utf-8")
     workflow = (root / "GIT_WORKFLOW.md").read_text(encoding="utf-8")
-    if "## SRC-DEC-0019 — Governed autonomous-delivery capability" not in architecture or "source-repository mode" not in architecture or "| Status | `accepted` |" not in architecture.split("## SRC-DEC-0019 —", 1)[1].split("## SRC-DEC-0020 —", 1)[0]:
+    if "## SRC-DEC-0019 — Governed autonomous-delivery capability" not in architecture or "| Source-repository mode |" not in architecture or "| Status | `accepted` |" not in architecture.split("## SRC-DEC-0019 —", 1)[1].split("## SRC-DEC-0020 —", 1)[0]:
         raise SourceCompletionError("accepted source-repository work-completion amendment is absent")
     for statement in ("| Base workflow | `solo_hybrid` |", "| Integration method | `merge_commit` |", "stable `required` check"):
         if statement not in workflow:
