@@ -16,6 +16,12 @@ zero ambiguous-effect replay, package lifecycle, migration, clean runtime,
 generated-snapshot independence, read-only no-change proofs, and unchanged
 performance thresholds.
 
+Source-mode coverage additionally requires external Codex-task digest and
+expiry checks, precommitted base/head/range binding, no source task store,
+existing work-completion ownership, dual-mode standing-authority revalidation,
+an intentional post-merge pause, and cleanup refusal until exact integrated-
+main smoke and full-matrix evidence passes.
+
 The final evidence bundle must retain all failed commands, samples, fault
 injections, corrections, disposable exercises, benchmark reports, and hashes.
 Unfamiliar-operator, independent-reviewer, independent external-project, and

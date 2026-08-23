@@ -335,6 +335,22 @@ adoption, external authority, release, or readiness.
 6. If an attempted external effect cannot be read back conclusively, stop. Do
    not retry. Reconcile or fix forward from the monotonic receipt.
 
+For Octon Mini source delivery, first create an external immutable Codex task
+reference and then run:
+
+```text
+./octon work finish plan \
+  --task-reference /absolute/evidence/codex-task.json \
+  --authorization-record /absolute/control/SAC-02.json \
+  --output /absolute/evidence/source-work-plan.json
+```
+
+The plan binds the already committed branch range. Apply uses a separately
+projected, fresh work-completion authorization. After merge and local `main`
+synchronization, the receipt pauses before cleanup. Record exact integrated-
+main smoke and full-matrix evidence with `attest-post-merge`, then resume under
+fresh authorization. No source `.agent/tasks` store is created.
+
 ## Hooks and evidence
 
 Run the detector read-only, review candidate argv and side effects, then

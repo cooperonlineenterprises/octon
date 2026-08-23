@@ -196,7 +196,7 @@ def command_manifest() -> dict[str, object]:
         or not help_capability_ids <= capability_id_set
         or roots != expected
         or availability != {"bootstrap_source", "generated_project"}
-        or bootstrap_roots != {"init", "adopt", "upgrade", "detect", "delivery", "maintain"}
+        or bootstrap_roots != {"init", "adopt", "upgrade", "detect", "work", "delivery", "maintain"}
         or project_roots != {"check", "doctor", "work", "delivery", "maintain", "transaction"}
     ):
         raise ValueError("authoritative command manifest is malformed or differs from the dispatcher")
@@ -233,6 +233,8 @@ def workflow_help(manifest: dict[str, object]) -> str:
   ./octon maintain collaboration ...    {commands['maintain.collaboration']}
 {capabilities['work.autonomous_delivery']}:
   ./octon delivery ...                  {commands['delivery']}
+{capabilities['work.completion']}:
+  ./octon work finish ...               Source mode uses an external digest-bound Codex task reference; generated projects retain their project task records.
 
 Launcher forms:
   Unix/macOS: ./octon ...
@@ -354,6 +356,11 @@ def main() -> int:
         return execute(
             SKILL_ROOT / "assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl",
             ["--target", str(Path.cwd().resolve()), *rest],
+        )
+    if command == "work" and rest and rest[0] == "finish" and (Path.cwd() / "octon-mini.json").is_file():
+        return execute(
+            SCRIPT_ROOT / "source_work_completion.py",
+            ["--target", str(Path.cwd().resolve()), *rest[1:]],
         )
     if command == "maintain" and rest:
         if rest[0] == "package":

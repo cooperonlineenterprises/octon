@@ -36,6 +36,13 @@ cleanup. Use the delivery adapter only for exact workflow dispatch, annotated
 tag, tag push, GitHub source Release, and read-back. Revalidate current
 standing evidence and live state before each effect.
 
+For Octon Mini source delivery, work completion consumes an external immutable
+Codex task reference instead of creating a source task store. Its plan binds the
+precommitted candidate base, head, commit range, changed paths, standing
+authorization, and source authority. Integration pauses before cleanup until
+exact automatic-main and full-matrix evidence for the integrated revision is
+recorded.
+
 Transactions may restore exact local preimages. Public effects are monotonic:
 persist attempted state, execute once, read back, receipt, reconcile, and fix
 forward. Never replay `outcome_unknown`.

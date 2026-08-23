@@ -352,7 +352,7 @@ are explicitly authorized and completed.
 | Field | Accepted decision |
 |---|---|
 | Status | `accepted` |
-| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised autonomous-delivery architecture, delivery-profile model, standing-authorization drafting boundary, recovery model, and human-only gates; explicit repository-owner acceptance on 2026-08-23 of the dual-mode compute-control amendment |
+| Authority | Explicit repository-owner acceptance on 2026-08-22 of the revised autonomous-delivery architecture, delivery-profile model, standing-authorization drafting boundary, recovery model, and human-only gates; explicit repository-owner acceptance on 2026-08-23 of the dual-mode compute-control amendment and the narrow source-repository work-completion amendment |
 | Scope | One provider-neutral optional `workflow_capability` for autonomously delivering an already human-prioritized and architecturally authorized task |
 | Availability | Every new, adopted, and upgraded project exposes the smallest dormant delivery surface; its initial state is `available_not_activated` and externally locked |
 | Pre-activation boundary | Research, context building, applicability assessment, planning, status, explanation, and activation preview are read-only, execute no project hooks, mutate no repository or external state, create no receipt implying work, and create no authority |
@@ -362,6 +362,7 @@ are explicitly authorized and completed.
 | Ownership | Existing task and human priority authority own goal, scope, priority, authority basis, and acceptance; accepted decisions own architecture; `SRC-DEC-0020` owns standing release-evidence policy; long-running work owns the run coordinate; transactions own reversible local mutation; project-check evidence owns validation; work completion owns commit, push, PR, checks, merge, and cleanup; Continuation owns refusal; the package owns only activation, delivery-budget, and release-effect projections and references |
 | Standing-authorization boundary | Setup deterministically drafts a complete non-authorizing contract and digest; only independent human confirmation of those exact bytes supplies authority, after which an immutable external record may evidence the grant outside the repository |
 | Execution boundary | A short-lived exact-plan coverage projection may prove that a current standing record covers one operation; the projection, plan, profile, receipt, or command cannot create or broaden authority |
+| Source-repository mode | The existing work-completion engine may govern Octon Mini source delivery from an externally supplied, immutable, digest-bound Codex task reference. It creates no source task store or second lifecycle; work completion retains commit, push, PR, checks, merge, synchronization, and cleanup ownership; the release adapter does not gain those operations. The precommitted candidate is bound by exact base, head, commit range, changed paths, source authority, standing authorization, and receipts. Cleanup pauses until exact integrated-main validation evidence is recorded |
 | Release adapter | The package may add only the closed Git/GitHub source-release operations accepted here; it is not a universal action runtime, deployment system, package publisher, credential broker, or external-project controller |
 | Recovery boundary | Repository-local transactions may be exactly reversible; commits and unpublished task branches are recoverable; pushes, merges, tags, and Releases are monotonic effects handled through read-before-act, receipts, read-back, reconciliation, and fix-forward; an unknown outcome stops with zero automatic retries |
 | Compute boundary | Each exact standing contract selects exactly one mode. `metered_api` requires host-enforced per-run and authorization-period USD ceilings and treats unknown cost as blocking. `included_subscription` permits only the selected existing plan's included allowance, requires current readable provider-enforced usage status, and prohibits separately purchased credits, API billing, pay-as-you-go capacity, add-ons, and upgrades. Unknown, unreadable, exhausted, or changed compute state blocks. Direct autonomous-worker purchasing and external spending remain zero in both modes |
@@ -369,13 +370,13 @@ are explicitly authorized and completed.
 | Human-only gates | Humans retain product-priority selection, architecture acceptance or amendment, release-evidence and risk policy, product-boundary or standing-authority expansion, conflicting-authority resolution, and required specialist or external-project decisions |
 | `permission_grant` | `false` |
 
-This source decision accepts implementation architecture only. The operator's
-implementation prompt authorizes local source work, branches, commits,
-validation, disposable exercises, and deterministic generation of an exact
-standing-contract draft. The confirmed v1 `SAC-01` record was not activated;
-the dual-mode amendment requires a new-ID successor and independent exact-
-digest confirmation. A confirmed contract is never reinterpreted after a
-compute-mode change; a successor is drafted and confirmed instead.
+This source decision accepts implementation architecture only. It does not
+create runtime authority. The v1 `SAC-01` record was never activated and is
+revoked; independently confirmed subscription-mode `SAC-02` is the current
+external standing envelope. Every covered operation still requires a fresh
+exact-plan projection, current subscription-status evidence, and all live
+preconditions. A confirmed contract is never reinterpreted after a compute-
+mode change; any changed contract requires a separately confirmed successor.
 
 ## SRC-DEC-0020 — Standing source-release evidence policy
 

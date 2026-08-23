@@ -130,6 +130,13 @@ and a current task-scoped external authorization attestation; resume uses the
 Git-common-directory receipt. Never refresh during planning or describe a
 receipt as release or production readiness.
 
+The Octon Mini source checkout routes the same `octon work finish` owner through
+`source_work_completion.py`. Source mode accepts only an external immutable,
+digest-bound Codex task reference, never creates `.agent/tasks`, and treats the
+existing committed branch range as the local candidate. It retains monotonic
+receipts and defers remote/local branch cleanup until exact integrated-main
+validation evidence passes.
+
 Maintain decision questions in the project-owned governance register. Keep
 recommendations, owner selections, and accepted `DEC-####` authority separate;
 reconcile every decision and trade-off review exactly once and derive the

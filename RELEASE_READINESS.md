@@ -3,9 +3,16 @@
 ## 4.2.0 candidate — in progress
 
 Octon Mini 4.2.0 is unreleased. `SRC-DEC-0019` and `SRC-DEC-0020` are
-accepted for source implementation. The confirmed v1 `SAC-01` record was not
-activated; its dual-mode successor remains unconfirmed, so standing external-
-action authority is inactive.
+accepted for source implementation. `SAC-01` is revoked and confirmed
+subscription-mode `SAC-02` is the current standing envelope; each external
+effect still requires a fresh exact-plan projection and live compute evidence.
+
+The accepted narrow `SRC-DEC-0019` amendment adds source-repository mode to the
+existing work-completion engine. It requires an external immutable,
+digest-bound Codex task reference and pauses cleanup until exact integrated-
+main smoke and full-matrix evidence is recorded. It creates no source task
+store and grants no release-adapter ownership over push, PR, checks, merge, or
+cleanup.
 
 Current source evidence may demonstrate implementation, deterministic safety,
 migration, recovery, and performance. It cannot establish release, target-

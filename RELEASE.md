@@ -12,14 +12,17 @@ optional governed autonomous-delivery capability accepted by `SRC-DEC-0019`
 and the standing patch/minor source-release evidence policy accepted by
 `SRC-DEC-0020`.
 
-The confirmed v1 `SAC-01` record remains preserved but was not activated. The
-accepted dual-mode amendment requires a v2 successor selecting exactly one
-compute mode, so no active standing external-action authority currently
-exists. Before any push, PR mutation, workflow dispatch,
-merge, tag, GitHub Release, or remote cleanup, the final deterministic contract
-must be preserved outside the repository and its exact digest independently
-confirmed by the operator. A draft, profile, setup answer, plan, projection,
-receipt, test, or this source record cannot supply that confirmation.
+The v1 `SAC-01` record remains preserved and revoked. Confirmed subscription-
+mode `SAC-02` is the current standing envelope, but no individual external
+operation is authorized without its fresh exact-plan projection, current
+compute evidence, and live preconditions. A draft, profile, setup answer, plan,
+receipt, test, or this source record cannot create or broaden that authority.
+
+The accepted narrow source-repository amendment keeps commit, push, PR, checks,
+merge, synchronization, and cleanup in the existing work-completion owner. It
+uses an external immutable, digest-bound Codex task reference rather than a
+source task store, and cleanup cannot proceed until exact integrated-main
+validation evidence is recorded.
 
 If confirmed, a final patch or minor source release still requires every
 applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,
@@ -29,7 +32,7 @@ selects one compute mode: metered API retains host-enforced USD 250 per run and
 USD 1,000 per authorization-period ceilings; included subscription permits
 only current readable included allowance and prohibits paid credits,
 API/pay-as-you-go billing, add-ons, and upgrades. Unknown, unreadable,
-exhausted, or changed compute state blocks activation. Major, boundary-expanding,
+exhausted, or changed compute state blocks the next operation. Major, boundary-expanding,
 new effect-family, security/privacy/legal/credential/destructive-migration,
 deployment, external-project, and package-publication releases require renewed
 human input.
@@ -224,7 +227,7 @@ Before tagging a release:
    `test_long_running_work_package.py`, `test_adapter_safety.py`, and
    `test_long_running_work_benchmark.py`; for a 4.2 candidate also run
    `test_autonomous_delivery.py`, `test_autonomous_delivery_faults.py`,
-   `test_autonomous_delivery_package.py`, and
+   `test_autonomous_delivery_package.py`, `test_source_work_completion.py`, and
    `test_autonomous_delivery_benchmark.py`; run
    `benchmark_validation.py --enforce` and the 10,000-file
    `benchmark_long_running_work.py --enforce`, retaining each host-specific

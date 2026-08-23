@@ -111,6 +111,13 @@ cannot create confirmation.
 There is no second task lifecycle, decision store, evidence store, current-state
 file, run loop, or generic event platform.
 
+For this source repository, `./octon work finish` uses the same work-completion
+engine with an external immutable, digest-bound Codex task reference. The
+source plan binds the precommitted candidate range and exact source authority;
+it never creates `.agent/tasks`. After integration it records a planned stop,
+and cleanup cannot proceed until exact automatic-main and full-matrix evidence
+for the integrated revision is supplied.
+
 ## Fast-delivery limits
 
 | Limit | Value |

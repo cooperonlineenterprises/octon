@@ -124,15 +124,9 @@ Accepted `SRC-DEC-0019` permits implementation of one optional delivery
 capability, and `SRC-DEC-0020` defines eligible standing patch/minor source-
 release evidence. Neither decision supplies Git or GitHub authority.
 
-The source-specific v1 `SAC-01` record was independently confirmed but never
-activated. The accepted dual-mode amendment requires a v2 successor selecting
-exactly one compute mode; standing authority remains inactive until the
-repository owner independently confirms that successor's final exact digest.
-Before that confirmation, the
-authorized implementation program may create local branch
-`chore/autonomous-delivery`, local commits, tests, benchmarks, disposable
-fixtures, and external draft evidence only. It may not push, create or update a
-PR, dispatch a workflow, merge, tag, publish a Release, or clean a remote ref.
+The source-specific v1 `SAC-01` record is revoked. Confirmed subscription-mode
+`SAC-02` is active, but every external operation still requires a fresh exact-
+plan projection, current compute evidence, and live preconditions.
 
 After exact activation, ordinary autonomous delivery remains limited to new
 `chore/autonomous-*` branches, normal non-force task-branch pushes, self-PRs,
@@ -142,6 +136,12 @@ exact evidence read-back, and proven-safe merged-branch cleanup. Direct pushes
 to `main`, force, rebase, squash, published-history amendment, bypass,
 repository settings, deployment, package publication, communication,
 purchase, and external-project changes remain prohibited.
+
+The accepted 2026-08-23 narrow amendment routes this source repository through
+the existing work-completion engine. It binds the precommitted candidate to an
+external immutable Codex task reference and does not create `.agent/tasks` or
+move push/PR/check/merge/cleanup ownership into the release adapter. Cleanup is
+deferred until exact integrated-main smoke and full-matrix evidence passes.
 
 The completed 3.0.0 release-candidate task used `concurrent_work` with disjoint
 file ownership, a shared base revision, conflict detection, and explicit

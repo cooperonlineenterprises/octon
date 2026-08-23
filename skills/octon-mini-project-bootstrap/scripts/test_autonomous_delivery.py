@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -759,6 +760,71 @@ class AutonomousDeliveryTests(unittest.TestCase):
         stale["usage_digest"] = module.digest({key: item for key, item in stale.items() if key != "usage_digest"})
         with self.assertRaisesRegex(module.DeliveryError, "stale compute observation"):
             module.validate_usage(stale, record, compute)
+
+    def test_source_work_completion_projection_maps_existing_owner_operations(self) -> None:
+        record_path, confirmation_path, compute_path, _contract = self.accepted_records("included_subscription")
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        compute = json.loads(compute_path.read_text(encoding="utf-8"))
+        module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_source_completion_projection")
+        counts = {key: 0 for key in module.USAGE_KEYS}
+        usage = {
+            "schema_version": module.USAGE_SCHEMA,
+            "artifact_kind": "autonomous_delivery_usage_state",
+            "permission_grant": False,
+            "authorization_record_digest": record["accepted_record_digest"],
+            "run_id": "synthetic-source-completion",
+            "counts": counts,
+            "compute_mode": "included_subscription",
+            "compute_evidence_fingerprint": compute["evidence_fingerprint"],
+            "metered_api_usage": None,
+            "included_subscription_usage": {
+                "maximum_used_percent": 25.0,
+                "quota_window_ids": ["rolling-provider-window"],
+            },
+            "warnings": [],
+            "exhausted": False,
+            "observed_at": module.utc_text(),
+        }
+        usage["usage_digest"] = module.digest(usage)
+        usage_path = self.area / "source-usage.json"
+        write_json(usage_path, usage)
+        operations = ["fetch_remote", "push_branch", "locate_pull_request", "open_pull_request", "observe_change_checks", "merge_pull_request", "delete_remote_branch"]
+        plan = {
+            "schema_version": "harness.source-work-completion-plan.v1",
+            "task_ref": "external:codex-task:11111111-2222-3333-4444-555555555555",
+            "repository": {"identity": "synthetic/autonomous-delivery", "remote": "origin"},
+            "branches": {"default": "main", "task": "chore/autonomous-source-test"},
+            "external_operations": operations,
+        }
+        plan["canonical_plan_digest"] = module.work_completion_digest(plan)
+        plan_path = self.area / "source-work-plan.json"
+        write_json(plan_path, plan)
+        args = argparse.Namespace(
+            authorization_record=str(record_path),
+            confirmation_artifact=str(confirmation_path),
+            cost_enforcement_artifact=str(compute_path),
+            usage=str(usage_path),
+            work_plan=str(plan_path),
+            output=None,
+        )
+        projection = module.work_completion_authorization(args, self.target)
+        self.assertEqual(projection["task_ref"], plan["task_ref"])
+        self.assertEqual(projection["operations"], operations)
+        self.assertTrue(any(item.startswith("compute_enforcement_artifact_ref:") for item in projection["constraints"]))
+        validator = load_module(self.target / ".agent/scripts/validate.py", "octon_source_completion_authorization_schema")
+        schema = json.loads((self.target / ".agent/schemas/harness-work-completion.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(validator.validate_schema(projection, schema["$defs"]["authorization"], root_schema=schema), [])
+        stale_compute = json.loads(json.dumps(compute))
+        stale_compute["valid_until"] = module.utc_text(module.utc_now() - timedelta(minutes=1))
+        stale_compute["evidence_fingerprint"] = module.digest({key: value for key, value in stale_compute.items() if key != "evidence_fingerprint"})
+        write_json(compute_path, stale_compute)
+        with self.assertRaisesRegex(module.DeliveryError, "stale, future-dated, or contradictory"):
+            module.work_completion_authorization(args, self.target)
+        write_json(compute_path, compute)
+        plan["external_operations"].append("raw_git_bypass")
+        write_json(plan_path, plan)
+        with self.assertRaisesRegex(module.DeliveryError, "exact digest"):
+            module.work_completion_authorization(args, self.target)
 
     def test_deactivate_and_remove_retains_dormant_surface_and_external_record(self) -> None:
         self.activate()

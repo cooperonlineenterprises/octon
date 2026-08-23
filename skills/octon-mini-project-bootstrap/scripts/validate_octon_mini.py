@@ -189,6 +189,7 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/scripts/package_project.py",
     "skills/octon-mini-project-bootstrap/scripts/profile_large_project.py",
     "skills/octon-mini-project-bootstrap/scripts/octon.py",
+    "skills/octon-mini-project-bootstrap/scripts/source_work_completion.py",
     "skills/octon-mini-project-bootstrap/scripts/plan_adoption.py",
     "skills/octon-mini-project-bootstrap/scripts/scaffold_project.py",
     "skills/octon-mini-project-bootstrap/scripts/setup_session.py",
@@ -211,6 +212,7 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/scripts/test_migration_4_1_0_to_4_2_0.py",
     "skills/octon-mini-project-bootstrap/scripts/test_velocity_workflows.py",
     "skills/octon-mini-project-bootstrap/scripts/test_work_completion.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_source_work_completion.py",
     "skills/octon-mini-project-bootstrap/scripts/test_guided_setup.py",
     "skills/octon-mini-project-bootstrap/scripts/test_octon_launchers.py",
     "skills/octon-mini-project-bootstrap/scripts/upgrade_project.py",
@@ -1648,6 +1650,15 @@ def validate_executable_contracts(issues: list[str]) -> None:
             ],
             ROOT,
             "governed work-completion planning, authorization, recovery, and cleanup workflows",
+        ),
+        (
+            [
+                sys.executable,
+                "-B",
+                str(SKILL_ROOT / "scripts/test_source_work_completion.py"),
+            ],
+            ROOT,
+            "source-repository work-completion task binding, candidate planning, and post-merge cleanup gates",
         ),
         (
             [

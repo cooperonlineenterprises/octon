@@ -177,6 +177,19 @@ def digest_without(value: dict[str, Any], field: str) -> str:
     return digest(candidate)
 
 
+def work_completion_digest(value: Any) -> str:
+    """Use the existing work-completion contract's canonical JSON domain."""
+    return hashlib.sha256(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def file_sha256(path: Path) -> str:
     value = hashlib.sha256()
     with path.open("rb") as handle:
@@ -1578,11 +1591,19 @@ def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[
     active_controls(root, contract)
     compute_evidence = validate_compute_evidence(load_json(external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
     usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record, compute_evidence)
-    plan = load_json(confined(root, args.work_plan, require_file=True))
-    if not isinstance(plan, dict) or plan.get("schema_version") != "harness.work-completion-plan.v1":
+    work_plan_path = (
+        external_path(root, args.work_plan, require_file=True)
+        if Path(args.work_plan).expanduser().is_absolute()
+        else confined(root, args.work_plan, require_file=True)
+    )
+    plan = load_json(work_plan_path)
+    if not isinstance(plan, dict) or plan.get("schema_version") not in {"harness.work-completion-plan.v1", "harness.source-work-completion-plan.v1"}:
         raise DeliveryError("work-completion plan is absent or malformed")
     plan_digest = plan.get("canonical_plan_digest")
-    if not isinstance(plan_digest, str) or re.fullmatch(r"[a-f0-9]{64}", plan_digest) is None:
+    unsigned_plan = dict(plan)
+    unsigned_plan.pop("canonical_plan_digest", None)
+    calculated_plan_digest = work_completion_digest(unsigned_plan)
+    if not isinstance(plan_digest, str) or re.fullmatch(r"[a-f0-9]{64}", plan_digest) is None or plan_digest != calculated_plan_digest:
         raise DeliveryError("work-completion plan lacks an exact digest")
     repository = plan.get("repository", {})
     branches = plan.get("branches", {})
@@ -1591,11 +1612,11 @@ def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[
     if branches.get("default") != contract["repository"]["default_branch"] or not fnmatch.fnmatchcase(str(branches.get("task")), contract["repository"]["task_branch_pattern"]):
         raise DeliveryError("work-completion branch is outside standing authorization")
     operation_map = {
-        "create_commit": "create_commit",
+        "fetch_remote": "observe_hosted_state",
         "push_branch": "push_task_branch",
         "locate_pull_request": "observe_hosted_state",
         "open_pull_request": "create_pull_request",
-        "observe_hosted_checks": "observe_hosted_state",
+        "observe_change_checks": "observe_hosted_state",
         "observe_pull_request_reviews": "observe_hosted_state",
         "merge_pull_request": "merge_pull_request",
         "delete_remote_branch": "delete_merged_task_branch",
@@ -1643,7 +1664,7 @@ def work_completion_authorization(args: argparse.Namespace, root: Path) -> dict[
             "unknown_external_outcome_has_zero_automatic_retries",
         ],
     }
-    value["evidence_fingerprint"] = digest(value)
+    value["evidence_fingerprint"] = work_completion_digest(value)
     return value
 
 

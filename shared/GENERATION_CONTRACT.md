@@ -558,6 +558,13 @@ before every effect. It persists an attempted marker before
 the call and never replays an unknown outcome. Direct external spending is
 always zero.
 
+The source checkout may route `octon work finish` to the existing
+work-completion engine through a source-only runner. That runner consumes an
+external immutable, digest-bound Codex task reference and a precommitted source
+candidate; it generates no target task record and is never copied as a second
+generated-project lifecycle. Source cleanup remains blocked until exact
+integrated-main validation evidence is recorded.
+
 The generated portfolio excludes GitFlow, merge queues, release trains,
 stacked-PR dependency trains, fork-first internal contribution, multi-level
 CODEOWNERS approval, multiple mandatory approval stages, dedicated release

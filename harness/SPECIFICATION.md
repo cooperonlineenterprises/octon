@@ -727,6 +727,14 @@ GitHub source Release creation, and read-back. It is not a generic action,
 deployment, package-publication, credential, communication, or external-project
 runtime.
 
+The Octon Mini source repository exposes a narrow source mode in the existing
+work-completion owner. It accepts an external immutable, digest-bound Codex
+task reference rather than creating a source task store, binds an already
+committed candidate range, uses the same authorization and monotonic receipt
+model, and stops after integration until exact integrated-main validation
+evidence is recorded. The release adapter does not acquire commit, push, PR,
+checks, merge, synchronization, or cleanup ownership.
+
 Locally reversible work retains transaction semantics. Public effects are
 monotonic: inspect, persist an attempted marker, execute once, read back,
 receipt, and fix forward. An unknown outcome stops with zero automatic retries.

@@ -55,6 +55,9 @@ interruption before and after every meaningful external boundary. Use local
 provider fixtures unless a real effect has separate exact authorization.
 Record every intervention, correction cycle, receipt successor, read-back,
 unknown outcome, duplicate-effect count, retained failure, and residual state.
+For Octon Mini source delivery, also record the external Codex task-reference
+digest, precommitted candidate range, post-merge validation pause, and whether
+cleanup remained blocked until exact integrated-main evidence passed.
 An unavailable unfamiliar operator, independent reviewer, external project, or
 human-usability observation remains `not_run` and cannot support maturity,
 adoption, usability, or readiness claims.

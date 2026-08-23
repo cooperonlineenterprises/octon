@@ -20,7 +20,7 @@
           "display_name": {"type": "string", "pattern": "^Octon Mini .+", "minLength": 20},
           "purpose": {"type": "string", "minLength": 20},
           "availability": {"$ref": "#/$defs/availability"},
-          "command_entry_points": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^octon [a-z]+(?: [a-z]+)*$"}},
+          "command_entry_points": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^octon [a-z]+(?:-[a-z]+)*(?: [a-z]+(?:-[a-z]+)*)*$"}},
           "implementation_entry_points": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "default_behavior": {"enum": ["read_only", "mutating", "mixed"]},
           "mutation_behavior": {"type": "string", "minLength": 3},

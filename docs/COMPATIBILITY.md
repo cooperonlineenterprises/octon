@@ -156,6 +156,11 @@ adoption, or readiness. See `migrations/4.1.0-to-4.2.0.md`.
 - governed work completion and its event hook remain disabled and
   non-authorizing until explicitly adopted.
 
+The 4.2 source checkout additionally exposes source-repository mode through the
+existing work-completion engine. This source-only route is not generated into
+target projects as a second task lifecycle. It requires an external immutable
+Codex task reference and exact integrated-main evidence before cleanup.
+
 Guided setup remains orchestration over the existing initialization, adoption,
 and upgrade planners. Its question catalog is not projected into target
 authority, and new questions remain unanswered or deferred rather than

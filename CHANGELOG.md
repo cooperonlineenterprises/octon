@@ -36,16 +36,20 @@ snapshots do not upgrade automatically.
   included-subscription allowance-only enforcement;
 - work completion can consume a short-lived exact task/plan attestation derived
   only after revalidating a current independently confirmed standing record;
+- the same work-completion owner supports the Octon Mini source checkout
+  through an external immutable Codex task reference, a precommitted candidate
+  binding, and a mandatory integrated-main validation pause before cleanup;
   and
 - every snapshot carries exact inert package bytes without acquiring a
   project decision, repository/provider fact, credential, standing authority,
   package installation, adoption, or readiness.
 
 This source work is unreleased. The accepted decisions and local implementation
-authorization do not activate `SAC-01`. No push, PR, workflow dispatch, merge,
+authorization did not activate `SAC-01`; that predecessor is now revoked and
+confirmed `SAC-02` is the current standing envelope. No push, PR, workflow dispatch, merge,
 tag, Release, package publication, deployment, communication, purchase, or
-external-project mutation is authorized before independent confirmation of the
-final exact `SAC-01` digest.
+external-project mutation may proceed without a fresh exact-plan projection,
+current subscription-status evidence, and every live `SAC-02` gate.
 
 ## 4.1.0 — 2026-08-22
 
