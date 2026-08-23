@@ -180,7 +180,7 @@ def plan_from(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     if args.action == "dispatch_hosted_workflow":
         if not args.workflow or not args.commit:
             raise RuntimeBlocked("workflow dispatch requires --workflow and --commit")
-        operation_argv = ["gh", "workflow", "run", args.workflow, "--ref", args.commit]
+        operation_argv = ["gh", "workflow", "run", args.workflow, "--ref", args.default_branch]
     elif args.action == "create_annotated_tag":
         if not args.tag or not args.commit or not args.message:
             raise RuntimeBlocked("annotated tag creation requires --tag, --commit, and --message")
