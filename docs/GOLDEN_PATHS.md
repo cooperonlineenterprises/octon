@@ -347,7 +347,9 @@ reference and then run:
 
 The plan binds the already committed branch range. Apply uses a separately
 projected, fresh work-completion authorization. After the stable required check
-passes, dispatch and read back the complete candidate matrix. Record the exact
+passes, use the closed source adapter (`./octon delivery effect`) under a fresh
+`dispatch_hosted_workflow` projection to dispatch and read back the complete
+candidate matrix. Record the exact
 24/24 candidate source/acceptance job evidence with `attest-candidate-matrix`;
 only then may resume reach merge. After merge and local `main` synchronization,
 the receipt pauses again before cleanup. Record exact integrated-main smoke and

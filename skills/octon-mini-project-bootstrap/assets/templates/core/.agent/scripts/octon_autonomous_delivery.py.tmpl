@@ -1521,17 +1521,21 @@ def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]
         raise DeliveryError("authority projection requires an exact plan digest")
     usage = validate_usage(load_json(external_path(root, args.usage, require_file=True)), record, compute_evidence)
     remaining: dict[str, Any] = {}
-    for key, limit in contract["limits"].items():
-        if key == "warning_percentages":
-            continue
-        used = usage["counts"].get(key, 0)
+    for count_key, limit_key in USAGE_KEYS.items():
+        limit = contract["limits"][limit_key]
+        used = usage["counts"][count_key]
         if not isinstance(used, int) or used < 0:
-            raise DeliveryError(f"usage value is malformed: {key}")
-        if isinstance(limit, int):
-            warning = usage_warning(used, limit)
-            if warning == "exhausted":
-                raise DeliveryError(f"standing authorization limit is exhausted: {key}")
-            remaining[key] = {"used": used, "limit": limit, "remaining": limit - used, "warning": warning}
+            raise DeliveryError(f"usage value is malformed: {count_key}")
+        warning = usage_warning(used, limit)
+        if warning == "exhausted":
+            raise DeliveryError(f"standing authorization limit is exhausted: {count_key}")
+        remaining[count_key] = {"used": used, "limit": limit, "remaining": limit - used, "warning": warning}
+    remaining["unknown_outcome_retries"] = {
+        "used": 0,
+        "limit": 0,
+        "remaining": 0,
+        "warning": "hard_zero_no_retry",
+    }
     if contract["schema_version"] != CONTRACT_SCHEMA_V1:
         mode = compute_mode(contract)
         if mode == "metered_api":
@@ -1580,6 +1584,7 @@ def authority_projection(args: argparse.Namespace, root: Path) -> dict[str, Any]
     if contract["schema_version"] != CONTRACT_SCHEMA_V1:
         value["compute_mode"] = compute_mode(contract)
         value["compute_evidence_fingerprint"] = compute_evidence["evidence_fingerprint"]
+        value["usage_digest"] = usage["usage_digest"]
     value["projection_digest"] = digest(value)
     return value
 

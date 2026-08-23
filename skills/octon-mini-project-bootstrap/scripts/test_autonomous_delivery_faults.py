@@ -8,6 +8,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -72,6 +73,7 @@ class AutonomousDeliveryFaultTests(unittest.TestCase):
             authorization_record=str(self.area / "record.json"),
             confirmation_artifact=str(self.area / "confirmation.json"),
             cost_enforcement_artifact=str(self.area / "cost.json"),
+            usage=str(self.area / "usage.json"),
         )
 
     def tearDown(self) -> None:
@@ -188,6 +190,56 @@ class AutonomousDeliveryFaultTests(unittest.TestCase):
         self.assertFalse(forbidden & self.runtime.SUPPORTED)
         self.assertEqual(self.plan["unknown_outcome_retries"], 0)
 
+    def test_runtime_revalidates_exact_compute_and_usage_bindings(self) -> None:
+        record = {
+            "accepted_record_digest": "record-digest",
+            "contract": {"schema_version": "harness.autonomous-delivery-standing-authorization.v2", "canonical_contract_digest": "contract-digest"},
+        }
+        compute = {"evidence_fingerprint": "current-compute"}
+        usage = {"usage_digest": "current-usage"}
+        projection = {
+            "authorization_record_digest": "record-digest",
+            "contract_digest": "contract-digest",
+            "action": self.plan["action"],
+            "compute_evidence_fingerprint": "stale-compute",
+            "usage_digest": "current-usage",
+            "valid_until": "2099-01-01T00:00:00Z",
+        }
+        projection["projection_digest"] = self.runtime.digest(projection)
+        plan = dict(self.plan)
+        plan["projection_digest"] = projection["projection_digest"]
+        values = {
+            self.base_args.authorization_record: record,
+            self.base_args.confirmation_artifact: {},
+            self.base_args.cost_enforcement_artifact: compute,
+            self.base_args.usage: usage,
+            self.base_args.projection: projection,
+        }
+        core = types.SimpleNamespace(
+            CONTRACT_SCHEMA_V1="harness.autonomous-delivery-standing-authorization.v1",
+            external_path=lambda _root, raw, require_file=True: raw,
+            load_json=lambda path: values[path],
+            validate_record=lambda value, _confirmation: value,
+            active_controls=lambda _root, _contract: None,
+            validate_compute_evidence=lambda value, _contract: value,
+            validate_usage=lambda value, _record, _compute: value,
+            digest_without=self.runtime.digest_without,
+        )
+        with mock.patch.object(self.runtime, "load_core", return_value=core):
+            with self.assertRaisesRegex(self.runtime.RuntimeBlocked, "stale compute or usage"):
+                self.runtime.validate_runtime_authority(self.root, self.base_args, plan)
+            projection["compute_evidence_fingerprint"] = "current-compute"
+            projection["usage_digest"] = "stale-usage"
+            projection["projection_digest"] = self.runtime.digest({key: value for key, value in projection.items() if key != "projection_digest"})
+            plan["projection_digest"] = projection["projection_digest"]
+            with self.assertRaisesRegex(self.runtime.RuntimeBlocked, "stale compute or usage"):
+                self.runtime.validate_runtime_authority(self.root, self.base_args, plan)
+            projection["usage_digest"] = "current-usage"
+            projection["projection_digest"] = self.runtime.digest({key: value for key, value in projection.items() if key != "projection_digest"})
+            plan["projection_digest"] = projection["projection_digest"]
+            _validated_core, validated_projection = self.runtime.validate_runtime_authority(self.root, self.base_args, plan)
+        self.assertIs(validated_projection, projection)
+
     def test_source_release_requires_exact_remote_tag_target(self) -> None:
         release_plan = dict(self.plan)
         release_plan.update(action="create_github_release", tag="v9.9.9")
@@ -213,6 +265,7 @@ class AutonomousDeliveryFaultTests(unittest.TestCase):
             "emergency-stop", "unknown-cost-zero", "direct-spending",
             "compute-mode-overlap", "subscription-unreadable",
             "subscription-paid-credits", "subscription-billing-change",
+            "stale-effect-compute-binding", "stale-effect-usage-binding",
             "force-push", "direct-main-push", "threshold-weakening",
             "tag-movement", "credential-forwarding", "deployment",
             "package-publication", "external-project", "communication",

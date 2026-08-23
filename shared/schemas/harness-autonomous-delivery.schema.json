@@ -288,7 +288,7 @@
     "authority_projection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "contract_digest", "compute_mode", "compute_evidence_fingerprint", "task_ref", "priority_authority_ref", "architecture_decision_refs", "plan_digest", "repository_identity", "task_branch", "action", "release_type", "valid_from", "valid_until", "remaining_budget", "projection_digest", "limitations"],
+      "required": ["schema_version", "artifact_kind", "permission_grant", "authorization_record_digest", "contract_digest", "compute_mode", "compute_evidence_fingerprint", "usage_digest", "task_ref", "priority_authority_ref", "architecture_decision_refs", "plan_digest", "repository_identity", "task_branch", "action", "release_type", "valid_from", "valid_until", "remaining_budget", "projection_digest", "limitations"],
       "properties": {
         "schema_version": {"const": "harness.autonomous-delivery-authority-projection.v2"},
         "artifact_kind": {"const": "derived_exact_plan_authority_coverage"},
@@ -297,7 +297,8 @@
         "contract_digest": {"$ref": "#/$defs/digest"},
         "compute_mode": {"enum": ["metered_api", "included_subscription"]},
         "compute_evidence_fingerprint": {"$ref": "#/$defs/digest"},
-        "task_ref": {"type": "string", "pattern": "^TASK-[0-9]{4}$"},
+        "usage_digest": {"$ref": "#/$defs/digest"},
+        "task_ref": {"type": "string", "pattern": "^(?:TASK-[0-9]{4}|external:codex-task:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$"},
         "priority_authority_ref": {"type": "string", "minLength": 1},
         "architecture_decision_refs": {"$ref": "#/$defs/strings"},
         "plan_digest": {"$ref": "#/$defs/digest"},

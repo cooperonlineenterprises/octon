@@ -108,6 +108,9 @@ command identity with their generated-project command inventory.
   all 24 candidate matrix jobs pass, and pauses cleanup until exact integrated-
   main validation evidence is recorded. It creates no source task store, task
   lifecycle, or release-adapter ownership.
+  Source `octon delivery effect` reuses the closed release adapter for exact
+  task-branch candidate dispatch and clean-`main` tag/Release operations; its
+  four-operation allowlist never includes work-completion actions.
 - Configuration: use `octon maintain hooks`, `octon maintain collaboration`,
   `octon maintain registry`, and source `octon maintain package` plan/apply flows.
   Package applicability, owner, trust decision, version, digest, and successful

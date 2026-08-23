@@ -350,7 +350,8 @@ def validate_runtime_authority(root: Path, args: argparse.Namespace, plan: dict[
     record = core.validate_record(core.load_json(core.external_path(root, args.authorization_record, require_file=True)), confirmation)
     contract = record["contract"]
     core.active_controls(root, contract)
-    core.validate_compute_evidence(core.load_json(core.external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    compute = core.validate_compute_evidence(core.load_json(core.external_path(root, args.cost_enforcement_artifact, require_file=True)), contract)
+    usage = core.validate_usage(core.load_json(core.external_path(root, args.usage, require_file=True)), record, compute)
     projection = core.load_json(core.external_path(root, args.projection, require_file=True))
     if projection.get("projection_digest") != core.digest_without(projection, "projection_digest"):
         raise RuntimeBlocked("authority projection digest is invalid")
@@ -358,6 +359,11 @@ def validate_runtime_authority(root: Path, args: argparse.Namespace, plan: dict[
         raise RuntimeBlocked("authority projection is bound to another standing record")
     if projection.get("action") != plan["action"] or projection.get("projection_digest") != plan["projection_digest"]:
         raise RuntimeBlocked("effect plan and authority projection differ")
+    if contract.get("schema_version") != core.CONTRACT_SCHEMA_V1 and (
+        projection.get("compute_evidence_fingerprint") != compute.get("evidence_fingerprint")
+        or projection.get("usage_digest") != usage.get("usage_digest")
+    ):
+        raise RuntimeBlocked("effect authority projection is bound to stale compute or usage evidence")
     if datetime.fromisoformat(projection["valid_until"].replace("Z", "+00:00")) < datetime.now(timezone.utc):
         raise RuntimeBlocked("short-lived authority projection is expired")
     return core, projection
@@ -479,6 +485,7 @@ def parser() -> argparse.ArgumentParser:
     apply.add_argument("--authorization-record", required=True)
     apply.add_argument("--confirmation-artifact", required=True)
     apply.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
+    apply.add_argument("--usage", required=True)
     resume = commands.add_parser("resume")
     resume.add_argument("--receipt-id", required=True)
     resume.add_argument("--plan", required=True)
@@ -487,6 +494,7 @@ def parser() -> argparse.ArgumentParser:
     resume.add_argument("--authorization-record", required=True)
     resume.add_argument("--confirmation-artifact", required=True)
     resume.add_argument("--compute-enforcement-artifact", "--cost-enforcement-artifact", dest="cost_enforcement_artifact", required=True)
+    resume.add_argument("--usage", required=True)
     return value
 
 

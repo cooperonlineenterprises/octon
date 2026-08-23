@@ -138,6 +138,11 @@ receipts, blocks merge until the required check and all 24 candidate matrix jobs
 pass, and defers remote/local branch cleanup until exact integrated-main
 validation evidence passes.
 
+Source `octon delivery effect` is the source-only entry to the existing closed
+effect adapter. Candidate dispatch requires the exact task branch/revision;
+tag and GitHub source Release actions require exact clean `main`. The adapter
+remains separate from work-completion ownership.
+
 Maintain decision questions in the project-owned governance register. Keep
 recommendations, owner selections, and accepted `DEC-####` authority separate;
 reconcile every decision and trade-off review exactly once and derive the

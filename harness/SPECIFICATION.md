@@ -737,6 +737,14 @@ until exact integrated-main validation evidence is recorded. The release
 adapter does not acquire commit, push, PR, checks, merge, synchronization, or
 cleanup ownership.
 
+The closed release-effect adapter has a source-only entry point. Candidate
+workflow dispatch binds to the exact task branch and revision; tag and GitHub
+source Release operations bind to exact clean `main`. Its allowlist remains
+workflow dispatch, annotated tag creation, tag push, and GitHub source Release
+creation and contains no work-completion operation.
+Adapter apply and resume revalidate both current compute evidence and the exact
+usage digest bound by the short-lived projection before any external call.
+
 Locally reversible work retains transaction semantics. Public effects are
 monotonic: inspect, persist an attempted marker, execute once, read back,
 receipt, and fix forward. An unknown outcome stops with zero automatic retries.

@@ -290,7 +290,7 @@
       "id": "autonomous-delivery",
       "kind": "workflow_capability",
       "version": "1.0.0",
-      "sha256": "7159318dfc60fe76ef974928e15bc06c956e726c159367ca08697862cc786b3c",
+      "sha256": "c4567d7bacade3636d5fbf907c67fa97fbbcf0138aeca631c72d4e337bf186ee",
       "source": "skill:assets/packages/autonomous-delivery/templates",
       "inventory_paths": [
         ".agent/capabilities/autonomous-delivery/README.md.tmpl",

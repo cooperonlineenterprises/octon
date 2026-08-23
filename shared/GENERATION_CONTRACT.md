@@ -566,6 +566,12 @@ generated-project lifecycle. Source merge remains blocked until the required
 check and all 24 candidate matrix jobs pass; cleanup remains blocked until
 exact integrated-main validation evidence is recorded.
 
+The source checkout may route `octon delivery effect` through a source-only
+wrapper around the same closed delivery-effect adapter. Candidate dispatch is
+task-branch-bound; release effects are clean-`main`-bound. The source wrapper
+is not copied as a generated-project runtime and does not broaden the adapter's
+four supported operations.
+
 The generated portfolio excludes GitFlow, merge queues, release trains,
 stacked-PR dependency trains, fork-first internal contribution, multi-level
 CODEOWNERS approval, multiple mandatory approval stages, dedicated release

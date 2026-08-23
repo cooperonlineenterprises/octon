@@ -144,6 +144,8 @@ move push/PR/check/merge/cleanup ownership into the release adapter. Cleanup is
 deferred until exact integrated-main smoke and full-matrix evidence passes;
 merge is separately blocked until the stable required check and all 24 complete
 candidate source/acceptance matrix jobs pass on the exact head.
+The source-only `octon delivery effect` wrapper owns only the closed workflow-
+dispatch and source-release effects needed around that work-completion flow.
 
 The completed 3.0.0 release-candidate task used `concurrent_work` with disjoint
 file ownership, a shared base revision, conflict detection, and explicit

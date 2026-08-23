@@ -44,6 +44,14 @@ all 24 candidate source/acceptance matrix jobs pass on the exact head. Cleanup
 pauses until exact automatic-main and full-matrix evidence for the integrated
 revision is recorded.
 
+In the source checkout, invoke the same closed adapter through `octon delivery
+effect`. Bind candidate workflow dispatch to the exact task branch and commit;
+bind tag and GitHub source Release effects to exact clean `main`. Never route
+commit, push, PR, checks, merge, synchronization, or cleanup through this
+adapter.
+Re-read both selected-mode compute evidence and the exact usage artifact before
+every effect; reject either fingerprint when it differs from the projection.
+
 Transactions may restore exact local preimages. Public effects are monotonic:
 persist attempted state, execute once, read back, receipt, reconcile, and fix
 forward. Never replay `outcome_unknown`.

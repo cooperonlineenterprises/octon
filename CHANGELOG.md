@@ -40,6 +40,9 @@ snapshots do not upgrade automatically.
   through an external immutable Codex task reference, a precommitted candidate
   binding, a complete candidate-matrix pause before merge, and a mandatory
   integrated-main validation pause before cleanup;
+- source `octon delivery effect` reuses the closed four-operation adapter for
+  task-branch workflow dispatch and clean-`main` source release effects without
+  acquiring work-completion ownership;
   and
 - every snapshot carries exact inert package bytes without acquiring a
   project decision, repository/provider fact, credential, standing authority,

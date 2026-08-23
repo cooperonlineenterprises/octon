@@ -111,6 +111,15 @@ cannot create confirmation.
 There is no second task lifecycle, decision store, evidence store, current-state
 file, run loop, or generic event platform.
 
+The source checkout exposes the same closed release-effect adapter through
+`./octon delivery effect`. Candidate workflow dispatch is bound to the exact
+task branch and commit; tag and GitHub source Release operations require exact
+clean `main`. Its supported operations remain only workflow dispatch,
+annotated local tag creation, exact tag push, and GitHub source Release
+creation. It owns no work-completion operation.
+Before every adapter effect, the runtime re-reads the exact compute and usage
+artifacts and requires both fingerprints to match the short-lived projection.
+
 For this source repository, `./octon work finish` uses the same work-completion
 engine with an external immutable, digest-bound Codex task reference. The
 source plan binds the precommitted candidate range and exact source authority;

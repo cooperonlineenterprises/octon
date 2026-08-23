@@ -761,6 +761,57 @@ class AutonomousDeliveryTests(unittest.TestCase):
         with self.assertRaisesRegex(module.DeliveryError, "stale compute observation"):
             module.validate_usage(stale, record, compute)
 
+    def test_source_effect_projection_binds_current_usage_digest(self) -> None:
+        record_path, confirmation_path, compute_path, _contract = self.accepted_records("included_subscription")
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        compute = json.loads(compute_path.read_text(encoding="utf-8"))
+        module = load_module(self.target / ".agent/scripts/octon_autonomous_delivery.py", "octon_source_effect_projection")
+        usage = {
+            "schema_version": module.USAGE_SCHEMA,
+            "artifact_kind": "autonomous_delivery_usage_state",
+            "permission_grant": False,
+            "authorization_record_digest": record["accepted_record_digest"],
+            "run_id": "synthetic-source-effect",
+            "counts": {key: 0 for key in module.USAGE_KEYS},
+            "compute_mode": "included_subscription",
+            "compute_evidence_fingerprint": compute["evidence_fingerprint"],
+            "metered_api_usage": None,
+            "included_subscription_usage": {"maximum_used_percent": 25.0, "quota_window_ids": ["rolling-provider-window"]},
+            "warnings": [],
+            "exhausted": False,
+            "observed_at": module.utc_text(),
+        }
+        usage["usage_digest"] = module.digest(usage)
+        usage_path = self.area / "source-effect-usage.json"
+        write_json(usage_path, usage)
+        projection = module.authority_projection(
+            argparse.Namespace(
+                authorization_record=str(record_path),
+                confirmation_artifact=str(confirmation_path),
+                cost_enforcement_artifact=str(compute_path),
+                task_ref="external:codex-task:11111111-2222-3333-4444-555555555555",
+                priority_authority_ref="authority:synthetic-source-priority",
+                architecture_decision_ref=["SRC-DEC-0019", "SRC-DEC-0020"],
+                plan_digest="a" * 64,
+                repository_identity="synthetic/autonomous-delivery",
+                task_branch="chore/autonomous-source-effect",
+                action="dispatch_hosted_workflow",
+                release_type=None,
+                usage=str(usage_path),
+                output=None,
+            ),
+            self.target.resolve(),
+        )
+        self.assertEqual(projection["usage_digest"], usage["usage_digest"])
+        self.assertEqual(projection["compute_evidence_fingerprint"], compute["evidence_fingerprint"])
+        self.assertEqual(
+            projection["remaining_budget"]["unknown_outcome_retries"],
+            {"used": 0, "limit": 0, "remaining": 0, "warning": "hard_zero_no_retry"},
+        )
+        validator = load_module(self.target / ".agent/scripts/validate.py", "octon_source_effect_projection_schema")
+        schema = json.loads((self.target / ".agent/schemas/harness-autonomous-delivery.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(validator.validate_schema(projection, schema["$defs"]["authority_projection"], root_schema=schema), [])
+
     def test_source_work_completion_projection_maps_existing_owner_operations(self) -> None:
         record_path, confirmation_path, compute_path, _contract = self.accepted_records("included_subscription")
         record = json.loads(record_path.read_text(encoding="utf-8"))

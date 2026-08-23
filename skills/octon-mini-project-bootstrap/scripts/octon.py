@@ -233,6 +233,7 @@ def workflow_help(manifest: dict[str, object]) -> str:
   ./octon maintain collaboration ...    {commands['maintain.collaboration']}
 {capabilities['work.autonomous_delivery']}:
   ./octon delivery ...                  {commands['delivery']}
+  ./octon delivery effect ...           Source-only closed workflow-dispatch and source-release adapter; it owns no work-completion operation.
 {capabilities['work.completion']}:
   ./octon work finish ...               Source mode uses an external digest-bound Codex task reference; generated projects retain their project task records.
 
@@ -352,6 +353,11 @@ def main() -> int:
         return execute(script, rest)
     if command == "detect":
         return execute(SCRIPT_ROOT / "detect_project.py", rest)
+    if command == "delivery" and rest and rest[0] == "effect" and (Path.cwd() / "octon-mini.json").is_file():
+        return execute(
+            SCRIPT_ROOT / "source_delivery_effect.py",
+            ["--target", str(Path.cwd().resolve()), *rest[1:]],
+        )
     if command == "delivery":
         return execute(
             SKILL_ROOT / "assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl",
