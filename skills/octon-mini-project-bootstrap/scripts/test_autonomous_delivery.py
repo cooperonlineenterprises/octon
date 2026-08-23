@@ -362,6 +362,8 @@ class AutonomousDeliveryTests(unittest.TestCase):
         self.assertIsNone(first["compute_control"]["included_subscription"])
         self.assertEqual(first["valid_until"], "2026-11-20T00:00:00Z")
         self.assertEqual(first["limits"]["warning_percentages"], [70, 85, 95])
+        self.assertIn("selected_compute_enforcement_or_usage_readback_unavailable", first["human_stop_conditions"])
+        self.assertNotIn("host_cost_enforcement_unavailable", first["human_stop_conditions"])
 
     def test_compute_mode_is_explicit_and_subscription_never_overlaps_metered_api(self) -> None:
         missing = self.octon("delivery", "authorization", "draft", "--profile", "fast_delivery")
