@@ -74,22 +74,85 @@ def write_new(root: Path, raw: str, value: Any, runtime: types.ModuleType) -> Pa
     return path
 
 
-def execution_branch(action: str, projection: dict[str, Any]) -> str:
+def work_completion_receipt_directory(root: Path, runtime: types.ModuleType) -> Path:
+    raw = runtime.git(root, "rev-parse", "--git-common-dir")
+    common = Path(raw)
+    common = (common if common.is_absolute() else root / common).resolve(strict=True)
+    directory = common / "octon-mini/work-completion/receipts"
+    if directory.is_symlink() or not directory.is_dir():
+        raise SourceEffectError("post-merge workflow dispatch lacks a safe work-completion receipt store")
+    return directory
+
+
+def require_post_merge_dispatch(
+    root: Path,
+    projection: dict[str, Any],
+    expected_commit: str,
+    runtime: types.ModuleType,
+) -> None:
+    matches: list[dict[str, Any]] = []
+    for path in sorted(work_completion_receipt_directory(root, runtime).glob("WCR-*.json")):
+        if path.is_symlink() or not path.is_file():
+            raise SourceEffectError("post-merge workflow dispatch receipt store is unsafe")
+        receipt = runtime.load_json(path)
+        if not isinstance(receipt, dict) or receipt.get("plan_digest") != projection.get("plan_digest"):
+            continue
+        completed = receipt.get("completed_operations")
+        revisions = receipt.get("revisions")
+        plan = receipt.get("plan")
+        required = {
+            "record_candidate_matrix_validation",
+            "merge_pull_request",
+            "synchronize_local_default_branch",
+        }
+        if (
+            receipt.get("schema_version") == "harness.work-completion-receipt.v1"
+            and receipt.get("artifact_kind") == "work_completion_receipt"
+            and receipt.get("permission_grant") is False
+            and receipt.get("receipt_id") == path.stem
+            and isinstance(completed, list)
+            and all(isinstance(item, str) for item in completed)
+            and required <= set(completed)
+            and isinstance(revisions, dict)
+            and revisions.get("integrated") == expected_commit
+            and revisions.get("synchronized_default") == expected_commit
+            and isinstance(plan, dict)
+            and plan.get("schema_version") == "harness.source-work-completion-plan.v1"
+            and plan.get("canonical_plan_digest") == projection.get("plan_digest")
+            and isinstance(plan.get("branches"), dict)
+            and plan["branches"].get("default") == "main"
+            and isinstance(plan.get("expected_revisions"), dict)
+            and revisions.get("commit") == plan["expected_revisions"].get("candidate_head")
+        ):
+            matches.append(receipt)
+    if len(matches) != 1:
+        raise SourceEffectError(
+            "post-merge workflow dispatch requires one exact integrated work-completion receipt"
+        )
+
+
+def execution_branch(action: str, projection: dict[str, Any], requested_branch: str | None = None) -> str:
     if action == "dispatch_hosted_workflow":
         branch = projection.get("task_branch")
         if not isinstance(branch, str) or not branch:
             raise SourceEffectError("candidate workflow dispatch lacks the exact task branch")
-        return branch
+        selected = branch if requested_branch is None else requested_branch
+        if selected not in {branch, "main"}:
+            raise SourceEffectError("source delivery effect uses the wrong execution branch")
+        return selected
     return "main"
 
 
 def source_plan(args: Any, root: Path, runtime: types.ModuleType) -> dict[str, Any]:
     projection = runtime.load_json(external_path(root, args.projection))
-    required_branch = execution_branch(args.action, projection)
+    required_branch = execution_branch(args.action, projection, args.default_branch)
     if args.default_branch != required_branch:
         raise SourceEffectError("source delivery effect uses the wrong execution branch")
-    if args.action == "dispatch_hosted_workflow" and args.commit != runtime.git(root, "rev-parse", f"refs/heads/{required_branch}"):
-        raise SourceEffectError("candidate workflow dispatch commit differs from the exact task branch")
+    if args.action == "dispatch_hosted_workflow":
+        if args.commit != runtime.git(root, "rev-parse", f"refs/heads/{required_branch}"):
+            raise SourceEffectError("workflow dispatch commit differs from the exact execution branch")
+        if required_branch == "main":
+            require_post_merge_dispatch(root, projection, args.commit, runtime)
     value = runtime.plan_from(args, root)
     if value.get("default_branch") != required_branch:
         raise SourceEffectError("source delivery-effect plan lost its exact execution branch")
@@ -101,9 +164,11 @@ def validate_effect_inputs(args: Any, root: Path, runtime: types.ModuleType) -> 
     projection = runtime.load_json(external_path(root, args.projection))
     if not isinstance(plan, dict) or not isinstance(projection, dict):
         raise SourceEffectError("source delivery-effect plan or projection is malformed")
-    required_branch = execution_branch(plan.get("action"), projection)
+    required_branch = execution_branch(plan.get("action"), projection, plan.get("default_branch"))
     if plan.get("default_branch") != required_branch or plan.get("expected_commit") != runtime.git(root, "rev-parse", f"refs/heads/{required_branch}"):
         raise SourceEffectError("source delivery-effect plan is stale or bound to another branch")
+    if plan.get("action") == "dispatch_hosted_workflow" and required_branch == "main":
+        require_post_merge_dispatch(root, projection, plan["expected_commit"], runtime)
 
 
 def main() -> int:

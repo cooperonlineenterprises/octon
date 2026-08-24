@@ -462,6 +462,47 @@ class SourceWorkCompletionTests(unittest.TestCase):
         delete_local.assert_called_once()
         record.assert_called_once()
 
+    def test_default_sync_fetches_before_switching_to_a_predecessor_main(self) -> None:
+        events: list[str] = []
+        current_branch = ["chore/autonomous-source-test"]
+        integrated = "a" * 40
+        receipt = {
+            "plan": {"branches": {"default": "main"}},
+            "revisions": {"integrated": integrated},
+        }
+
+        def fake_git(_root: Path, *arguments: str) -> str:
+            if arguments == ("symbolic-ref", "--short", "HEAD"):
+                return current_branch[0]
+            raise AssertionError(arguments)
+
+        def fake_fetch(_root: Path, _receipt: dict[str, object], *, expected: str | None) -> str:
+            self.assertIsNone(expected)
+            self.assertEqual(current_branch[0], "chore/autonomous-source-test")
+            events.append("fetch")
+            return integrated
+
+        def fake_run(_root: Path, argv: list[str], *, check: bool = True, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[bytes]:
+            del check, env
+            if argv == ["git", "switch", "main"]:
+                current_branch[0] = "main"
+                events.append("switch")
+                return subprocess.CompletedProcess(argv, 0, b"", b"")
+            if argv[:3] == ["git", "merge-base", "--is-ancestor"]:
+                return subprocess.CompletedProcess(argv, 0, b"", b"")
+            raise AssertionError(argv)
+
+        with (
+            mock.patch.object(self.completion, "git", side_effect=fake_git),
+            mock.patch.object(self.completion, "fetch_default", side_effect=fake_fetch),
+            mock.patch.object(self.completion, "dirty_state", return_value=([], [])),
+            mock.patch.object(self.completion, "run", side_effect=fake_run),
+            mock.patch.object(self.completion, "revision", return_value=integrated),
+            mock.patch.object(self.completion, "record"),
+        ):
+            self.completion.sync_default(self.root, receipt)
+        self.assertEqual(events, ["fetch", "switch"])
+
     def test_post_merge_evidence_binds_exact_integrated_main_before_cleanup(self) -> None:
         plan = RUNNER.build_plan(self.root, self.task_path, self.record_path)
         now = datetime.now(timezone.utc)

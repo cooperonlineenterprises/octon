@@ -2107,11 +2107,16 @@ def delete_remote(root: Path, receipt: dict[str, Any]) -> None:
 def sync_default(root: Path, receipt: dict[str, Any]) -> None:
     plan = receipt["plan"]
     default = plan["branches"]["default"]
-    if git(root, "symbolic-ref", "--short", "HEAD") != default:
-        if dirty_state(root) != ([], []):
-            raise FinishBlocked("default-branch synchronization requires a clean worktree")
-        run(root, ["git", "switch", default])
+    current = git(root, "symbolic-ref", "--short", "HEAD")
+    if current != default and dirty_state(root) != ([], []):
+        raise FinishBlocked("default-branch synchronization requires a clean worktree")
+    # Revalidate and fetch while the reviewed source candidate is still
+    # checked out. A predecessor default branch may not contain the evaluator
+    # introduced by that candidate, so switching first would make exact
+    # standing-authority revalidation impossible immediately after merge.
     remote_value = fetch_default(root, receipt, expected=None)
+    if current != default:
+        run(root, ["git", "switch", default])
     integrated = receipt["revisions"].get("integrated")
     if not integrated or run(
         root,
