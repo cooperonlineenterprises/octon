@@ -1,16 +1,15 @@
 # Release and Distribution
 
-> Octon Mini `4.1.0` is the current completed source release. Its observed tag,
+> Octon Mini `4.2.0` is the current completed source release. Its observed tag,
 > GitHub Release, validation, evidence policy, and limitations are recorded
 > below. This record creates no continuing authority for a later tag, Release,
 > package publication, deployment, adoption, or other external action.
 
-## Current source candidate
+## Current source state
 
-Current development targets unreleased Octon Mini `4.2.0`. It implements the
-optional governed autonomous-delivery capability accepted by `SRC-DEC-0019`
-and the standing patch/minor source-release evidence policy accepted by
-`SRC-DEC-0020`.
+Octon Mini `4.2.0` is released. It implements the optional governed
+autonomous-delivery capability accepted by `SRC-DEC-0019` and the standing
+patch/minor source-release evidence policy accepted by `SRC-DEC-0020`.
 
 The v1 `SAC-01` record remains preserved and revoked. Confirmed subscription-
 mode `SAC-02` is the current standing envelope, but no individual external
@@ -27,7 +26,7 @@ proceed until exact integrated-main validation evidence is recorded.
 Candidate and integrated-main workflow dispatches use the closed source
 `octon delivery effect` adapter and do not transfer merge or cleanup ownership.
 
-If confirmed, a final patch or minor source release still requires every
+Any later patch or minor source release still requires every
 applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,
 integrated-main, exact-read-back, evidence-retention, and no-critical/high-
 finding gate. Direct autonomous-worker spending is zero. Each exact contract
@@ -42,23 +41,21 @@ human input.
 
 ## Current release
 
-- Product and generator: Octon Mini `4.1.0` (released 2026-08-22)
+- Product and generator: Octon Mini `4.2.0` (released 2026-08-24)
 - Bootstrap capability: Octon Mini Project Bootstrap
 - Bootstrap skill ID: `octon-mini-project-bootstrap`
-- Harness kernel: `4.1.0`
+- Harness kernel: `4.2.0`
 - Source license: MIT No Attribution (`MIT-0`)
 - Compatibility: backward-compatible optional source/generator capability;
-  independent snapshots require explicit reviewed 4.0→4.1 upgrade
+  independent snapshots require explicit reviewed 4.1→4.2 upgrade
 
-Version `4.1.0` adds the optional provider-neutral long-running-work capability
-accepted by `SRC-DEC-0018`. It is a completed source release represented by
-annotated tag `v4.1.0` and a published GitHub Release. It is not a target-project
-installation, adoption, worker authorization, or readiness decision. Existing
-snapshots remain independent and are not updated automatically; explicit
-upgrade adds only the dormant route and unassessed trigger, not the package or
-its adoption.
+Version `4.2.0` adds optional governed autonomous delivery while keeping
+generated snapshots independent, dormant, non-authorizing, and absent of
+credentials or standing authority. It is represented by annotated tag
+`v4.2.0` and a published GitHub Release. It is not a target-project
+installation, adoption, worker authorization, maturity, or readiness decision.
 
-`RELEASE_READINESS.md` is the subordinate evidence record for 4.1.0. It did not
+`RELEASE_READINESS.md` is the subordinate evidence record for 4.2.0. It did not
 create release authority or replace this file's release gate; its final fields
 were populated only from observed integrated-`main` and hosted release state.
 
@@ -68,7 +65,7 @@ an explicit reviewed Project Blueprint 3.x→Octon Mini 4.0.0 migration.
 
 The GitHub repository rename to `cooperonlineenterprises/octon-mini` and the
 local project-directory rename to `octon-mini` are complete. The repository is
-public. Octon Mini 4.1.0 is released through its annotated tag and GitHub
+public. Octon Mini 4.2.0 is released through its annotated tag and GitHub
 Release. No separate package registry or package channel was used.
 
 Accepted source decision `SRC-DEC-0014` records this owner-directed identity
@@ -94,6 +91,34 @@ Accepted source decision `SRC-DEC-0018` records the optional long-running-work
 source architecture. Its acceptance did not authorize later publication,
 package installation or adoption, task execution, external effects, release,
 or readiness. Those remain separate observed or project-owned facts.
+
+## 4.2.0 release record
+
+Implementation pull request #21 and corrective pull request #22 were
+integrated with `merge_commit`. Final candidate
+`96d79099e5e84077565b0a9e91866084c62d50b0` passed required run
+`32703858216` and candidate matrix `32707378408` with all 24 source/acceptance
+jobs successful. Exact released main
+`22c1c142e42caa91edbf6550315c3938ff747c6f` passed automatic smoke run
+`32714926981` and integrated-main matrix `32715261752`, again 24/24.
+
+Annotated tag object `d5d67efea6105d9ec51eab3022420a49b3cf875c`
+peels exactly to that main revision. The final, non-prerelease GitHub Release
+was published on 2026-08-24 at
+`https://github.com/cooperonlineenterprises/octon-mini/releases/tag/v4.2.0`.
+There are no uploaded assets, package publication, or deployment; distribution
+is the GitHub-generated source archives under MIT-0.
+
+Failed predecessor evidence remains retained. It exposed a Windows fixture
+byte-boundary defect, post-merge authority-evaluator ordering, and the missing
+receipt-bound integrated-main dispatch route. Later exact candidates corrected
+each without moving a tag, replaying an ambiguous effect, or weakening a gate.
+The GitHub API rate-limit pause was honored until its official reset.
+
+Unavailable unfamiliar-operator, independent-reviewer, independent external-
+project, and human-usability evidence remains disclosed under accepted
+`SRC-DEC-0020`. It cannot support claims of independent maturity, adoption,
+usability, project readiness, production readiness, or efficacy.
 
 ## 4.1.0 release record
 

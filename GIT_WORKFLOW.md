@@ -255,7 +255,12 @@ pull requests #18 and #19 at
 `6d1cfb0f13d300b9d4b78bf7078cf07daa7febd6`; automatic smoke run
 `32540532990` and manually dispatched source/acceptance run `32540555019`
 passed on that exact revision before annotated tag `v4.1.0` and its GitHub
-Release were published on 2026-08-22. Failed predecessor runs remain retained.
+Release were published on 2026-08-22. Octon Mini 4.2.0 was integrated through
+pull requests #21 and #22 at
+`22c1c142e42caa91edbf6550315c3938ff747c6f`; automatic smoke run
+`32714926981` and integrated-main matrix `32715261752` passed on that exact
+revision before annotated tag `v4.2.0` and its GitHub Release were published
+on 2026-08-24. Failed predecessor runs remain retained.
 Separate package publication was `none`. This workflow record does not
 authorize moving a published tag or performing a later release operation.
 
