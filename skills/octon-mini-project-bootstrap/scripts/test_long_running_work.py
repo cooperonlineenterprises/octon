@@ -685,7 +685,10 @@ class LongRunningWorkTests(unittest.TestCase):
             ("source-c.md", "The sources conflict; owner decision remains unresolved.\n"),
         ):
             path = research / name
-            path.write_text(statement * 180, encoding="utf-8")
+            # Keep the byte-budget fixture identical on every operating system.
+            # Text-mode writes expand LF to CRLF on Windows and can move every
+            # explicit reference just beyond the deliberately tight budget.
+            path.write_bytes((statement * 180).encode("utf-8"))
             references.append(path.relative_to(self.target).as_posix())
         for index in range(50):
             (research / f"irrelevant-{index:03d}.txt").write_text("not selected\n", encoding="utf-8")
