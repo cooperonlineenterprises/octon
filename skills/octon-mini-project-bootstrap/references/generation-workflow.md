@@ -63,6 +63,24 @@ and authority preservation explicitly. Apply refuses every existing-path
 overwrite, stages the complete release tier, preserves project bytes, and
 leaves adoption `in_progress`.
 
+## Autonomous-delivery availability
+
+Every generated 4.2 snapshot exposes `octon delivery` in
+`available_not_activated`. Research, context, applicability, planning, status,
+explanation, and activation preview are read-only and execute no hooks. Exact
+inert autonomous-delivery and long-running-work payloads are stored under
+`.agent/available-packages/` for network-free activation, but are not installed
+or adopted.
+
+Activation first drafts and displays a complete non-authorizing contract. A
+human must independently confirm its exact digest; a flag, setup answer,
+profile, plan, or record cannot do so. The accepted record and confirmation
+stay outside the repository. Activation binds them, current evidence for the
+one selected metered-API or included-subscription compute mode, an accepted
+project adoption decision, target bytes, and package digests into the existing
+transaction system. Upgrade advertises but
+never activates, renews, or broadens this state.
+
 ## Routine work and maintenance
 
 Generated commands use plan/apply receipts:
@@ -111,6 +129,19 @@ may run only that exact read-only command. Apply accepts the reviewed digest
 and a current task-scoped external authorization attestation; resume uses the
 Git-common-directory receipt. Never refresh during planning or describe a
 receipt as release or production readiness.
+
+The Octon Mini source checkout routes the same `octon work finish` owner through
+`source_work_completion.py`. Source mode accepts only an external immutable,
+digest-bound Codex task reference, never creates `.agent/tasks`, and treats the
+existing committed branch range as the local candidate. It retains monotonic
+receipts, blocks merge until the required check and all 24 candidate matrix jobs
+pass, and defers remote/local branch cleanup until exact integrated-main
+validation evidence passes.
+
+Source `octon delivery effect` is the source-only entry to the existing closed
+effect adapter. Candidate dispatch requires the exact task branch/revision;
+tag and GitHub source Release actions require exact clean `main`. The adapter
+remains separate from work-completion ownership.
 
 Maintain decision questions in the project-owned governance register. Keep
 recommendations, owner selections, and accepted `DEC-####` authority separate;

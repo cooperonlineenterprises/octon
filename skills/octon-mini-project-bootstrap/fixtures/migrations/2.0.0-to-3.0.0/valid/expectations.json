@@ -2,7 +2,7 @@
   "collaboration_profile": "unknown_and_unassessed",
   "from_version": "2.0.0",
   "git_operation_count": 37,
-  "hosted_change_operation_count": 6,
+  "hosted_change_operation_count": 10,
   "migration_ids": ["MIG-3000"],
   "profile": "minimal",
   "supported_base_workflows": [

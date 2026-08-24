@@ -1,4 +1,27 @@
-# Octon Mini 4.1.0 Release-Readiness Record
+# Octon Mini Release-Readiness Record
+
+## 4.2.0 candidate — in progress
+
+Octon Mini 4.2.0 is unreleased. `SRC-DEC-0019` and `SRC-DEC-0020` are
+accepted for source implementation. `SAC-01` is revoked and confirmed
+subscription-mode `SAC-02` is the current standing envelope; each external
+effect still requires a fresh exact-plan projection and live compute evidence.
+
+The accepted narrow `SRC-DEC-0019` amendment adds source-repository mode to the
+existing work-completion engine. It requires an external immutable,
+digest-bound Codex task reference and pauses cleanup until exact integrated-
+main smoke and full-matrix evidence is recorded. It also blocks merge until the
+stable required check and all 24 candidate source/acceptance matrix jobs pass
+on the exact head. It creates no source task store and grants no release-
+adapter ownership over push, PR, checks, merge, or cleanup.
+
+Current source evidence may demonstrate implementation, deterministic safety,
+migration, recovery, and performance. It cannot establish release, target-
+project adoption, independent human usability, field maturity, project
+readiness, or production readiness. No hosted candidate or integrated-main
+evidence exists until separately authorized external delivery occurs.
+
+## 4.1.0 completed release
 
 ## Status and authority boundary
 

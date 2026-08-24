@@ -29,6 +29,7 @@
 - Octon Mini profile: `{{PROFILE}}`
 - Collaboration topology: not assessed; no workflow selected or adopted
 - Implementation state: not assessed
+- Autonomous delivery: available but not activated; writes and external effects locked
 - External or production authority: none created by this harness
 
 Current task status lives only in `.agent/tasks/`; operator direction lives in
@@ -73,6 +74,8 @@ harness adoption, and target-project readiness are separate conclusions.
 ./octon work start --help
 ./octon work close --help
 ./octon work finish plan
+./octon delivery status
+./octon delivery activation-preview --profile fast_delivery
 ./octon check
 ./octon doctor
 ```
@@ -90,3 +93,10 @@ adopts it, `plan` remains read-only and non-authorizing; `apply` requires the
 exact reviewed digest plus current task-scoped authorization for every planned
 external operation. The optional completion event hook may create only the
 plan and can remain disabled.
+
+`octon delivery` is immediately available for read-only research, context,
+applicability, planning, status, explanation, and activation preview. It runs
+no project hook and creates no authority. `fast_delivery` may be recommended
+but is never selected. Write-capable behavior stays locked until a complete
+deterministic standing contract is independently confirmed by exact digest and
+activated from locally bundled content through a reviewed transaction.

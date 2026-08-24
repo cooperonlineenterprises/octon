@@ -65,6 +65,8 @@ REQUIRED_PATHS = (
     "octon",
     "octon-mini.json",
     "docs/COMPATIBILITY.md",
+    "docs/AUTONOMOUS_DELIVERY.md",
+    "docs/AUTONOMOUS_DELIVERY_VALIDATION.md",
     "docs/DECISION_GOVERNANCE.md",
     "docs/GUIDED_SETUP.md",
     "docs/GOLDEN_PATHS.md",
@@ -85,7 +87,9 @@ REQUIRED_PATHS = (
     "migrations/3.0.0-to-3.1.0.md",
     "migrations/3.1.0-to-4.0.0.md",
     "migrations/3.1.0-to-4.1.0.md",
+    "migrations/3.1.0-to-4.2.0.md",
     "migrations/4.0.0-to-4.1.0.md",
+    "migrations/4.1.0-to-4.2.0.md",
     "patterns/README.md",
     "patterns/catalog.json",
     "patterns/schemas/pattern-catalog.schema.json",
@@ -107,6 +111,7 @@ REQUIRED_PATHS = (
     "shared/GENERATION_CONTRACT.md",
     "shared/source-contracts/large-project-phase-profile.schema.json",
     "shared/source-contracts/long-running-work-benchmark-report.schema.json",
+    "shared/source-contracts/autonomous-delivery-benchmark-report.schema.json",
     "shared/optional-schemas/context-pack-manifest.schema.json",
     "shared/reference-evidence.json",
     "shared/source-contracts/information-state-semantics.json",
@@ -130,6 +135,7 @@ REQUIRED_PATHS = (
     "shared/schemas/dossier-records.schema.json",
     "shared/schemas/harness-artifact-registry.schema.json",
     "shared/schemas/harness-assurance-records.schema.json",
+    "shared/schemas/harness-autonomous-delivery.schema.json",
     "shared/schemas/harness-capability-records.schema.json",
     "shared/schemas/harness-collaboration-profile.schema.json",
     "shared/schemas/harness-continuation.schema.json",
@@ -163,6 +169,7 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/SKILL.md",
     "skills/octon-mini-project-bootstrap/agents/openai.yaml",
     "skills/octon-mini-project-bootstrap/references/dossier-model.md",
+    "skills/octon-mini-project-bootstrap/references/autonomous-delivery.md",
     "skills/octon-mini-project-bootstrap/references/generation-workflow.md",
     "skills/octon-mini-project-bootstrap/references/guided-setup.md",
     "skills/octon-mini-project-bootstrap/references/harness-model.md",
@@ -174,6 +181,7 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/scripts/adopt_project.py",
     "skills/octon-mini-project-bootstrap/scripts/benchmark_validation.py",
     "skills/octon-mini-project-bootstrap/scripts/benchmark_long_running_work.py",
+    "skills/octon-mini-project-bootstrap/scripts/benchmark_autonomous_delivery.py",
     "skills/octon-mini-project-bootstrap/scripts/collaboration_project.py",
     "skills/octon-mini-project-bootstrap/scripts/detect_project.py",
     "skills/octon-mini-project-bootstrap/scripts/guided_workflow.py",
@@ -181,10 +189,16 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/scripts/package_project.py",
     "skills/octon-mini-project-bootstrap/scripts/profile_large_project.py",
     "skills/octon-mini-project-bootstrap/scripts/octon.py",
+    "skills/octon-mini-project-bootstrap/scripts/source_delivery_effect.py",
+    "skills/octon-mini-project-bootstrap/scripts/source_work_completion.py",
     "skills/octon-mini-project-bootstrap/scripts/plan_adoption.py",
     "skills/octon-mini-project-bootstrap/scripts/scaffold_project.py",
     "skills/octon-mini-project-bootstrap/scripts/setup_session.py",
     "skills/octon-mini-project-bootstrap/scripts/test_acceptance.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_autonomous_delivery.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_autonomous_delivery_faults.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_autonomous_delivery_package.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_autonomous_delivery_benchmark.py",
     "skills/octon-mini-project-bootstrap/scripts/test_architectural_patterns.py",
     "skills/octon-mini-project-bootstrap/scripts/test_benchmark_validation.py",
     "skills/octon-mini-project-bootstrap/scripts/test_long_running_work_benchmark.py",
@@ -196,8 +210,11 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/scripts/test_migration_2_0_0_to_3_0_0.py",
     "skills/octon-mini-project-bootstrap/scripts/test_migration_3_1_0_to_4_0_0.py",
     "skills/octon-mini-project-bootstrap/scripts/test_migration_4_0_0_to_4_1_0.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_migration_4_1_0_to_4_2_0.py",
     "skills/octon-mini-project-bootstrap/scripts/test_velocity_workflows.py",
     "skills/octon-mini-project-bootstrap/scripts/test_work_completion.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_source_delivery_effect.py",
+    "skills/octon-mini-project-bootstrap/scripts/test_source_work_completion.py",
     "skills/octon-mini-project-bootstrap/scripts/test_guided_setup.py",
     "skills/octon-mini-project-bootstrap/scripts/test_octon_launchers.py",
     "skills/octon-mini-project-bootstrap/scripts/upgrade_project.py",
@@ -246,8 +263,10 @@ REQUIRED_PATHS = (
     "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/mixed-live-validator-version.json",
     "skills/octon-mini-project-bootstrap/fixtures/migrations/3.1.0-to-4.0.0/README.md",
     "skills/octon-mini-project-bootstrap/fixtures/migrations/4.0.0-to-4.1.0/README.md",
+    "skills/octon-mini-project-bootstrap/fixtures/migrations/4.1.0-to-4.2.0/README.md",
     "skills/octon-mini-project-bootstrap/fixtures/long-running-work/fault-matrix.json",
     "skills/octon-mini-project-bootstrap/fixtures/adapter-safety/cases.json",
+    "skills/octon-mini-project-bootstrap/fixtures/autonomous-delivery/invalid-mutations.json",
     "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/nonexternal-migration-authority.json",
 )
 DOSSIER_HEADINGS = (
@@ -687,6 +706,7 @@ def validate_config_and_schemas(issues: list[str], scaffolder: Any) -> None:
         "setup_answers_schema": (
             "shared/schemas/octon-mini-bootstrap-setup-answers.schema.json"
         ),
+        "autonomous_delivery_schema": "shared/schemas/harness-autonomous-delivery.schema.json",
         "architecture_proof_schema": "patterns/architecture-proof/schema.json",
         "architecture_proof_generated": False,
     }:
@@ -993,6 +1013,40 @@ def validate_templates(issues: list[str], scaffolder: Any) -> None:
         "GIT_PORTFOLIO_SHA256": str(
             scaffolder.package_contract(manifest, "small-team-git-portfolio")["sha256"]
         ),
+        "AUTONOMOUS_DELIVERY_VERSION": str(
+            scaffolder.package_contract(manifest, "autonomous-delivery")["version"]
+        ),
+        "AUTONOMOUS_DELIVERY_SHA256": str(
+            scaffolder.package_contract(manifest, "autonomous-delivery")["sha256"]
+        ),
+        "AUTONOMOUS_DELIVERY_INSTALLED_SHA256": scaffolder.installed_package_content_digest(
+            scaffolder.policy_source_path(scaffolder.package_contract(manifest, "autonomous-delivery")["source"], "autonomous-delivery source"),
+            scaffolder.package_contract(manifest, "autonomous-delivery")["inventory_paths"],
+        ),
+        "AUTONOMOUS_DELIVERY_PAYLOAD_JSON": json.dumps(
+            scaffolder.package_payload_projection(
+                scaffolder.policy_source_path(scaffolder.package_contract(manifest, "autonomous-delivery")["source"], "autonomous-delivery source"),
+                scaffolder.package_contract(manifest, "autonomous-delivery")["inventory_paths"],
+            ),
+            separators=(",", ":"),
+        ),
+        "LONG_RUNNING_WORK_VERSION": str(
+            scaffolder.package_contract(manifest, "long-running-work")["version"]
+        ),
+        "LONG_RUNNING_WORK_SHA256": str(
+            scaffolder.package_contract(manifest, "long-running-work")["sha256"]
+        ),
+        "LONG_RUNNING_WORK_INSTALLED_SHA256": scaffolder.installed_package_content_digest(
+            scaffolder.policy_source_path(scaffolder.package_contract(manifest, "long-running-work")["source"], "long-running-work source"),
+            scaffolder.package_contract(manifest, "long-running-work")["inventory_paths"],
+        ),
+        "LONG_RUNNING_WORK_PAYLOAD_JSON": json.dumps(
+            scaffolder.package_payload_projection(
+                scaffolder.policy_source_path(scaffolder.package_contract(manifest, "long-running-work")["source"], "long-running-work source"),
+                scaffolder.package_contract(manifest, "long-running-work")["inventory_paths"],
+            ),
+            separators=(",", ":"),
+        ),
     }
     templates_root = SKILL_ROOT / "assets/templates"
     extension_registry_template = (
@@ -1100,8 +1154,8 @@ def validate_skill_and_release(issues: list[str]) -> None:
     if "$octon-mini-project-bootstrap" not in openai:
         issues.append("agents/openai.yaml does not invoke $octon-mini-project-bootstrap")
     version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    if version != "4.1.0":
-        issues.append(f"current VERSION must be 4.1.0, found {version!r}")
+    if version != "4.2.0":
+        issues.append(f"current VERSION must be 4.2.0, found {version!r}")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     release = (ROOT / "RELEASE.md").read_text(encoding="utf-8")
     release_compact = re.sub(r"\s+", " ", release)
@@ -1135,6 +1189,8 @@ def validate_skill_and_release(issues: list[str]) -> None:
             issues.append(f"RELEASE.md lacks current repository-state assertion: {statement}")
     if "## 4.1.0 — 2026-08-22" not in changelog:
         issues.append("CHANGELOG.md must contain the exact 4.1.0 release heading")
+    if "## 4.2.0 — Unreleased" not in changelog:
+        issues.append("CHANGELOG.md must contain the exact unreleased 4.2.0 heading")
     if "## 4.0.0 — 2026-08-18" not in changelog:
         issues.append("CHANGELOG.md must retain the exact 4.0.0 release heading")
     for stale in (
@@ -1155,7 +1211,9 @@ def validate_skill_and_release(issues: list[str]) -> None:
             "do not acquire the release",
         ),
         "RELEASE_READINESS.md": (
-            "# Octon Mini 4.1.0 Release-Readiness Record",
+            "# Octon Mini Release-Readiness Record",
+            "## 4.2.0 candidate — in progress",
+            "## 4.1.0 completed release",
             "`242ef4c496cc8fc95a7b550371beeb01bb4a6513`",
             "`1df893ec42ac2c49e5944268cafec30757d06430`",
             "`32540555019`",
@@ -1204,6 +1262,25 @@ def validate_skill_and_release(issues: list[str]) -> None:
     ):
         if statement not in source_decisions:
             issues.append(f"SRC-DEC-0016 lacks required license boundary: {statement}")
+    for decision_id, statements in {
+        "SRC-DEC-0019": (
+            "## SRC-DEC-0019 — Governed autonomous-delivery capability",
+            "`available_not_activated`",
+            "only independent human confirmation of those exact bytes supplies authority",
+            "unknown outcome stops with zero automatic retries",
+            "| `permission_grant` | `false` |",
+        ),
+        "SRC-DEC-0020": (
+            "## SRC-DEC-0020 — Standing source-release evidence policy",
+            "Technically scoped final patch and minor",
+            "Direct autonomous-worker spending remains zero",
+            "v4.1.0 `accept_disclosed_absence` choice remains release-specific",
+            "| `permission_grant` | `false` |",
+        ),
+    }.items():
+        for statement in statements:
+            if statement not in source_decisions:
+                issues.append(f"{decision_id} lacks required accepted boundary: {statement}")
 
     expected_license = (
         "MIT No Attribution\n\n"
@@ -1248,8 +1325,8 @@ def validate_skill_and_release(issues: list[str]) -> None:
     kernel_version = config.get("modules", {}).get("harness", {}).get(
         "kernel_version"
     )
-    if kernel_version != "4.1.0":
-        issues.append("octon-mini.json harness kernel must be 4.1.0")
+    if kernel_version != "4.2.0":
+        issues.append("octon-mini.json harness kernel must be 4.2.0")
     scaffolder = load_scaffolder()
     if scaffolder.GENERATOR_VERSION != version:
         issues.append("scaffolder generator version differs from VERSION")
@@ -1464,6 +1541,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "long-running-work benchmark methodology fixtures",
         ),
         (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_autonomous_delivery_benchmark.py")],
+            ROOT,
+            "autonomous-delivery benchmark methodology fixtures",
+        ),
+        (
             [
                 sys.executable,
                 "-B",
@@ -1505,6 +1587,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "4.0.0 to 4.1.0 same-product migration fixtures",
         ),
         (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_migration_4_1_0_to_4_2_0.py")],
+            ROOT,
+            "4.1.0 to 4.2.0 autonomous-delivery migration fixtures",
+        ),
+        (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_long_running_work.py")],
             ROOT,
             "long-running-work functional and integration fixtures",
@@ -1523,6 +1610,21 @@ def validate_executable_contracts(issues: list[str]) -> None:
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_adapter_safety.py")],
             ROOT,
             "adapter safety fixture contract",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_autonomous_delivery.py")],
+            ROOT,
+            "autonomous-delivery functional and activation fixtures",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_autonomous_delivery_faults.py")],
+            ROOT,
+            "autonomous-delivery interruption and monotonic-effect fixtures",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_autonomous_delivery_package.py")],
+            ROOT,
+            "autonomous-delivery offline package and profile fixtures",
         ),
         (
             [
@@ -1550,6 +1652,24 @@ def validate_executable_contracts(issues: list[str]) -> None:
             ],
             ROOT,
             "governed work-completion planning, authorization, recovery, and cleanup workflows",
+        ),
+        (
+            [
+                sys.executable,
+                "-B",
+                str(SKILL_ROOT / "scripts/test_source_delivery_effect.py"),
+            ],
+            ROOT,
+            "source-repository closed delivery-effect adapter and execution-branch boundaries",
+        ),
+        (
+            [
+                sys.executable,
+                "-B",
+                str(SKILL_ROOT / "scripts/test_source_work_completion.py"),
+            ],
+            ROOT,
+            "source-repository work-completion task binding, candidate planning, and post-merge cleanup gates",
         ),
         (
             [

@@ -310,6 +310,241 @@
         "canonical_plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
       }
     },
+    "external_task_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "task_ref", "priority_authority_ref", "scope", "acceptance_refs", "branch", "pull_request", "self_review_refs", "validation_evidence_refs", "authority_source", "observed_at", "valid_until", "limitations", "task_reference_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.external-codex-task-reference.v1"},
+        "artifact_kind": {"const": "external_codex_task_reference"},
+        "permission_grant": {"const": false},
+        "task_ref": {"type": "string", "pattern": "^external:codex-task:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"},
+        "priority_authority_ref": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+        "scope": {"type": "string", "minLength": 1},
+        "acceptance_refs": {"$ref": "#/$defs/strings"},
+        "branch": {"type": "string", "minLength": 1},
+        "pull_request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "body"],
+          "properties": {"title": {"type": "string", "minLength": 1}, "body": {"type": "string", "minLength": 1}}
+        },
+        "self_review_refs": {"$ref": "#/$defs/strings"},
+        "validation_evidence_refs": {"$ref": "#/$defs/strings"},
+        "authority_source": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "valid_until": {"type": "string", "format": "date-time"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "task_reference_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "source_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "read_only", "source_mode", "task_ref", "task_status", "external_task_binding", "external_task_valid_until", "priority_authority_ref", "workflow", "adopted_workflow_authority_ref", "assurance_profile", "assurance_control_refs", "standing_authorization_record_ref", "repository", "branches", "expected_revisions", "candidate_commits", "eligible_staging_paths", "path_preconditions", "closure_transaction", "git_hook_observation", "proposed_commit", "validation_commands", "validation_evidence_refs", "pull_request", "review", "required_hosted_checks", "integration_method", "cleanup", "candidate_validation", "post_merge_validation", "concurrent_work", "external_operations", "authorization_contract", "stop_conditions", "blocking_reasons", "source_inputs", "relevant_input_fingerprint", "limitations", "canonical_plan_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.source-work-completion-plan.v1"},
+        "artifact_kind": {"const": "work_completion_plan"},
+        "permission_grant": {"const": false},
+        "read_only": {"const": true},
+        "source_mode": {"const": true},
+        "task_ref": {"type": "string", "pattern": "^external:codex-task:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"},
+        "task_status": {"const": "externally_bound"},
+        "external_task_binding": {
+          "type": "object", "additionalProperties": false,
+          "required": ["path", "file_sha256", "task_reference_digest"],
+          "properties": {"path": {"type": "string", "minLength": 1}, "file_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "task_reference_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+        },
+        "external_task_valid_until": {"type": "string", "format": "date-time"},
+        "priority_authority_ref": {"type": "string", "pattern": "^(?:authority|external):.+$"},
+        "workflow": {"const": "solo_hybrid"},
+        "adopted_workflow_authority_ref": {"const": "SRC-DEC-0001"},
+        "assurance_profile": {"const": "source_release_policy"},
+        "assurance_control_refs": {"$ref": "#/$defs/strings"},
+        "standing_authorization_record_ref": {"type": "string", "minLength": 1},
+        "repository": {
+          "type": "object", "additionalProperties": false,
+          "required": ["root", "identity", "remote", "observed_remote_url_sha256", "provider_adapter", "hosted_repository"],
+          "properties": {"root": {"const": "."}, "identity": {"type": "string", "minLength": 1}, "remote": {"type": "string", "minLength": 1}, "observed_remote_url_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "provider_adapter": {"const": "github_cli"}, "hosted_repository": {"type": "string", "minLength": 1}}
+        },
+        "branches": {"type": "object", "additionalProperties": false, "required": ["default", "task", "current"], "properties": {"default": {"type": "string", "minLength": 1}, "task": {"type": "string", "minLength": 1}, "current": {"type": "string", "minLength": 1}}},
+        "expected_revisions": {"type": "object", "additionalProperties": false, "required": ["base", "head_before_commit", "candidate_head", "remote_default", "remote_task"], "properties": {"base": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "head_before_commit": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "candidate_head": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "remote_default": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "remote_task": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40,64}$"}}},
+        "candidate_commits": {"$ref": "#/$defs/strings"},
+        "eligible_staging_paths": {"$ref": "#/$defs/strings"},
+        "path_preconditions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/path_precondition"}},
+        "closure_transaction": {"const": null},
+        "git_hook_observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policy", "configured_path_sha256", "hook_directory_state", "active_hook_names", "fsmonitor"],
+          "properties": {
+            "policy": {"const": "require_none"},
+            "configured_path_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+            "hook_directory_state": {"enum": ["absent", "non_directory", "directory", "unsafe_symlink"]},
+            "active_hook_names": {"$ref": "#/$defs/strings"},
+            "fsmonitor": {"const": "disabled_or_absent"}
+          }
+        },
+        "proposed_commit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["message", "allow_empty", "amend", "history_rewrite", "mode"],
+          "properties": {
+            "message": {"type": "string", "minLength": 1},
+            "allow_empty": {"const": false},
+            "amend": {"const": false},
+            "history_rewrite": {"const": false},
+            "mode": {"const": "precommitted_candidate_range"}
+          }
+        },
+        "validation_commands": {"type": "array", "items": {"$ref": "#/$defs/planned_command"}},
+        "validation_evidence_refs": {"$ref": "#/$defs/strings"},
+        "pull_request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirement", "title", "body", "draft_allowed"],
+          "properties": {
+            "requirement": {"const": "required"},
+            "title": {"type": "string", "minLength": 1},
+            "body": {"type": "string", "minLength": 1},
+            "draft_allowed": {"const": false}
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requirement", "maximum_peer_approvals", "eligible_peer_reviewers", "self_review_refs", "limitations"],
+          "properties": {
+            "requirement": {"const": "self_review_with_limitations"},
+            "maximum_peer_approvals": {"const": 0},
+            "eligible_peer_reviewers": {"$ref": "#/$defs/strings"},
+            "self_review_refs": {"$ref": "#/$defs/strings"},
+            "limitations": {"$ref": "#/$defs/strings"}
+          }
+        },
+        "required_hosted_checks": {"$ref": "#/$defs/strings"},
+        "integration_method": {"const": "merge_commit"},
+        "cleanup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["remote_task_branch", "local_task_branch"],
+          "properties": {
+            "remote_task_branch": {"const": true},
+            "local_task_branch": {"const": true}
+          }
+        },
+        "candidate_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "evidence_schema", "expected_matrix_jobs", "integration_before_pass"],
+          "properties": {
+            "required": {"const": true},
+            "evidence_schema": {"const": "harness.source-candidate-matrix-validation.v1"},
+            "expected_matrix_jobs": {"const": 24},
+            "integration_before_pass": {"const": false}
+          }
+        },
+        "post_merge_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "evidence_schema", "cleanup_before_pass"],
+          "properties": {
+            "required": {"const": true},
+            "evidence_schema": {"const": "harness.source-post-merge-validation.v1"},
+            "cleanup_before_pass": {"const": false}
+          }
+        },
+        "concurrent_work": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "shared_base_revision", "declared_write_scope", "worktree", "handback_state", "partial_result_state", "coordination_evidence_refs"],
+          "properties": {
+            "enabled": {"const": false},
+            "shared_base_revision": {"const": null},
+            "declared_write_scope": {"$ref": "#/$defs/strings"},
+            "worktree": {"type": "string", "minLength": 1},
+            "handback_state": {"const": "not_applicable"},
+            "partial_result_state": {"const": "not_applicable"},
+            "coordination_evidence_refs": {"$ref": "#/$defs/strings"}
+          }
+        },
+        "external_operations": {"$ref": "#/$defs/strings"},
+        "authorization_contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "attestation_schema", "exact_plan_binding", "revalidate_before_each_effect"],
+          "properties": {
+            "required": {"const": true},
+            "attestation_schema": {"const": "harness.work-completion-authorization.v1"},
+            "exact_plan_binding": {"const": true},
+            "revalidate_before_each_effect": {"const": true}
+          }
+        },
+        "stop_conditions": {"$ref": "#/$defs/strings"},
+        "blocking_reasons": {"$ref": "#/$defs/strings"},
+        "source_inputs": {"$ref": "#/$defs/strings"},
+        "relevant_input_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "canonical_plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "source_candidate_matrix_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "receipt_id", "plan_digest", "candidate_revision", "pull_request_number", "pull_request_head", "required_check", "full_matrix", "observed_at", "evidence_refs", "limitations", "evidence_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.source-candidate-matrix-validation.v1"},
+        "artifact_kind": {"const": "source_candidate_hosted_validation_evidence"},
+        "permission_grant": {"const": false},
+        "receipt_id": {"type": "string", "pattern": "^WCR-[a-f0-9]{24}$"},
+        "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "candidate_revision": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "pull_request_number": {"type": "integer", "minimum": 1},
+        "pull_request_head": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "required_check": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}}
+        },
+        "full_matrix": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref", "expected_jobs", "successful_jobs"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}, "expected_jobs": {"const": 24}, "successful_jobs": {"const": 24}}
+        },
+        "observed_at": {"type": "string", "format": "date-time"},
+        "evidence_refs": {"$ref": "#/$defs/strings"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "source_post_merge_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_kind", "permission_grant", "receipt_id", "plan_digest", "integrated_revision", "tested_main_revision", "automatic_main_check", "full_matrix", "observed_at", "evidence_refs", "limitations", "evidence_digest"],
+      "properties": {
+        "schema_version": {"const": "harness.source-post-merge-validation.v1"},
+        "artifact_kind": {"const": "source_integrated_main_validation_evidence"},
+        "permission_grant": {"const": false},
+        "receipt_id": {"type": "string", "pattern": "^WCR-[a-f0-9]{24}$"},
+        "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "integrated_revision": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "tested_main_revision": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+        "automatic_main_check": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}}
+        },
+        "full_matrix": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_ref", "expected_jobs", "successful_jobs"],
+          "properties": {"status": {"const": "pass"}, "run_ref": {"type": "string", "minLength": 1}, "expected_jobs": {"type": "integer", "minimum": 1}, "successful_jobs": {"type": "integer", "minimum": 1}}
+        },
+        "observed_at": {"type": "string", "format": "date-time"},
+        "evidence_refs": {"$ref": "#/$defs/strings"},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
     "authorization": {
       "type": "object",
       "additionalProperties": false,
@@ -338,7 +573,7 @@
         "artifact_kind": {"const": "external_authorization_attestation"},
         "permission_grant": {"const": false},
         "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "task_ref": {"type": "string", "pattern": "^TASK-[0-9]{4}$"},
+        "task_ref": {"type": "string", "pattern": "^(?:TASK-[0-9]{4}|external:codex-task:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$"},
         "repository_identity": {"type": "string", "minLength": 1},
         "remote": {"type": "string", "minLength": 1},
         "default_branch": {"type": "string", "minLength": 1},
@@ -400,6 +635,67 @@
         "receipt_id": {"type": "string", "pattern": "^WCR-[a-f0-9]{24}$"},
         "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "plan": {"$ref": "#/$defs/plan"},
+        "state": {"enum": ["planned", "locally_committed", "branch_published", "pull_request_open", "checks_pending", "checks_failed", "checks_passed", "review_pending", "review_satisfied", "integrated", "remote_branch_cleaned", "default_branch_synchronized", "local_branch_cleaned", "completed", "blocked"]},
+        "started_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "progress": {"type": "array", "items": {"$ref": "#/$defs/progress_event"}},
+        "completed_operations": {"$ref": "#/$defs/strings"},
+        "authorization_evidence": {"$ref": "#/$defs/authorization"},
+        "authorization_history": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/authorization"}
+        },
+        "revisions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "integrated", "synchronized_default"],
+          "properties": {
+            "commit": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40,64}$"},
+            "integrated": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40,64}$"},
+            "synchronized_default": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40,64}$"}
+          }
+        },
+        "pull_request": {"type": ["object", "null"]},
+        "blocking": {"type": ["object", "null"]},
+        "rollback": {"const": "external_effects_are_not_atomically_reversible_resume_or_fix_forward"},
+        "resume": {"$ref": "#/$defs/argv"},
+        "readiness_claim": {"const": false},
+        "limitations": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "source_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_kind",
+        "permission_grant",
+        "receipt_id",
+        "plan_digest",
+        "plan",
+        "state",
+        "started_at",
+        "updated_at",
+        "progress",
+        "completed_operations",
+        "authorization_evidence",
+        "authorization_history",
+        "revisions",
+        "pull_request",
+        "blocking",
+        "rollback",
+        "resume",
+        "readiness_claim",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {"const": "harness.work-completion-receipt.v1"},
+        "artifact_kind": {"const": "work_completion_receipt"},
+        "permission_grant": {"const": false},
+        "receipt_id": {"type": "string", "pattern": "^WCR-[a-f0-9]{24}$"},
+        "plan_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "plan": {"$ref": "#/$defs/source_plan"},
         "state": {"enum": ["planned", "locally_committed", "branch_published", "pull_request_open", "checks_pending", "checks_failed", "checks_passed", "review_pending", "review_satisfied", "integrated", "remote_branch_cleaned", "default_branch_synchronized", "local_branch_cleaned", "completed", "blocked"]},
         "started_at": {"type": "string", "format": "date-time"},
         "updated_at": {"type": "string", "format": "date-time"},

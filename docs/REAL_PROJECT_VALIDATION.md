@@ -44,6 +44,26 @@ findings, validation failures, false-success incidents, residual dirty state,
 and recovery result. Do not use a real provider effect merely to populate the
 report.
 
+When governed autonomous delivery is the subject, additionally exercise all
+four delivery profiles; locked research/context/planning; initialization,
+adoption, and upgrade visibility; deterministic draft and confirmation
+matching; offline activation; revocation, emergency stop, expiry, warning and
+limit exhaustion; both metered-API and included-subscription compute
+enforcement paths plus zero direct spending; work-
+completion projection; exact workflow/tag/Release adapter fixtures; and
+interruption before and after every meaningful external boundary. Use local
+provider fixtures unless a real effect has separate exact authorization.
+Record every intervention, correction cycle, receipt successor, read-back,
+unknown outcome, duplicate-effect count, retained failure, and residual state.
+For Octon Mini source delivery, also record the external Codex task-reference
+digest, precommitted candidate range, candidate-matrix pre-merge pause,
+post-merge validation pause, whether merge remained blocked until all 24
+candidate jobs passed, and whether cleanup remained blocked until exact
+integrated-main evidence passed.
+An unavailable unfamiliar operator, independent reviewer, external project, or
+human-usability observation remains `not_run` and cannot support maturity,
+adoption, usability, or readiness claims.
+
 ## Authorization, privacy, and isolation prerequisites
 
 Before inspection or execution, record:

@@ -185,7 +185,7 @@
       "properties": {
         "id": {"type": "string", "pattern": "^setup\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
         "version": {"type": "integer", "minimum": 1},
-        "family": {"enum": ["project_generation", "existing_authority", "collaboration", "commands_hooks", "scm_workflow", "optional_packages", "upgrade", "work_completion"]},
+        "family": {"enum": ["project_generation", "existing_authority", "collaboration", "commands_hooks", "scm_workflow", "optional_packages", "upgrade", "work_completion", "autonomous_delivery"]},
         "modes": {
           "type": "array",
           "minItems": 1,

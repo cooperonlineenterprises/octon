@@ -255,6 +255,7 @@ separately assessed, installed, and adopted the optional package.
 
 1. From the source bundle, plan and apply content-addressed installation of
    `long-running-work` with an accepted trust/applicability decision.
+
 2. In the generated project, plan and apply `octon work run configure` with a
    separate accepted project adoption decision. Installation remains inactive
    until this step.
@@ -278,6 +279,82 @@ Never replay an external operation during resume. Disable the package before
 removal. Removal refuses active or undispositioned retained run history.
 Structural success, a run completion, or a checkpoint establishes no project
 adoption, external authority, release, or readiness.
+
+## Governed autonomous delivery
+
+1. Inspect the locked default without changing the project:
+
+   ```text
+   ./octon delivery status
+   ./octon delivery assess
+   ./octon delivery activation-preview --profile fast_delivery
+   ```
+
+2. Generate a deterministic draft to an explicit external review area. The
+   draft is not authority:
+
+   ```text
+   ./octon delivery authorization draft \
+     --profile fast_delivery \
+     --compute-mode metered_api \
+     --repository-root /absolute/project \
+     --repository-identity owner/repository \
+     --authority-dir /absolute/operator-control \
+     --evidence-root /absolute/evidence \
+     --valid-from <timestamp> \
+     --valid-until <timestamp> \
+     --output /absolute/review/SAC-01.draft.json
+   ```
+
+3. Independently confirm the displayed exact digest. A flag is not
+   confirmation. Serialize the accepted external record only from matching
+   confirmation evidence.
+
+   For a successor, use a new `SAC-##` ID and bind the exact predecessor with
+   `--supersedes-authorization-record`. After the confirmed successor record
+   exists, `octon delivery authorization supersede` can serialize the required
+   predecessor revocation only at the exact control path bound by that
+   successor.
+
+   For an existing subscription, instead select
+   `--compute-mode included_subscription` and supply a safe external or
+   authority `--subscription-plan-ref`. The resulting contract permits only
+   included allowance and requires a fresh readable host quota report.
+
+4. Plan activation from the accepted record, confirmation, current evidence
+   for the selected compute mode, and accepted project adoption decision; then
+   apply only the exact digest. `--compute-enforcement-artifact` accepts the
+   mode-specific evidence; the legacy `--cost-enforcement-artifact` spelling is
+   retained only for confirmed v1 metered records.
+
+5. Use existing long-running work, transactions, project checks, and work
+   completion for ordinary delivery. Use the closed adapter only for exact
+   workflow dispatch, annotated tag, tag push, GitHub source Release, and
+   read-back.
+
+6. If an attempted external effect cannot be read back conclusively, stop. Do
+   not retry. Reconcile or fix forward from the monotonic receipt.
+
+For Octon Mini source delivery, first create an external immutable Codex task
+reference and then run:
+
+```text
+./octon work finish plan \
+  --task-reference /absolute/evidence/codex-task.json \
+  --authorization-record /absolute/control/SAC-02.json \
+  --output /absolute/evidence/source-work-plan.json
+```
+
+The plan binds the already committed branch range. Apply uses a separately
+projected, fresh work-completion authorization. After the stable required check
+passes, use the closed source adapter (`./octon delivery effect`) under a fresh
+`dispatch_hosted_workflow` projection to dispatch and read back the complete
+candidate matrix. Record the exact
+24/24 candidate source/acceptance job evidence with `attest-candidate-matrix`;
+only then may resume reach merge. After merge and local `main` synchronization,
+the receipt pauses again before cleanup. Record exact integrated-main smoke and
+full-matrix evidence with `attest-post-merge`, then resume under fresh
+authorization. No source `.agent/tasks` store is created.
 
 ## Hooks and evidence
 

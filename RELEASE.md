@@ -5,6 +5,41 @@
 > below. This record creates no continuing authority for a later tag, Release,
 > package publication, deployment, adoption, or other external action.
 
+## Current source candidate
+
+Current development targets unreleased Octon Mini `4.2.0`. It implements the
+optional governed autonomous-delivery capability accepted by `SRC-DEC-0019`
+and the standing patch/minor source-release evidence policy accepted by
+`SRC-DEC-0020`.
+
+The v1 `SAC-01` record remains preserved and revoked. Confirmed subscription-
+mode `SAC-02` is the current standing envelope, but no individual external
+operation is authorized without its fresh exact-plan projection, current
+compute evidence, and live preconditions. A draft, profile, setup answer, plan,
+receipt, test, or this source record cannot create or broaden that authority.
+
+The accepted narrow source-repository amendment keeps commit, push, PR, checks,
+merge, synchronization, and cleanup in the existing work-completion owner. It
+uses an external immutable, digest-bound Codex task reference rather than a
+source task store. Merge cannot proceed until the required check and all 24
+candidate source/acceptance matrix jobs pass on the exact head; cleanup cannot
+proceed until exact integrated-main validation evidence is recorded.
+Candidate and integrated-main workflow dispatches use the closed source
+`octon delivery effect` adapter and do not transfer merge or cleanup ownership.
+
+If confirmed, a final patch or minor source release still requires every
+applicable local, mutation, fault, migration, benchmark, PR, candidate-matrix,
+integrated-main, exact-read-back, evidence-retention, and no-critical/high-
+finding gate. Direct autonomous-worker spending is zero. Each exact contract
+selects one compute mode: metered API retains host-enforced USD 250 per run and
+USD 1,000 per authorization-period ceilings; included subscription permits
+only current readable included allowance and prohibits paid credits,
+API/pay-as-you-go billing, add-ons, and upgrades. Unknown, unreadable,
+exhausted, or changed compute state blocks the next operation. Major, boundary-expanding,
+new effect-family, security/privacy/legal/credential/destructive-migration,
+deployment, external-project, and package-publication releases require renewed
+human input.
+
 ## Current release
 
 - Product and generator: Octon Mini `4.1.0` (released 2026-08-22)
@@ -184,12 +219,19 @@ Before tagging a release:
    `test_migration_4_0_0_to_4_1_0.py`, and confirm valid transformation, exact
    idempotence, reviewed legacy seeding, dormant optional-package behavior,
    rollback evidence, and every fail-closed fixture;
+   for a 4.2 candidate additionally run
+   `test_migration_4_1_0_to_4_2_0.py` and confirm dormant delivery availability,
+   offline payload integrity, no generated authority, read-only no-change, and
+   exact rollback;
 4. run `test_benchmark_validation.py`, `test_octon_launchers.py`,
    `test_velocity_workflows.py`, `test_work_completion.py`,
    `test_guided_setup.py`, `test_acceptance.py`, and, for a 4.1 candidate,
    `test_long_running_work.py`, `test_long_running_work_faults.py`,
    `test_long_running_work_package.py`, `test_adapter_safety.py`, and
-   `test_long_running_work_benchmark.py`; run both
+   `test_long_running_work_benchmark.py`; for a 4.2 candidate also run
+   `test_autonomous_delivery.py`, `test_autonomous_delivery_faults.py`,
+   `test_autonomous_delivery_package.py`, `test_source_work_completion.py`, and
+   `test_autonomous_delivery_benchmark.py`; run
    `benchmark_validation.py --enforce` and the 10,000-file
    `benchmark_long_running_work.py --enforce`, retaining each host-specific
    report, every cold-start and warm sample, stderr, and every threshold
@@ -226,6 +268,9 @@ Before tagging a release:
     closed; AI, TTY, and legacy-flag inputs reconcile through stable question
     IDs; init/adopt/upgrade use their existing planners; and work-completion
     setup neither enables missing prerequisites nor creates authorization;
+    for 4.2 also confirm all three setup modes advertise delivery, profile
+    recommendation never selects, deferral remains `available_not_activated`,
+    and no flag substitutes for independent exact-digest confirmation;
 14. commit the exact validated source and publish its required self-PR under
     current authority;
 15. after a separately authorized `merge_commit` integration, manually

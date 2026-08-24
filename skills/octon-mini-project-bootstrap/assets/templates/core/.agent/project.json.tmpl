@@ -1,5 +1,5 @@
 {
-  "schema_version": "harness.project.v7",
+  "schema_version": "harness.project.v8",
   "project": {
     "id": "{{PROJECT_SLUG}}",
     "name": {{PROJECT_NAME_JSON}},
@@ -102,11 +102,28 @@
       "Generated work completion is disabled and creates no provider setting or operation authority."
     ]
   },
+  "autonomous_delivery": {
+    "schema_version": "harness.autonomous-delivery-config.v2",
+    "status": "available_not_activated",
+    "write_capability": "locked",
+    "external_effects": "locked",
+    "delivery_profile": null,
+    "compute_mode": null,
+    "adoption_decision_ref": null,
+    "authorization_record_ref": null,
+    "authorization_record_digest": null,
+    "activation_receipt_ref": null,
+    "limitations": [
+      "Research, context, applicability, planning, status, explanation, and activation preview are read-only before activation.",
+      "No generated setting, profile, plan, or package creates standing authorization."
+    ]
+  },
   "packages": {
     "trigger_assessments": {
       "operations_observability": "not_assessed",
       "security_supply_chain": "not_assessed",
-      "long_running_work": "not_assessed"
+      "long_running_work": "not_assessed",
+      "autonomous_delivery": "not_assessed"
     },
     "registry": ".agent/packages.json",
     "absence_means_not_applicable": false

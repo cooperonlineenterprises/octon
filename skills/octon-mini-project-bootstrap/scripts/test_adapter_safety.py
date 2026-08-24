@@ -18,7 +18,7 @@ class AdapterSafetyTests(unittest.TestCase):
         value = json.loads(FIXTURE.read_text(encoding="utf-8"))
         self.assertFalse(value["permission_grant"])
         cases = value["cases"]
-        self.assertEqual(len(cases), 18)
+        self.assertEqual(len(cases), 30)
         self.assertEqual(len({item["id"] for item in cases}), len(cases))
         self.assertEqual(len({item["class"] for item in cases}), len(cases))
         self.assertTrue(all(item["expected"] in {"deny", "block", "unsupported"} for item in cases))
@@ -33,6 +33,12 @@ class AdapterSafetyTests(unittest.TestCase):
         self.assertTrue(tools["declarative_only"])
         self.assertEqual(tools["tools"]["git"]["unknown_operations"], "deny")
         self.assertEqual(tools["tools"]["hosted_change"]["unknown_operations"], "deny")
+        hosted = {item["id"]: item for item in tools["tools"]["hosted_change"]["operations"]}
+        for operation in ("observe_workflow_runs", "dispatch_workflow", "observe_source_release", "create_source_release"):
+            self.assertEqual(hosted[operation]["authority_class"], "separate_release_authorization")
+            self.assertFalse(hosted[operation]["normal_workflow"])
+        self.assertNotIn("purchase", hosted)
+        self.assertNotIn("deploy", hosted)
 
 
 if __name__ == "__main__":

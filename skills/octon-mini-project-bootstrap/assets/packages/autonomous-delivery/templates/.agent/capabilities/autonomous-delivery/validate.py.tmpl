@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Validate the installed autonomous-delivery package without side effects."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+def duplicate_pairs(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def main() -> int:
+    root = Path(__file__).resolve().parent
+    package = json.loads(
+        (root / "package.json").read_text(encoding="utf-8"),
+        object_pairs_hook=duplicate_pairs,
+        parse_constant=lambda raw: (_ for _ in ()).throw(ValueError(raw)),
+    )
+    expected = {
+        "schema_version": "octon-mini.autonomous-delivery-package.v1",
+        "package_id": "autonomous-delivery",
+        "package_version": "1.0.0",
+        "permission_grant": False,
+        "entrypoint": ".agent/capabilities/autonomous-delivery/delivery_runtime.py",
+        "validator": ".agent/capabilities/autonomous-delivery/validate.py",
+        "dependencies": ["long-running-work", "work.finish", "transactions", "project-checks", "continuation"],
+        "external_effects": "closed_git_github_source_delivery_only_after_exact_standing_authorization_projection",
+        "compute_modes": ["metered_api", "included_subscription"],
+        "direct_external_spending_usd": 0,
+        "limitations": [
+            "The package is inert until an independently confirmed exact standing-authorization record is activated.",
+            "The package does not host a worker, model, credential, deployment system, package publisher, or universal action runtime."
+        ],
+    }
+    if package != expected:
+        raise ValueError("autonomous-delivery package contract is malformed")
+    for name in ["delivery_runtime.py", "validate.py", "README.md", "package.json"]:
+        path = root / name
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"autonomous-delivery package path is absent or unsafe: {name}")
+    print("autonomous-delivery package validation passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

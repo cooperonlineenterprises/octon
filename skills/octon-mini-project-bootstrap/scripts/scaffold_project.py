@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import hashlib
 import json
@@ -13,13 +14,14 @@ import secrets
 import subprocess
 import sys
 import tempfile
+import zlib
 from collections.abc import Iterable
 from datetime import date
 from pathlib import Path, PurePath, PurePosixPath
 
 
-GENERATOR_VERSION = "4.1.0"
-KERNEL_VERSION = "4.1.0"
+GENERATOR_VERSION = "4.2.0"
+KERNEL_VERSION = "4.2.0"
 KNOWN_VARIABLES = {
     "PROJECT_NAME",
     "PROJECT_NAME_JSON",
@@ -35,6 +37,14 @@ KNOWN_VARIABLES = {
     "KERNEL_FILES_JSON",
     "GIT_PORTFOLIO_VERSION",
     "GIT_PORTFOLIO_SHA256",
+    "AUTONOMOUS_DELIVERY_VERSION",
+    "AUTONOMOUS_DELIVERY_SHA256",
+    "AUTONOMOUS_DELIVERY_INSTALLED_SHA256",
+    "AUTONOMOUS_DELIVERY_PAYLOAD_JSON",
+    "LONG_RUNNING_WORK_VERSION",
+    "LONG_RUNNING_WORK_SHA256",
+    "LONG_RUNNING_WORK_INSTALLED_SHA256",
+    "LONG_RUNNING_WORK_PAYLOAD_JSON",
 }
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_]+)\}\}")
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -263,6 +273,36 @@ def package_content_digest(root: Path, paths: list[str]) -> str:
         digest.update(source.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def installed_package_content_digest(root: Path, paths: list[str]) -> str:
+    """Bind rendered package-relative paths and exact bytes."""
+    value = hashlib.sha256()
+    for raw in sorted(paths):
+        source = root.joinpath(*PurePosixPath(raw).parts)
+        if not source.is_file() or source.is_symlink():
+            raise ValueError(f"package inventory source is absent or unsafe: {raw}")
+        relative = raw[: -len(".tmpl")] if raw.endswith(".tmpl") else raw
+        value.update(relative.encode("utf-8"))
+        value.update(b"\0")
+        value.update(source.read_bytes())
+        value.update(b"\0")
+    return value.hexdigest()
+
+
+def package_payload_projection(root: Path, paths: list[str]) -> list[dict[str, object]]:
+    values: list[dict[str, object]] = []
+    for raw in sorted(paths):
+        source = root.joinpath(*PurePosixPath(raw).parts)
+        if not source.is_file() or source.is_symlink():
+            raise ValueError(f"package inventory source is absent or unsafe: {raw}")
+        relative = raw[: -len(".tmpl")] if raw.endswith(".tmpl") else raw
+        values.append({
+            "path": relative,
+            "content_zlib_base64": base64.b64encode(zlib.compress(source.read_bytes(), level=9)).decode("ascii"),
+            "mode": 493 if relative.endswith(".py") else 420,
+        })
+    return values
 
 
 def package_contract(policy: dict[str, object], package_id: str) -> dict[str, object]:
@@ -1958,6 +1998,18 @@ def main() -> int:
     git_portfolio_contract = package_contract(
         generation_policy, "small-team-git-portfolio"
     )
+    autonomous_delivery_contract = package_contract(
+        generation_policy, "autonomous-delivery"
+    )
+    long_running_work_contract = package_contract(
+        generation_policy, "long-running-work"
+    )
+    autonomous_delivery_source = policy_source_path(
+        autonomous_delivery_contract["source"], "autonomous-delivery source"
+    )
+    long_running_work_source = policy_source_path(
+        long_running_work_contract["source"], "long-running-work source"
+    )
     variables = {
         "PROJECT_NAME": markdown_escape(name),
         "PROJECT_NAME_JSON": json.dumps(name, ensure_ascii=False),
@@ -1991,6 +2043,14 @@ def main() -> int:
         ),
         "GIT_PORTFOLIO_VERSION": str(git_portfolio_contract["version"]),
         "GIT_PORTFOLIO_SHA256": str(git_portfolio_contract["sha256"]),
+        "AUTONOMOUS_DELIVERY_VERSION": str(autonomous_delivery_contract["version"]),
+        "AUTONOMOUS_DELIVERY_SHA256": str(autonomous_delivery_contract["sha256"]),
+        "AUTONOMOUS_DELIVERY_INSTALLED_SHA256": installed_package_content_digest(autonomous_delivery_source, autonomous_delivery_contract["inventory_paths"]),
+        "AUTONOMOUS_DELIVERY_PAYLOAD_JSON": json.dumps(package_payload_projection(autonomous_delivery_source, autonomous_delivery_contract["inventory_paths"]), separators=(",", ":")),
+        "LONG_RUNNING_WORK_VERSION": str(long_running_work_contract["version"]),
+        "LONG_RUNNING_WORK_SHA256": str(long_running_work_contract["sha256"]),
+        "LONG_RUNNING_WORK_INSTALLED_SHA256": installed_package_content_digest(long_running_work_source, long_running_work_contract["inventory_paths"]),
+        "LONG_RUNNING_WORK_PAYLOAD_JSON": json.dumps(package_payload_projection(long_running_work_source, long_running_work_contract["inventory_paths"]), separators=(",", ":")),
     }
 
     with tempfile.TemporaryDirectory(

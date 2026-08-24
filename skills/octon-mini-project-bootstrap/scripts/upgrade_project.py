@@ -491,6 +491,7 @@ def exact_plan(
                 ),
                 "project_checks": candidate_value["project_checks"],
                 "work_completion": candidate_value["work_completion"],
+                "autonomous_delivery": candidate_value["autonomous_delivery"],
                 "packages": candidate_value["packages"],
                 "mutable_work_status": current["mutable_work_status"],
             }

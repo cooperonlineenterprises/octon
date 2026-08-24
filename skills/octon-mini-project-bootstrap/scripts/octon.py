@@ -149,7 +149,7 @@ def command_manifest() -> dict[str, object]:
         for item in commands
     )
     roots = {str(name).split(".", 1)[0] for name in names}
-    expected = {"init", "adopt", "upgrade", "detect", "check", "doctor", "work", "maintain", "transaction"}
+    expected = {"init", "adopt", "upgrade", "detect", "check", "doctor", "work", "delivery", "maintain", "transaction"}
     help_command_names = {
         "init",
         "adopt",
@@ -196,8 +196,8 @@ def command_manifest() -> dict[str, object]:
         or not help_capability_ids <= capability_id_set
         or roots != expected
         or availability != {"bootstrap_source", "generated_project"}
-        or bootstrap_roots != {"init", "adopt", "upgrade", "detect", "maintain"}
-        or project_roots != {"check", "doctor", "work", "maintain", "transaction"}
+        or bootstrap_roots != {"init", "adopt", "upgrade", "detect", "work", "delivery", "maintain"}
+        or project_roots != {"check", "doctor", "work", "delivery", "maintain", "transaction"}
     ):
         raise ValueError("authoritative command manifest is malformed or differs from the dispatcher")
     return value
@@ -231,6 +231,11 @@ def workflow_help(manifest: dict[str, object]) -> str:
   ./octon maintain package ...          {commands['maintain.package']}
 {capabilities['maintenance.collaboration']}:
   ./octon maintain collaboration ...    {commands['maintain.collaboration']}
+{capabilities['work.autonomous_delivery']}:
+  ./octon delivery ...                  {commands['delivery']}
+  ./octon delivery effect ...           Source-only closed workflow-dispatch and source-release adapter; it owns no work-completion operation.
+{capabilities['work.completion']}:
+  ./octon work finish ...               Source mode uses an external digest-bound Codex task reference; generated projects retain their project task records.
 
 Launcher forms:
   Unix/macOS: ./octon ...
@@ -348,6 +353,21 @@ def main() -> int:
         return execute(script, rest)
     if command == "detect":
         return execute(SCRIPT_ROOT / "detect_project.py", rest)
+    if command == "delivery" and rest and rest[0] == "effect" and (Path.cwd() / "octon-mini.json").is_file():
+        return execute(
+            SCRIPT_ROOT / "source_delivery_effect.py",
+            ["--target", str(Path.cwd().resolve()), *rest[1:]],
+        )
+    if command == "delivery":
+        return execute(
+            SKILL_ROOT / "assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl",
+            ["--target", str(Path.cwd().resolve()), *rest],
+        )
+    if command == "work" and rest and rest[0] == "finish" and (Path.cwd() / "octon-mini.json").is_file():
+        return execute(
+            SCRIPT_ROOT / "source_work_completion.py",
+            ["--target", str(Path.cwd().resolve()), *rest[1:]],
+        )
     if command == "maintain" and rest:
         if rest[0] == "package":
             return execute(SCRIPT_ROOT / "package_project.py", rest[1:])

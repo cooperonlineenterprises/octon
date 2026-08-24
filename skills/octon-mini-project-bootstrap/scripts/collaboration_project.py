@@ -185,7 +185,7 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
     target = args.target.resolve()
     project_path = target / ".agent/project.json"
     project = load_json(project_path)
-    if project.get("schema_version") not in {"harness.project.v5", "harness.project.v6", "harness.project.v7"}:
+    if project.get("schema_version") not in {"harness.project.v5", "harness.project.v6", "harness.project.v7", "harness.project.v8"}:
         raise ValueError("target does not use the collaboration-v2 Octon Mini contract")
     profile, used = assessed_profile(args)
     evidence_paths = [".agent/project.json"]

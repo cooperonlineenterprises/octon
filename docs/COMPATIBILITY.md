@@ -113,6 +113,30 @@ under `.agent/work-runs/`. Existing task, evidence, transaction,
 work-completion, decision, event, focus/current, and continuation owners are
 preserved. See `migrations/4.0.0-to-4.1.0.md`.
 
+## Octon Mini 4.1.0 to 4.2.0
+
+4.2.0 adds project contract `harness.project.v8`, the dormant
+`octon delivery` surface, strict autonomous-delivery contracts, and inert local
+payloads for network-free activation. Every new snapshot starts
+`available_not_activated`, with writes and external effects locked, no selected
+delivery profile, no authorization reference, and an unassessed trigger.
+
+The delivery profile is independent from assurance, collaboration,
+concurrency, layout, and compute mode. A v2 standing contract selects exactly
+one of host-enforced metered API limits or readable included-subscription
+allowance only. Confirmed v1 records remain immutable metered-API evidence. A
+mode change uses a new stable authorization ID, exact predecessor binding, and
+operator-controlled predecessor revocation before successor activation.
+Upgrade advertises the capability but never installs,
+activates, renews, or broadens authority. Existing delivery configuration is
+preserved only while exact bindings remain current; every more-permissive or
+changed contract requires a human-confirmed successor.
+
+The reviewed 4.1→4.2 migration adds exact dormant implementation bytes and
+derived projections without manufacturing repository/provider facts,
+credentials, project decisions, confirmation evidence, standing authority,
+adoption, or readiness. See `migrations/4.1.0-to-4.2.0.md`.
+
 ## Other 4.0 behavior changes
 
 - scripted generation without `--profile` fails;
@@ -131,6 +155,11 @@ preserved. See `migrations/4.0.0-to-4.1.0.md`.
   safe reversible local bundle planning; and
 - governed work completion and its event hook remain disabled and
   non-authorizing until explicitly adopted.
+
+The 4.2 source checkout additionally exposes source-repository mode through the
+existing work-completion engine. This source-only route is not generated into
+target projects as a second task lifecycle. It requires an external immutable
+Codex task reference and exact integrated-main evidence before cleanup.
 
 Guided setup remains orchestration over the existing initialization, adoption,
 and upgrade planners. Its question catalog is not projected into target

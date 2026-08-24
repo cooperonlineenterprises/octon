@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import os
 import re
 import secrets
 import subprocess
+import types
 from functools import wraps
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -18,6 +20,7 @@ import octon_transaction as transaction
 
 
 PLAN_SCHEMA = "harness.work-completion-plan.v1"
+SOURCE_PLAN_SCHEMA = "harness.source-work-completion-plan.v1"
 AUTH_SCHEMA = "harness.work-completion-authorization.v1"
 RECEIPT_SCHEMA = "harness.work-completion-receipt.v1"
 TASK_ID = re.compile(r"^TASK-[0-9]{4}$")
@@ -59,6 +62,8 @@ COMPLETABLE_OPERATIONS = {
     "delete_remote_task_branch",
     "synchronize_local_default_branch",
     "delete_local_task_branch",
+    "record_candidate_matrix_validation",
+    "record_post_merge_validation",
     "complete",
 }
 AUTHORIZATION_FIELDS = {
@@ -1065,6 +1070,125 @@ def parse_timestamp(value: Any, label: str) -> datetime:
     return parsed
 
 
+def record_source_candidate_validation(root: Path, receipt: dict[str, Any], evidence_path: Path) -> dict[str, Any]:
+    receipt = validate_receipt(receipt)
+    plan = receipt["plan"]
+    if plan.get("schema_version") != SOURCE_PLAN_SCHEMA:
+        raise FinishBlocked("candidate-matrix source evidence is inapplicable to generated-project completion")
+    completed = set(receipt["completed_operations"])
+    prerequisites = {"create_commit", "push_task_branch", "locate_or_open_pull_request", "observe_hosted_checks", "record_self_review"}
+    if not prerequisites <= completed or "merge_pull_request" in completed:
+        raise FinishBlocked("candidate-matrix evidence requires hosted checks and self-review before integration")
+    path = external_evidence_path(root, str(evidence_path))
+    value = load_json(path)
+    required = {
+        "schema_version", "artifact_kind", "permission_grant", "receipt_id",
+        "plan_digest", "candidate_revision", "pull_request_number",
+        "pull_request_head", "required_check", "full_matrix", "observed_at",
+        "evidence_refs", "limitations", "evidence_digest",
+    }
+    if not isinstance(value, dict) or set(value) != required or value.get("schema_version") != "harness.source-candidate-matrix-validation.v1" or value.get("artifact_kind") != "source_candidate_hosted_validation_evidence" or value.get("permission_grant") is not False:
+        raise FinishBlocked("source candidate-matrix evidence is absent or malformed")
+    unsigned = dict(value)
+    supplied = unsigned.pop("evidence_digest", None)
+    if supplied != digest(unsigned):
+        raise FinishBlocked("source candidate-matrix evidence digest is invalid")
+    candidate = receipt["revisions"]["commit"]
+    pull_request = receipt.get("pull_request") or {}
+    if value.get("receipt_id") != receipt["receipt_id"] or value.get("plan_digest") != receipt["plan_digest"] or value.get("candidate_revision") != candidate or value.get("pull_request_head") != candidate or value.get("pull_request_number") != pull_request.get("number") or pull_request.get("headRefOid") != candidate:
+        raise FinishBlocked("source candidate-matrix evidence covers another receipt, pull request, or revision")
+    required_check = value.get("required_check")
+    if not isinstance(required_check, dict) or set(required_check) != {"status", "run_ref"} or required_check.get("status") != "pass" or not isinstance(required_check.get("run_ref"), str) or not required_check["run_ref"]:
+        raise FinishBlocked("source candidate-matrix evidence lacks the passing required check")
+    matrix = value.get("full_matrix")
+    expected_jobs = plan.get("candidate_validation", {}).get("expected_matrix_jobs")
+    if not isinstance(matrix, dict) or set(matrix) != {"status", "run_ref", "expected_jobs", "successful_jobs"} or matrix.get("status") != "pass" or not isinstance(matrix.get("run_ref"), str) or not matrix["run_ref"] or matrix.get("expected_jobs") != expected_jobs or matrix.get("successful_jobs") != expected_jobs:
+        raise FinishBlocked("source candidate full-matrix accounting is incomplete")
+    observed = parse_timestamp(value.get("observed_at"), "candidate-matrix evidence observation time")
+    if observed > datetime.now(timezone.utc):
+        raise FinishBlocked("source candidate-matrix evidence is future-dated")
+    string_inventory(value.get("evidence_refs"), "source candidate-matrix evidence references", allow_empty=False)
+    string_inventory(value.get("limitations"), "source candidate-matrix evidence limitations")
+    task_branch = plan["branches"]["task"]
+    if revision(root, f"refs/heads/{task_branch}") != candidate:
+        raise FinishBlocked("local source candidate changed after hosted validation")
+    if "record_candidate_matrix_validation" not in receipt["completed_operations"]:
+        record(
+            root,
+            receipt,
+            "review_satisfied",
+            "record_candidate_matrix_validation",
+            "performed",
+            {
+                "path": str(path),
+                "file_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "evidence_digest": supplied,
+                "candidate_revision": candidate,
+                "pull_request_number": pull_request["number"],
+                "expected_matrix_jobs": expected_jobs,
+            },
+            completed=True,
+        )
+    return receipt
+
+
+def record_source_post_merge_validation(root: Path, receipt: dict[str, Any], evidence_path: Path) -> dict[str, Any]:
+    receipt = validate_receipt(receipt)
+    plan = receipt["plan"]
+    if plan.get("schema_version") != SOURCE_PLAN_SCHEMA:
+        raise FinishBlocked("post-merge source evidence is inapplicable to generated-project completion")
+    if "merge_pull_request" not in receipt["completed_operations"] or "synchronize_local_default_branch" not in receipt["completed_operations"]:
+        raise FinishBlocked("post-merge evidence requires proven integration and local default synchronization")
+    path = external_evidence_path(root, str(evidence_path))
+    value = load_json(path)
+    required = {
+        "schema_version", "artifact_kind", "permission_grant", "receipt_id",
+        "plan_digest", "integrated_revision", "tested_main_revision",
+        "automatic_main_check", "full_matrix", "observed_at", "evidence_refs",
+        "limitations", "evidence_digest",
+    }
+    if not isinstance(value, dict) or set(value) != required or value.get("schema_version") != "harness.source-post-merge-validation.v1" or value.get("artifact_kind") != "source_integrated_main_validation_evidence" or value.get("permission_grant") is not False:
+        raise FinishBlocked("source post-merge evidence is absent or malformed")
+    unsigned = dict(value)
+    supplied = unsigned.pop("evidence_digest", None)
+    if supplied != digest(unsigned):
+        raise FinishBlocked("source post-merge evidence digest is invalid")
+    integrated = receipt["revisions"]["integrated"]
+    synchronized = receipt["revisions"]["synchronized_default"]
+    if value.get("receipt_id") != receipt["receipt_id"] or value.get("plan_digest") != receipt["plan_digest"] or value.get("integrated_revision") != integrated or value.get("tested_main_revision") != synchronized or integrated != synchronized:
+        raise FinishBlocked("source post-merge evidence covers another receipt or integrated revision")
+    for label in ("automatic_main_check", "full_matrix"):
+        result = value.get(label)
+        if not isinstance(result, dict) or result.get("status") != "pass" or not isinstance(result.get("run_ref"), str) or not result["run_ref"]:
+            raise FinishBlocked(f"source post-merge evidence lacks a passing {label}")
+    matrix = value["full_matrix"]
+    if matrix.get("successful_jobs") != matrix.get("expected_jobs") or not isinstance(matrix.get("expected_jobs"), int) or matrix["expected_jobs"] < 1:
+        raise FinishBlocked("source post-merge full-matrix accounting is incomplete")
+    observed = parse_timestamp(value.get("observed_at"), "post-merge evidence observation time")
+    if observed > datetime.now(timezone.utc):
+        raise FinishBlocked("source post-merge evidence is future-dated")
+    string_inventory(value.get("evidence_refs"), "source post-merge evidence references", allow_empty=False)
+    string_inventory(value.get("limitations"), "source post-merge evidence limitations")
+    if git(root, "symbolic-ref", "--short", "HEAD") != plan["branches"]["default"] or revision(root, "HEAD") != synchronized:
+        raise FinishBlocked("local default branch changed after integrated-main validation")
+    if "record_post_merge_validation" not in receipt["completed_operations"]:
+        record(
+            root,
+            receipt,
+            "default_branch_synchronized",
+            "record_post_merge_validation",
+            "performed",
+            {
+                "path": str(path),
+                "file_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "evidence_digest": supplied,
+                "integrated_revision": integrated,
+            },
+            completed=True,
+        )
+    return receipt
+
+
 def validate_authorization_record(
     value: Any,
     plan: dict[str, Any],
@@ -1232,12 +1356,18 @@ def validate_receipt(receipt: Any) -> dict[str, Any]:
             prerequisites.add("observe_peer_review")
         if plan.get("review", {}).get("requirement") == "self_review_with_limitations":
             prerequisites.add("record_self_review")
+        if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+            prerequisites.add("record_candidate_matrix_validation")
         if not prerequisites <= set(completed):
             raise FinishError("pull-request integration skipped required check or review evidence")
     if "delete_remote_task_branch" in completed and not (
         {"merge_pull_request", "integrate_local_branch"} & set(completed)
     ):
         raise FinishError("remote task branch cleanup preceded integration")
+    if plan.get("schema_version") == SOURCE_PLAN_SCHEMA and (
+        {"delete_remote_task_branch", "delete_local_task_branch", "complete"} & set(completed)
+    ) and "record_post_merge_validation" not in completed:
+        raise FinishError("source completion cleanup preceded integrated-main validation evidence")
     if "delete_local_task_branch" in completed and "synchronize_local_default_branch" not in completed:
         raise FinishError("local task branch cleanup preceded default synchronization")
     if "complete" in completed:
@@ -1262,6 +1392,9 @@ def validate_receipt(receipt: Any) -> dict[str, Any]:
             required.add("delete_remote_task_branch")
         if plan.get("cleanup", {}).get("local_task_branch"):
             required.add("delete_local_task_branch")
+        if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+            required.add("record_candidate_matrix_validation")
+            required.add("record_post_merge_validation")
         if not required <= set(completed):
             raise FinishError("completed receipt skipped required workflow progress")
     return receipt
@@ -1316,12 +1449,74 @@ def block(root: Path, receipt: dict[str, Any], operation: str, error: Exception)
     transaction.write_work_completion_receipt(root, receipt, create=False)
 
 
-def authority_still_current(receipt: dict[str, Any], operation: str) -> None:
+def authority_still_current(root: Path, receipt: dict[str, Any], operation: str) -> None:
     authority_record = validate_authorization_record(
         receipt.get("authorization_evidence"), receipt["plan"], require_current=True
     )
     if operation not in authority_record.get("operations", []):
         raise FinishBlocked(f"authorization does not cover operation: {operation}")
+    source = authority_record.get("authority_source", "")
+    if isinstance(source, str) and source.startswith("external:standing-authorization:"):
+        constraints = authority_record.get("constraints", [])
+        values = {
+            item.partition(":")[0]: item.partition(":")[2]
+            for item in constraints
+            if isinstance(item, str) and ":" in item
+        }
+        required = {
+            "standing_contract_digest",
+            "confirmation_fingerprint",
+            "authorization_record_ref",
+            "confirmation_artifact_ref",
+            "usage_artifact_ref",
+            "usage_digest",
+        }
+        compute_key = (
+            "compute_enforcement_artifact_ref"
+            if "compute_enforcement_artifact_ref" in values
+            else "cost_enforcement_artifact_ref"
+        )
+        required.add(compute_key)
+        if not required <= set(values):
+            raise FinishBlocked("standing authorization lacks current revalidation bindings")
+        root = root.resolve()
+        source_mode = receipt.get("plan", {}).get("schema_version") == SOURCE_PLAN_SCHEMA
+        core_path = (
+            root / "skills/octon-mini-project-bootstrap/assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl"
+            if source_mode
+            else root / ".agent/scripts/octon_autonomous_delivery.py"
+        )
+        if not core_path.is_file() or core_path.is_symlink():
+            raise FinishBlocked("standing-authorization evaluator is absent or unsafe")
+        if source_mode:
+            core = types.ModuleType("octon_work_completion_source_standing_authority")
+            core.__file__ = str(core_path)
+            exec(compile(core_path.read_text(encoding="utf-8"), str(core_path), "exec"), core.__dict__)
+        else:
+            spec = importlib.util.spec_from_file_location("octon_work_completion_standing_authority", core_path)
+            if spec is None or spec.loader is None:
+                raise FinishBlocked("standing-authorization evaluator cannot be loaded")
+            core = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(core)
+        try:
+            confirmation = core.load_json(core.external_path(root, values["confirmation_artifact_ref"], require_file=True))
+            record = core.validate_record(core.load_json(core.external_path(root, values["authorization_record_ref"], require_file=True)), confirmation)
+            contract = record["contract"]
+            core.active_controls(root, contract)
+            compute = core.validate_compute_evidence(core.load_json(core.external_path(root, values[compute_key], require_file=True)), contract)
+            usage = core.validate_usage(core.load_json(core.external_path(root, values["usage_artifact_ref"], require_file=True)), record, compute)
+        except Exception as error:
+            raise FinishBlocked(f"standing authorization is not current: {error}") from error
+        expected_record = source.removeprefix("external:standing-authorization:")
+        if record.get("accepted_record_digest") != expected_record:
+            raise FinishBlocked("standing authorization source digest changed")
+        if contract.get("canonical_contract_digest") != values["standing_contract_digest"] or confirmation.get("confirmation_fingerprint") != values["confirmation_fingerprint"]:
+            raise FinishBlocked("standing authorization contract or confirmation changed")
+        if usage.get("usage_digest") != values["usage_digest"]:
+            raise FinishBlocked("standing authorization usage changed; create a current exact-plan attestation")
+        resource_control = contract.get("compute_control", contract.get("costs", {}))
+        if resource_control.get("direct_external_spending_usd") != 0:
+            raise FinishBlocked("standing authorization would permit direct external spending")
 
 
 def ensure_remote_identity(root: Path, receipt: dict[str, Any]) -> None:
@@ -1343,7 +1538,7 @@ def ensure_remote_identity(root: Path, receipt: dict[str, Any]) -> None:
 def external(root: Path, receipt: dict[str, Any], operation: str, argv: list[str]) -> subprocess.CompletedProcess[bytes]:
     try:
         ensure_remote_identity(root, receipt)
-        authority_still_current(receipt, operation)
+        authority_still_current(root, receipt, operation)
         result = run(root, argv)
         INTERRUPTION_HOOK(operation)
         return result
@@ -1353,7 +1548,68 @@ def external(root: Path, receipt: dict[str, Any], operation: str, argv: list[str
         raise
 
 
+def external_evidence_path(root: Path, raw: Any) -> Path:
+    if not isinstance(raw, str):
+        raise FinishBlocked("external evidence path is malformed")
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        raise FinishBlocked("external evidence path must be absolute")
+    path = path.resolve(strict=False)
+    try:
+        path.relative_to(root.resolve())
+    except ValueError:
+        pass
+    else:
+        raise FinishBlocked("external evidence path must remain outside the repository")
+    current = Path(path.anchor)
+    for part in path.parts[1:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise FinishBlocked("external evidence path has a symlink ancestor")
+    if not path.is_file() or path.is_symlink():
+        raise FinishBlocked("external evidence file is absent or unsafe")
+    return path
+
+
+def source_repository_fingerprint(root: Path, plan: dict[str, Any]) -> str:
+    inputs = string_inventory(plan.get("source_inputs"), "source work-completion inputs", allow_empty=False)
+    binding = plan.get("external_task_binding")
+    if not isinstance(binding, dict) or set(binding) != {"path", "file_sha256", "task_reference_digest"}:
+        raise FinishBlocked("source work-completion task binding is malformed")
+    task_path = external_evidence_path(root, binding["path"])
+    if parse_timestamp(plan.get("external_task_valid_until"), "external task valid_until") < datetime.now(timezone.utc):
+        raise FinishBlocked("external Codex task reference is expired")
+    task_bytes = task_path.read_bytes()
+    if hashlib.sha256(task_bytes).hexdigest() != binding["file_sha256"]:
+        raise FinishBlocked("external Codex task-reference bytes changed after planning")
+    revisions = plan.get("expected_revisions", {})
+    candidate = revisions.get("candidate_head")
+    base = revisions.get("base")
+    task_branch = plan.get("branches", {}).get("task")
+    if not isinstance(candidate, str) or not isinstance(base, str) or not isinstance(task_branch, str):
+        raise FinishBlocked("source candidate revision binding is malformed")
+    branch_value = git(root, "rev-parse", "--verify", f"refs/heads/{task_branch}", check=False)
+    if branch_value != candidate:
+        raise FinishBlocked("source task branch changed or disappeared after planning")
+    commits = [item for item in git(root, "rev-list", "--reverse", f"{base}..{candidate}").splitlines() if item]
+    changed = sorted(item for item in git(root, "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, candidate).splitlines() if item)
+    if commits != plan.get("candidate_commits") or changed != plan.get("eligible_staging_paths"):
+        raise FinishBlocked("source candidate commit range or changed-path inventory changed")
+    value = hashlib.sha256()
+    for relative in sorted(inputs):
+        path = root / safe_path(relative)
+        if not path.is_file() or path.is_symlink():
+            raise FinishBlocked(f"source work-completion input disappeared or became unsafe: {relative}")
+        value.update(relative.encode("utf-8")); value.update(b"\0")
+        value.update(path.read_bytes()); value.update(b"\0")
+    value.update(b"external_task_reference\0"); value.update(task_bytes); value.update(b"\0")
+    value.update(canonical_bytes(transaction.instruction_fingerprint(root)))
+    return value.hexdigest()
+
+
 def current_source_fingerprint(root: Path, plan: dict[str, Any]) -> str:
+    if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+        return source_repository_fingerprint(root, plan)
     task = next((path for path in (root / ".agent/tasks").glob(f"{plan['task_ref']}*.md")), None)
     decision = next((path for path in (root / ".agent/decisions").glob(f"{plan['adopted_workflow_authority_ref']}*.md")), None)
     if task is None or decision is None:
@@ -1663,8 +1919,13 @@ def observe_peer_review(root: Path, receipt: dict[str, Any]) -> None:
 def record_self_review(root: Path, receipt: dict[str, Any]) -> None:
     plan = receipt["plan"]
     commit = receipt["revisions"]["commit"]
-    summary = git(root, "show", "--stat", "--oneline", "--no-renames", commit)
-    patch = run(root, ["git", "show", "--format=", "--no-ext-diff", "--no-renames", commit]).stdout
+    if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+        base = plan["expected_revisions"]["base"]
+        summary = git(root, "diff", "--stat", "--no-renames", base, commit)
+        patch = run(root, ["git", "diff", "--no-ext-diff", "--no-renames", base, commit]).stdout
+    else:
+        summary = git(root, "show", "--stat", "--oneline", "--no-renames", commit)
+        patch = run(root, ["git", "show", "--format=", "--no-ext-diff", "--no-renames", commit]).stdout
     record(
         root,
         receipt,
@@ -1971,9 +2232,13 @@ def execute(root: Path, receipt: dict[str, Any]) -> dict[str, Any]:
             record_self_review(root, receipt)
         if plan["review"]["requirement"] == "one_peer" and "observe_peer_review" not in receipt["completed_operations"]:
             observe_peer_review(root, receipt)
+        if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+            candidate_gate = plan.get("candidate_validation", {})
+            if candidate_gate.get("required") is not True or candidate_gate.get("integration_before_pass") is not False or "record_candidate_matrix_validation" not in receipt["completed_operations"]:
+                raise FinishBlocked("source completion requires current candidate full-matrix evidence before integration")
         if "merge_pull_request" not in receipt["completed_operations"]:
             merge_pr(root, receipt)
-        if plan["cleanup"]["remote_task_branch"] and "delete_remote_task_branch" not in receipt["completed_operations"]:
+        if plan.get("schema_version") != SOURCE_PLAN_SCHEMA and plan["cleanup"]["remote_task_branch"] and "delete_remote_task_branch" not in receipt["completed_operations"]:
             delete_remote(root, receipt)
         if "synchronize_local_default_branch" not in receipt["completed_operations"]:
             sync_default(root, receipt)
@@ -1999,6 +2264,12 @@ def execute(root: Path, receipt: dict[str, Any]) -> dict[str, Any]:
         if "synchronize_local_default_branch" not in receipt["completed_operations"]:
             sync_default(root, receipt)
 
+    if plan.get("schema_version") == SOURCE_PLAN_SCHEMA:
+        gate = plan.get("post_merge_validation", {})
+        if gate.get("required") is not True or "record_post_merge_validation" not in receipt["completed_operations"]:
+            raise FinishBlocked("source completion requires current integrated-main validation evidence before branch cleanup")
+        if plan["cleanup"]["remote_task_branch"] and "delete_remote_task_branch" not in receipt["completed_operations"]:
+            delete_remote(root, receipt)
     if workflow != "solo_direct" and plan["cleanup"]["local_task_branch"] and "delete_local_task_branch" not in receipt["completed_operations"]:
         delete_local(root, receipt)
     record(root, receipt, "completed", "complete", "already_satisfied", {"integrated_revision": receipt["revisions"]["integrated"], "synchronized_default": receipt["revisions"]["synchronized_default"]}, completed=True)

@@ -175,7 +175,7 @@ def extension_entry(package_id: str, owner: str, trust_ref: str) -> dict[str, An
         "enabled": False,
         "version": "1.0.0",
         "path": f".agent/extensions/{package_id}",
-        "requires_core": "^4.1.0",
+        "requires_core": "^4.2.0",
         "config": f".agent/extensions/{package_id}/config.json",
         "validator": f".agent/extensions/{package_id}/validate.py",
         "owner": owner,
@@ -195,7 +195,7 @@ def extension_entry(package_id: str, owner: str, trust_ref: str) -> dict[str, An
 def registry_baseline() -> dict[str, Any]:
     return {
         "schema_version": "harness.extension-registry.v1",
-        "core_version": "4.1.0",
+        "core_version": "4.2.0",
         "extension_api": "harness.extension.v1",
         "permission_grant": False,
         "execution_boundary": (
@@ -244,13 +244,13 @@ def installation_plan(
         raise ValueError(f"package {package_id} is already installed; use an explicit update plan")
     if installed is None and (update or remove):
         raise ValueError(f"package {package_id} is not installed and cannot be updated or removed")
-    if update and package_id not in {"small-team-git-portfolio", "long-running-work"}:
+    if update and package_id not in {"small-team-git-portfolio", "long-running-work", "autonomous-delivery"}:
         raise ValueError("package update is currently limited to reviewed packages with explicit compatibility coverage")
     files = package_files(package)
     operations: list[dict[str, Any]] = []
     if remove:
-        if package_id != "long-running-work":
-            raise ValueError("package removal is currently limited to long-running-work with explicit lifecycle coverage")
+        if package_id not in {"long-running-work", "autonomous-delivery"}:
+            raise ValueError("package removal is limited to workflow capabilities with explicit lifecycle coverage")
         assert installed is not None
         old_paths = installed.get("installed_paths")
         if not isinstance(old_paths, list) or any(not isinstance(item, str) for item in old_paths):
@@ -264,30 +264,35 @@ def installation_plan(
         if installed_content_digest(current) != installed.get("installed_paths_sha256"):
             raise ValueError("installed package content differs from its recorded baseline; removal refuses")
         adoption_path = target / ".agent/work-runs/adoption.json"
-        if adoption_path.is_symlink():
-            raise ValueError("long-running-work adoption path is unsafe")
-        if adoption_path.is_file():
-            adoption = load_json(adoption_path)
-            if adoption.get("status") != "disabled":
-                raise ValueError("long-running-work must be disabled before package removal")
-        runs_root = target / ".agent/work-runs/runs"
-        if runs_root.is_symlink():
-            raise ValueError("long-running-work runs root is unsafe")
-        if runs_root.is_dir() and any(runs_root.iterdir()):
-            raise ValueError("package removal refuses retained run history without a separate project-owned disposition")
-        active_path = target / ".agent/work-runs/active.json"
-        if active_path.exists() or active_path.is_symlink():
-            raise ValueError("package removal refuses while an active-run pointer exists")
+        if package_id == "long-running-work":
+            if adoption_path.is_symlink():
+                raise ValueError("long-running-work adoption path is unsafe")
+            if adoption_path.is_file():
+                adoption = load_json(adoption_path)
+                if adoption.get("status") != "disabled":
+                    raise ValueError("long-running-work must be disabled before package removal")
+            runs_root = target / ".agent/work-runs/runs"
+            if runs_root.is_symlink():
+                raise ValueError("long-running-work runs root is unsafe")
+            if runs_root.is_dir() and any(runs_root.iterdir()):
+                raise ValueError("package removal refuses retained run history without a separate project-owned disposition")
+            active_path = target / ".agent/work-runs/active.json"
+            if active_path.exists() or active_path.is_symlink():
+                raise ValueError("package removal refuses while an active-run pointer exists")
+        else:
+            delivery = project.get("autonomous_delivery", {})
+            if not isinstance(delivery, dict) or delivery.get("status") not in {"disabled", "revoked", "expired"}:
+                raise ValueError("autonomous-delivery must be disabled, revoked, or expired before package removal")
         for relative in sorted(old_paths):
             operations.append(
                 TRANSACTION.operation(
                     "delete",
                     relative,
                     None,
-                    "Remove exact-pristine long-running-work package payload after disabled-state and no-history checks.",
+                    f"Remove exact-pristine {package_id} package payload after lifecycle checks.",
                 )
             )
-        if adoption_path.is_file():
+        if package_id == "long-running-work" and adoption_path.is_file():
             operations.append(
                 TRANSACTION.operation(
                     "delete",
@@ -448,13 +453,31 @@ def installation_plan(
     if remove:
         assert installed is not None
         registry["packages"].remove(installed)
-        project["packages"]["trigger_assessments"]["long_running_work"] = "not_assessed"
+        assessment_key = package_id.replace("-", "_")
+        project["packages"]["trigger_assessments"][assessment_key] = "not_assessed"
+        if package_id == "autonomous-delivery":
+            project["autonomous_delivery"] = {
+                "schema_version": "harness.autonomous-delivery-config.v2",
+                "status": "available_not_activated",
+                "write_capability": "locked",
+                "external_effects": "locked",
+                "delivery_profile": None,
+                "compute_mode": None,
+                "adoption_decision_ref": None,
+                "authorization_record_ref": None,
+                "authorization_record_digest": None,
+                "activation_receipt_ref": None,
+                "limitations": [
+                    "The dormant read-only surface remains available after write-capable package removal.",
+                    "No package lifecycle action creates standing authority.",
+                ],
+            }
         operations.append(
             TRANSACTION.operation(
                 "replace",
                 ".agent/project.json",
                 json_bytes(project),
-                "Return long-running-work applicability to not assessed without asserting non-applicability.",
+                f"Return {package_id} applicability to not assessed without asserting non-applicability.",
             )
         )
     elif update:

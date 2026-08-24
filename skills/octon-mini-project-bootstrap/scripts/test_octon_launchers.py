@@ -76,6 +76,20 @@ def make_checkout(root: Path) -> Path:
 
 
 class OctonLauncherTests(unittest.TestCase):
+    def test_source_delivery_status_is_locked_read_only_and_available(self) -> None:
+        before = cache_residue(REPOSITORY_ROOT)
+        result = command(
+            [sys.executable, "-B", str(SOURCE_LAUNCHER), "delivery", "status"],
+            REPOSITORY_ROOT,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        value = json.loads(result.stdout)
+        self.assertEqual(value["status"], "available_not_activated")
+        self.assertEqual(value["write_capability"], "locked")
+        self.assertEqual(value["external_effects"], "locked")
+        self.assertFalse(value["authority_created"])
+        self.assertEqual(cache_residue(REPOSITORY_ROOT), before)
+
     def test_source_launcher_is_extensionless_python_and_executable(self) -> None:
         text = SOURCE_LAUNCHER.read_text(encoding="utf-8")
         self.assertTrue(text.startswith("#!/usr/bin/env python3\n"))

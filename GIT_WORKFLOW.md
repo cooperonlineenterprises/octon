@@ -118,6 +118,35 @@ concurrent writer, so no `concurrent_work` modifier applies:
 A self-PR records reviewability and limitations; it does not become independent
 review, merge authority, or proof of branch protection.
 
+## Governed autonomous-delivery boundary
+
+Accepted `SRC-DEC-0019` permits implementation of one optional delivery
+capability, and `SRC-DEC-0020` defines eligible standing patch/minor source-
+release evidence. Neither decision supplies Git or GitHub authority.
+
+The source-specific v1 `SAC-01` record is revoked. Confirmed subscription-mode
+`SAC-02` is active, but every external operation still requires a fresh exact-
+plan projection, current compute evidence, and live preconditions.
+
+After exact activation, ordinary autonomous delivery remains limited to new
+`chore/autonomous-*` branches, normal non-force task-branch pushes, self-PRs,
+the required check, complete candidate and integrated-main matrices,
+`merge_commit`, immutable annotated patch/minor tags, GitHub source Releases,
+exact evidence read-back, and proven-safe merged-branch cleanup. Direct pushes
+to `main`, force, rebase, squash, published-history amendment, bypass,
+repository settings, deployment, package publication, communication,
+purchase, and external-project changes remain prohibited.
+
+The accepted 2026-08-23 narrow amendment routes this source repository through
+the existing work-completion engine. It binds the precommitted candidate to an
+external immutable Codex task reference and does not create `.agent/tasks` or
+move push/PR/check/merge/cleanup ownership into the release adapter. Cleanup is
+deferred until exact integrated-main smoke and full-matrix evidence passes;
+merge is separately blocked until the stable required check and all 24 complete
+candidate source/acceptance matrix jobs pass on the exact head.
+The source-only `octon delivery effect` wrapper owns only the closed workflow-
+dispatch and source-release effects needed around that work-completion flow.
+
 The completed 3.0.0 release-candidate task used `concurrent_work` with disjoint
 file ownership, a shared base revision, conflict detection, and explicit
 handback rules. That modifier ended with the task. Future work must reassess

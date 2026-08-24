@@ -704,6 +704,57 @@ from general source fingerprints and validated by the package validator.
 See `docs/LONG_RUNNING_WORK.md`. Implementation and validation do not establish
 package adoption, release, project readiness, or production readiness.
 
+### 7.6 Optional governed autonomous delivery
+
+Every snapshot exposes `octon delivery` in the locked
+`available_not_activated` state and carries exact inert offline payload bytes.
+Research, context, applicability, planning, status, explanation, and activation
+preview are read-only, run no project hooks, write no receipt, mutate no local
+or external state, and create no authority.
+
+Activation uses a delivery-profile preset independent of assurance,
+collaboration, concurrency, and layout. Setup deterministically renders a
+complete non-authorizing standing contract and digest. Only independent human
+confirmation of those exact bytes supplies authority. The accepted external
+record is evidence of that grant and remains outside the repository under
+operator control. A command flag, profile, setup answer, plan, projection,
+receipt, or stored record cannot create or broaden authority.
+
+The package reuses the existing long-running coordinate, transactions,
+project-check evidence, work completion, and Continuation owners. Its release
+adapter is limited to exact hosted-workflow dispatch, annotated tags, tag push,
+GitHub source Release creation, and read-back. It is not a generic action,
+deployment, package-publication, credential, communication, or external-project
+runtime.
+
+The Octon Mini source repository exposes a narrow source mode in the existing
+work-completion owner. It accepts an external immutable, digest-bound Codex
+task reference rather than creating a source task store, binds an already
+committed candidate range, uses the same authorization and monotonic receipt
+model, stops before integration until the stable required check and all 24
+candidate source/acceptance matrix jobs pass, and stops again after integration
+until exact integrated-main validation evidence is recorded. The release
+adapter does not acquire commit, push, PR, checks, merge, synchronization, or
+cleanup ownership.
+
+The closed release-effect adapter has a source-only entry point. Candidate
+workflow dispatch binds to the exact task branch and revision; tag and GitHub
+source Release operations bind to exact clean `main`. Its allowlist remains
+workflow dispatch, annotated tag creation, tag push, and GitHub source Release
+creation and contains no work-completion operation.
+Adapter apply and resume revalidate both current compute evidence and the exact
+usage digest bound by the short-lived projection before any external call.
+
+Locally reversible work retains transaction semantics. Public effects are
+monotonic: inspect, persist an attempted marker, execute once, read back,
+receipt, and fix forward. An unknown outcome stops with zero automatic retries.
+Direct spending is zero. Each standing contract selects exactly one compute
+mode: host-enforced metered API ceilings, or current readable
+provider-enforced included-subscription allowance only. Paid credits,
+API/pay-as-you-go billing, add-ons, and upgrades are prohibited in subscription
+mode. Unknown, exhausted, unreadable, or changed compute state blocks. See
+`docs/AUTONOMOUS_DELIVERY.md`.
+
 ## 8. Record and state model
 
 The semantic crosswalk is orthogonal to every record lifecycle:
@@ -742,6 +793,12 @@ readiness by itself.
 | generated integrity | `generated/` | regenerated | point-in-time inventory and results |
 | repository-local mutations | `transactions/` | immutable plans/receipts plus recoverable pending journals | what exact preimages, operations, validation, postimages, and rollback rule applied |
 | work-completion progress | Git common directory `octon-mini/work-completion/receipts/` | monotonic resumable local receipts | which exact local and external completion effects are proven, blocked, or still pending without claiming rollback |
+| autonomous-delivery effect progress | Git common directory `octon-mini/autonomous-delivery/receipts/` | immutable monotonic successors | which exact release-adapter effect was requested, attempted, read back, completed, known-no-effect, or outcome-unknown |
+
+Accepted standing-authorization, confirmation, revocation, and emergency-stop
+records remain outside the repository at an operator-controlled location. The
+project stores only an exact reference and digest after activation. The worker
+cannot write those control records under the standing contract.
 
 Each record declares `schema_version`, stable ID, purpose/title, scope,
 authority source, owner/maintainer, inputs, outputs or links, side effects,
@@ -1132,6 +1189,12 @@ freshness, provenance, or legal rights.
 
 ## 11. Profiles
 
+Assurance profile is independent from the delivery-profile axis
+`review_first`, `balanced_autonomous`, `fast_delivery`, or `custom`.
+`fast_delivery` may be recommended for most solo developers but is never
+silently selected. Delivery activation remains optional in every assurance
+profile and cannot change the collaboration, concurrency, or layout result.
+
 ### Minimal viable
 
 Use for small, early, or low-risk projects. Required:
@@ -1384,6 +1447,23 @@ A harness is complete only when these demonstrations pass:
     safe local ambiguous-effect fixture. Unavailable unfamiliar-operator,
     pair/tiny, historical-project, cross-platform, or provider evidence remains
     explicitly `not_run`.
+21. Autonomous delivery is available but externally locked in every profile;
+    all seven pre-activation surfaces are deterministic, hook-free, and
+    unchanged-tree; profiles never self-select; draft bytes and digests are
+    deterministic; changed or missing confirmation blocks; activation installs
+    exact local bytes through one transaction; current revocation, emergency
+    stop, repository, branch, task, action, release, evidence, warning, limit,
+    and selected compute-mode bindings are revalidated; both metered API and
+    included-subscription paths fail closed; direct spending remains zero; and
+    forbidden force, bypass, deployment, package-publication, communication,
+    credential, settings, external-project, purchase, and tag-movement actions
+    are absent or rejected.
+22. Disposable initialization, adoption, upgrade, profile, activation,
+    correction, release-adapter, reconciliation, cleanup, and interruption
+    exercises prove zero duplicate external effects and exact or conservative
+    recovery. Missing unfamiliar-operator, independent-reviewer, independent
+    external-project, and human-usability evidence remains `not_run` and cannot
+    support maturity, adoption, usability, or readiness claims.
 
 Passing these criteria proves the harness is usable and testable. It does not
 prove production safety, security, accessibility, legal compliance,
@@ -1393,8 +1473,8 @@ Acceptance has two explicit gates:
 
 | Gate | Criteria | Required evidence |
 |---|---|---|
-| Octon Mini release automation | 2, 4–10, 12, 15–19, plus structural portions of 1, 3, and 14 | cross-profile valid/invalid fixtures, collaboration/workflow/setup/continuation/long-work matrices, proof hit/miss and full-gate coverage, checkpoint and bundle recovery mutations, operation-reference coverage, unchanged-tree checks, stale/partial recovery, extension confinement, secret redaction |
-| Target-project adoption | human portions of 1 and 3, plus 11, 13, 14, and 20 | timed unfamiliar-maintainer exercise, actual platform enforcement, one real task/closure, representative long-work exercise, exact project revision checks, truthful handoff report |
+| Octon Mini release automation | 2, 4–10, 12, 15–19, 21, plus structural portions of 1, 3, and 14 | cross-profile valid/invalid fixtures, collaboration/workflow/setup/continuation/long-work/autonomous-delivery matrices, proof hit/miss and full-gate coverage, checkpoint/bundle/effect recovery mutations, operation-reference coverage, unchanged-tree checks, stale/partial recovery, extension confinement, secret redaction |
+| Target-project adoption | human portions of 1 and 3, plus 11, 13, 14, 20, and 22 | timed unfamiliar-maintainer exercise, actual platform enforcement, one real task/closure, representative long-work and delivery exercises, exact project revision checks, truthful handoff report |
 
 The release suite reports every criterion as `automated_pass`,
 `project_demonstration_required`, or `not_exercised`; it may not summarize a

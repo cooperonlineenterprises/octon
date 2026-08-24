@@ -3,6 +3,58 @@
 All notable Octon Mini contract changes are recorded here. Project-specific
 snapshots do not upgrade automatically.
 
+## 4.2.0 — Unreleased
+
+### Added
+
+- accepted `SRC-DEC-0019` governed autonomous-delivery architecture and
+  `SRC-DEC-0020` standing patch/minor source-release evidence policy;
+- a dormant `octon delivery` surface in every profile for hook-free read-only
+  research, context, applicability, planning, status, explanation, and
+  activation preview;
+- independent `review_first`, `balanced_autonomous`, `fast_delivery`, and
+  `custom` delivery-profile presets without silent selection;
+- deterministic non-authorizing standing-contract drafts, exact independent
+  confirmation evidence, immutable external grant records, activation plans,
+  exact-plan authority projections, dual metered-API or included-subscription
+  compute enforcement, revocation, emergency stop, usage limits, and monotonic
+  effect receipts;
+- locally bundled inert autonomous-delivery and long-running-work payloads for
+  network-free activation; and
+- the closed workflow-dispatch, annotated-tag, tag-push, and GitHub source
+  Release adapter with zero ambiguous-effect retries.
+
+### Changed
+
+- harness and generator version advance to `4.2.0`, and project contract
+  advances to `harness.project.v8`;
+- setup advertises autonomous delivery in initialization, adoption, and
+  upgrade while defaulting to `available_not_activated` with writes and
+  external effects locked;
+- each standing contract selects exactly one compute mode; confirmed v1 records
+  remain immutable legacy metered-API evidence, while v2 adds
+  included-subscription allowance-only enforcement;
+- work completion can consume a short-lived exact task/plan attestation derived
+  only after revalidating a current independently confirmed standing record;
+- the same work-completion owner supports the Octon Mini source checkout
+  through an external immutable Codex task reference, a precommitted candidate
+  binding, a complete candidate-matrix pause before merge, and a mandatory
+  integrated-main validation pause before cleanup;
+- source `octon delivery effect` reuses the closed four-operation adapter for
+  task-branch workflow dispatch and clean-`main` source release effects without
+  acquiring work-completion ownership;
+  and
+- every snapshot carries exact inert package bytes without acquiring a
+  project decision, repository/provider fact, credential, standing authority,
+  package installation, adoption, or readiness.
+
+This source work is unreleased. The accepted decisions and local implementation
+authorization did not activate `SAC-01`; that predecessor is now revoked and
+confirmed `SAC-02` is the current standing envelope. No push, PR, workflow dispatch, merge,
+tag, Release, package publication, deployment, communication, purchase, or
+external-project mutation may proceed without a fresh exact-plan projection,
+current subscription-status evidence, and every live `SAC-02` gate.
+
 ## 4.1.0 — 2026-08-22
 
 ### Added

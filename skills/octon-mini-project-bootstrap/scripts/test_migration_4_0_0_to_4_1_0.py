@@ -18,7 +18,6 @@ import test_long_running_work as functional
 
 SCRIPT_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_ROOT.parents[2]
-UPGRADER = SCRIPT_ROOT / "upgrade_project.py"
 
 
 def run(argv: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -32,12 +31,12 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def extract_release(destination: Path) -> Path:
-    archive = destination / "v4.0.0.tar"
-    result = run(["git", "archive", "--format=tar", f"--output={archive}", "v4.0.0"], REPO_ROOT)
+def extract_release(destination: Path, tag: str) -> Path:
+    archive = destination / f"{tag}.tar"
+    result = run(["git", "archive", "--format=tar", f"--output={archive}", tag], REPO_ROOT)
     if result.returncode:
         raise RuntimeError(result.stderr or result.stdout)
-    source = destination / "source-4.0.0"
+    source = destination / f"source-{tag.removeprefix('v')}"
     source.mkdir()
     with tarfile.open(archive) as stream:
         for member in stream.getmembers():
@@ -68,7 +67,9 @@ class Migration400To410Tests(unittest.TestCase):
             self.skipTest("annotated v4.0.0 source tag is unavailable in an installed source bundle")
         with tempfile.TemporaryDirectory(prefix="octon-mini-migration-400-410-") as temporary:
             area = Path(temporary)
-            old_source = extract_release(area)
+            old_source = extract_release(area, "v4.0.0")
+            upgrade_source = extract_release(area, "v4.1.0")
+            upgrader = upgrade_source / "skills/octon-mini-project-bootstrap/scripts/upgrade_project.py"
             target = area / "project"
             generated = run(
                 [
@@ -88,12 +89,12 @@ class Migration400To410Tests(unittest.TestCase):
             proposal_path = area / "proposal.json"
             proposal_result = run(
                 [
-                    sys.executable, "-B", str(UPGRADER), "plan", "--target", str(target),
+                    sys.executable, "-B", str(upgrader), "plan", "--target", str(target),
                     "--authority-source", "authority:synthetic-migration-operator",
                     "--evidence-ref", "EVD-0001",
                     "--output", str(proposal_path),
                 ],
-                REPO_ROOT,
+                upgrade_source,
             )
             self.assertEqual(proposal_result.returncode, 3, proposal_result.stderr or proposal_result.stdout)
             proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
@@ -116,19 +117,19 @@ class Migration400To410Tests(unittest.TestCase):
             plan_path = area / "plan.json"
             planned = run(
                 [
-                    sys.executable, "-B", str(UPGRADER), "plan", "--target", str(target),
+                    sys.executable, "-B", str(upgrader), "plan", "--target", str(target),
                     "--authority-source", "authority:synthetic-migration-operator",
                     "--evidence-ref", "EVD-0001",
                     "--proposal", str(proposal_path), "--review", str(review_path),
                     "--output", str(plan_path),
                 ],
-                REPO_ROOT,
+                upgrade_source,
             )
             self.assertEqual(planned.returncode, 0, planned.stderr or planned.stdout)
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
             applied = run(
-                [sys.executable, "-B", str(UPGRADER), "apply", "--target", str(target), "--plan", str(plan_path), "--accept-digest", plan["canonical_plan_digest"]],
-                REPO_ROOT,
+                [sys.executable, "-B", str(upgrader), "apply", "--target", str(target), "--plan", str(plan_path), "--accept-digest", plan["canonical_plan_digest"]],
+                upgrade_source,
             )
             self.assertEqual(applied.returncode, 0, applied.stderr or applied.stdout)
             current_check = run([sys.executable, "-I", "-B", "octon", "check"], target)
@@ -144,8 +145,8 @@ class Migration400To410Tests(unittest.TestCase):
             self.assertIn("OCTON-LRW-1000", dormant.stderr)
 
             repeated = run(
-                [sys.executable, "-B", str(UPGRADER), "apply", "--target", str(target), "--plan", str(plan_path), "--accept-digest", plan["canonical_plan_digest"]],
-                REPO_ROOT,
+                [sys.executable, "-B", str(upgrader), "apply", "--target", str(target), "--plan", str(plan_path), "--accept-digest", plan["canonical_plan_digest"]],
+                upgrade_source,
             )
             self.assertNotEqual(repeated.returncode, 0)
             receipts = [

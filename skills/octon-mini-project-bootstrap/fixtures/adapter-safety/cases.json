@@ -19,7 +19,19 @@
     {"id": "AS-015", "class": "credential_forwarding", "input": ["request", "credential-handle"], "expected": "deny"},
     {"id": "AS-016", "class": "nested_bypass", "input": ["nested", "direct-write"], "expected": "deny"},
     {"id": "AS-017", "class": "ambiguous_acknowledgement", "input": ["external", "outcome-unknown"], "expected": "block"},
-    {"id": "AS-018", "class": "unsupported_permission_semantics", "input": ["adapter", "lossy-policy"], "expected": "unsupported"}
+    {"id": "AS-018", "class": "unsupported_permission_semantics", "input": ["adapter", "lossy-policy"], "expected": "unsupported"},
+    {"id": "AS-019", "class": "standing_contract_digest_change", "input": ["delivery", "changed-contract"], "expected": "deny"},
+    {"id": "AS-020", "class": "flag_confirmation_substitute", "input": ["delivery", "--yes"], "expected": "deny"},
+    {"id": "AS-021", "class": "revoked_standing_authority", "input": ["delivery", "revoked"], "expected": "block"},
+    {"id": "AS-022", "class": "emergency_stop", "input": ["delivery", "stop-present"], "expected": "block"},
+    {"id": "AS-023", "class": "unknown_cost", "input": ["delivery", "cost-unknown"], "expected": "block"},
+    {"id": "AS-024", "class": "direct_purchase", "input": ["delivery", "purchase"], "expected": "deny"},
+    {"id": "AS-025", "class": "direct_main_push", "input": ["git", "push", "origin", "HEAD:main"], "expected": "deny"},
+    {"id": "AS-026", "class": "published_tag_movement", "input": ["git", "push", "--force", "tag"], "expected": "deny"},
+    {"id": "AS-027", "class": "workflow_wrong_revision", "input": ["workflow", "dispatch", "stale-sha"], "expected": "deny"},
+    {"id": "AS-028", "class": "release_without_readback", "input": ["release", "create", "no-readback"], "expected": "block"},
+    {"id": "AS-029", "class": "unknown_effect_replay", "input": ["delivery", "retry-outcome-unknown"], "expected": "deny"},
+    {"id": "AS-030", "class": "external_project_target", "input": ["delivery", "another/repository"], "expected": "deny"}
   ],
   "limitations": [
     "Inputs are inert strings and local fixture identities; no shell, network, credential, provider, or external action is executed.",

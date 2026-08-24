@@ -18,6 +18,10 @@ repository.
 
 - Templates never contain real credentials, personal data, accepted owner
   decisions, or standing external-action authority.
+- Autonomous-delivery drafts, profiles, setup answers, plans, projections,
+  receipts, and stored records cannot create authority. Only an independent
+  human confirmation of the complete exact contract digest can activate a
+  standing grant, and unknown external outcomes are never replayed.
 - Generated harness policies start deny-by-default and explicitly state that
   they cannot create permission.
 - Generated dossier material is documentation only.

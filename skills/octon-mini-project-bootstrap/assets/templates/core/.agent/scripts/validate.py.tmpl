@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import zlib
 import stat
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -19,7 +21,7 @@ from typing import Any
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
-KERNEL_VERSION = "4.1.0"
+KERNEL_VERSION = "4.2.0"
 EXPECTED_GIT_PORTFOLIO_VERSION = "{{GIT_PORTFOLIO_VERSION}}"
 EXPECTED_GIT_PORTFOLIO_SHA256 = "{{GIT_PORTFOLIO_SHA256}}"
 
@@ -457,6 +459,10 @@ HOSTED_CHANGE_OPERATION_IDS = (
     "open_pull_request",
     "submit_pull_request_review",
     "merge_pull_request",
+    "observe_workflow_runs",
+    "dispatch_workflow",
+    "observe_source_release",
+    "create_source_release",
 )
 GIT_EFFECTS = {
     "read_only_observation",
@@ -480,7 +486,7 @@ EXPECTED_GIT_CATALOG_SHA256 = (
     "568adc992d3cf270a80daedc1b1537ef03da38fcfc37365587b9765f864eaf5a"
 )
 EXPECTED_HOSTED_CHANGE_CATALOG_SHA256 = (
-    "768e10bf5dabc89f4ab977c7b7397a46cd65efb46cb5094fe5fa09a296cf41b4"
+    "e48ff416f4b134a7c189be0ec98199dbdc8cc2277bb84d061a193f4a101b2872"
 )
 EXPECTED_GIT_WORKFLOW_SHA256 = (
     "00fbbba5e203febdf68596375bbb3001ec6428f15750af4b9ee2662f0cd16590"
@@ -498,6 +504,7 @@ EXPECTED_REQUIRED_CORE_CHECKS = [
     "project_command_assessment_and_current_evidence",
     "content_addressed_validation_proof_reuse",
     "typed_continuation_and_safe_transaction_bundles",
+    "autonomous_delivery_dormant_activation_authority_limits_and_monotonic_effects",
     "dossier_catalog_path_authority_and_traceability",
     "extension_compatibility_confinement_and_validator_protocol",
     "unresolved_generation_placeholders",
@@ -2448,7 +2455,7 @@ def check_project_command_contract(
         "evidence_schema": ".agent/schemas/harness-project-check-evidence.schema.json",
     }
     project_checks = project.get("project_checks")
-    if project.get("schema_version") in {"harness.project.v6", "harness.project.v7"}:
+    if project.get("schema_version") in {"harness.project.v6", "harness.project.v7", "harness.project.v8"}:
         if (
             not isinstance(project_checks, dict)
             or set(project_checks) != set(expected_project_checks) | {"proof_reuse"}
@@ -2661,6 +2668,113 @@ def check_work_completion_config(root: Path, project: dict[str, Any]) -> list[st
             ".agent/project.json: branch-based completion must reconcile both remote and local task-branch cleanup"
         )
     return list(dict.fromkeys(errors))
+
+
+def check_autonomous_delivery_config(root: Path, project: dict[str, Any]) -> list[str]:
+    """Validate the dormant or explicitly activated autonomous-delivery boundary."""
+    value = project.get("autonomous_delivery")
+    if value is None and project.get("schema_version") != "harness.project.v8":
+        return []
+    if not isinstance(value, dict):
+        return [".agent/project.json: autonomous_delivery must be an object"]
+    required = {
+        "schema_version", "status", "write_capability", "external_effects",
+        "delivery_profile", "adoption_decision_ref", "authorization_record_ref",
+        "compute_mode",
+        "authorization_record_digest", "activation_receipt_ref", "limitations",
+    }
+    if set(value) != required or value.get("schema_version") != "harness.autonomous-delivery-config.v2":
+        return [".agent/project.json: autonomous_delivery contract is malformed"]
+    errors: list[str] = []
+    status = value.get("status")
+    if status == "available_not_activated":
+        expected = {
+            "write_capability": "locked",
+            "external_effects": "locked",
+            "delivery_profile": None,
+            "compute_mode": None,
+            "adoption_decision_ref": None,
+            "authorization_record_ref": None,
+            "authorization_record_digest": None,
+            "activation_receipt_ref": None,
+        }
+        observed = {key: value.get(key) for key in expected}
+        if observed != expected:
+            errors.append(".agent/project.json: available autonomous delivery must remain externally locked and unbound")
+    elif status == "active":
+        if value.get("write_capability") != "authorized_within_exact_standing_contract" or value.get("external_effects") != "authorized_only_through_current_exact_plan_projections":
+            errors.append(".agent/project.json: active autonomous delivery has invalid effect locks")
+        if value.get("delivery_profile") not in {"review_first", "balanced_autonomous", "fast_delivery", "custom"}:
+            errors.append(".agent/project.json: active autonomous delivery lacks an exact delivery profile")
+        if value.get("compute_mode") not in {"metered_api", "included_subscription"}:
+            errors.append(".agent/project.json: active autonomous delivery lacks exactly one compute mode")
+        if not isinstance(value.get("adoption_decision_ref"), str) or re.fullmatch(r"DEC-[0-9]{4}", value["adoption_decision_ref"]) is None:
+            errors.append(".agent/project.json: active autonomous delivery lacks an accepted project adoption decision reference")
+        if not isinstance(value.get("authorization_record_ref"), str) or not Path(value["authorization_record_ref"]).is_absolute():
+            errors.append(".agent/project.json: active autonomous delivery requires an external absolute authorization reference")
+        if not isinstance(value.get("authorization_record_digest"), str) or re.fullmatch(r"[a-f0-9]{64}", value["authorization_record_digest"]) is None:
+            errors.append(".agent/project.json: active autonomous delivery requires an exact authorization-record digest")
+    elif status in {"disabled", "revoked", "expired"}:
+        if value.get("write_capability") != "locked" or value.get("external_effects") != "locked":
+            errors.append(".agent/project.json: inactive autonomous delivery must lock writes and external effects")
+    else:
+        errors.append(".agent/project.json: autonomous-delivery status is invalid")
+    surface = root / ".agent/scripts/octon_autonomous_delivery.py"
+    if not surface.is_file() or surface.is_symlink():
+        errors.append(".agent/scripts/octon_autonomous_delivery.py: dormant delivery surface is absent or unsafe")
+    catalog_path = root / ".agent/available-packages/catalog.json"
+    try:
+        catalog = load_json(catalog_path)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        errors.append(f".agent/available-packages/catalog.json: {error}")
+    else:
+        packages = {
+            item.get("id"): item
+            for item in catalog.get("packages", [])
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        } if isinstance(catalog, dict) else {}
+        if (
+            not isinstance(catalog, dict)
+            or catalog.get("schema_version") != "harness.available-package-catalog.v1"
+            or catalog.get("permission_grant") is not False
+            or set(packages) != {"autonomous-delivery", "long-running-work"}
+            or any(
+                item.get("kind") != "workflow_capability"
+                or item.get("status") != "available_not_installed"
+                or item.get("payload_root") != f".agent/available-packages/{package_id}/payload"
+                or not isinstance(item.get("payload_files"), list)
+                or not item["payload_files"]
+                or re.fullmatch(r"[a-f0-9]{64}", str(item.get("source_sha256", ""))) is None
+                or re.fullmatch(r"[a-f0-9]{64}", str(item.get("installed_paths_sha256", ""))) is None
+                for package_id, item in packages.items()
+            )
+        ):
+            errors.append(".agent/available-packages/catalog.json: offline package projection is malformed")
+        else:
+            for package_id, item in packages.items():
+                value = hashlib.sha256()
+                observed_paths: set[str] = set()
+                for payload_item in item["payload_files"]:
+                    if not isinstance(payload_item, dict) or set(payload_item) != {"path", "content_zlib_base64", "mode"}:
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload entry is malformed")
+                        continue
+                    relative_path = payload_item.get("path")
+                    if not isinstance(relative_path, str) or not relative_path.startswith(f".agent/capabilities/{package_id}/") or relative_path in observed_paths or payload_item.get("mode") not in {420, 493}:
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload path is unsafe or duplicated")
+                        continue
+                    observed_paths.add(relative_path)
+                    try:
+                        content = zlib.decompress(base64.b64decode(payload_item.get("content_zlib_base64"), validate=True))
+                    except (TypeError, ValueError, zlib.error):
+                        errors.append(f".agent/available-packages/catalog.json: {package_id} payload content is malformed")
+                        continue
+                    value.update(relative_path.encode("utf-8"))
+                    value.update(b"\0")
+                    value.update(content)
+                    value.update(b"\0")
+                if value.hexdigest() != item["installed_paths_sha256"]:
+                    errors.append(f".agent/available-packages/catalog.json: {package_id} offline payload digest is stale")
+    return errors
 
 
 def load_project_check_evidence(
@@ -3011,6 +3125,7 @@ def check_kernel(root: Path) -> list[str]:
         "START_HERE.md",
         "approvals",
         "artifacts",
+        "available-packages",
         "capabilities",
         "checklists",
         "checkpoints",
@@ -3167,6 +3282,14 @@ def check_kernel(root: Path) -> list[str]:
             "deployment": "requires_explicit_current_authorization",
             "communication": "requires_explicit_current_authorization",
             "purchase": "requires_explicit_current_authorization",
+        },
+        "autonomous_delivery": {
+            "pre_activation": "read_only_no_hooks_no_repository_or_external_mutation",
+            "write_activation": "independent_exact_digest_human_confirmation_required",
+            "external_effects": "current_exact_plan_projection_and_live_revalidation_required",
+            "unknown_outcome_retries": 0,
+            "direct_external_spending_usd": 0,
+            "credentials": "creation_storage_and_forwarding_prohibited",
         },
         "sensitive": {
             "secret_values_in_repository_or_logs": "prohibited",
@@ -3372,6 +3495,7 @@ def check_kernel(root: Path) -> list[str]:
         errors.append(".agent: governance kernel project identity mismatch")
     errors.extend(check_project_command_contract(root, project))
     errors.extend(check_work_completion_config(root, project))
+    errors.extend(check_autonomous_delivery_config(root, project))
     for group in ("source", "tests", "generated", "instruction_roots"):
         for index, item in enumerate(project.get("paths", {}).get(group, [])):
             _, path_error = safe_relative_path(root, item)
@@ -7320,6 +7444,16 @@ def check_packages(root: Path) -> list[str]:
     }
     if len(installed) != len(registry.get("packages", [])):
         errors.append(".agent/packages.json: package IDs must be unique")
+    try:
+        available_catalog = load_json(root / ".agent/available-packages/catalog.json")
+    except (OSError, ValueError, json.JSONDecodeError):
+        available_contracts = {}
+    else:
+        available_contracts = {
+            item.get("id"): item
+            for item in available_catalog.get("packages", [])
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        } if isinstance(available_catalog, dict) else {}
     capabilities_root = root / ".agent/capabilities"
     expected_capability_paths = {
         relative
@@ -7342,6 +7476,10 @@ def check_packages(root: Path) -> list[str]:
                     f".agent/capabilities: unregistered capability payload path: {relative}"
                 )
     for package_id, item in installed.items():
+        if package_id in {"autonomous-delivery", "long-running-work"}:
+            available = available_contracts.get(package_id, {})
+            if item.get("version") != available.get("version") or item.get("sha256") != available.get("source_sha256"):
+                errors.append(f".agent/packages.json: {package_id} differs from the exact offline source contract")
         digest = hashlib.sha256()
         for relative_path in item.get("installed_paths", []):
             candidate, path_error = safe_relative_path(root, relative_path, must_exist=True)
@@ -7370,7 +7508,7 @@ def check_packages(root: Path) -> list[str]:
                 receipt_valid = (
                     isinstance(receipt, dict)
                     and receipt.get("receipt_id") == receipt_ref
-                    and receipt.get("operation") in {"maintain.package.install", "maintain.package.update"}
+                    and receipt.get("operation") in {"maintain.package.install", "maintain.package.update", "delivery.activate"}
                     and receipt.get("status") == "applied"
                     and all(
                         result.get("exit_code") == 0
@@ -7388,6 +7526,7 @@ def check_packages(root: Path) -> list[str]:
         ("operations-observability", "operations_observability"),
         ("security-supply-chain", "security_supply_chain"),
         ("long-running-work", "long_running_work"),
+        ("autonomous-delivery", "autonomous_delivery"),
     ):
         status = assessments.get(fact_id) if isinstance(assessments, dict) else None
         if status == "applicable" and package_id not in installed:
@@ -7440,6 +7579,23 @@ def check_packages(root: Path) -> list[str]:
                 errors.append(".agent/work-runs: uninstalled package state root is unsafe")
             elif any(path.is_file() or path.is_symlink() for path in state_root.rglob("*")):
                 errors.append(".agent/work-runs: retained state exists without the installed owning package")
+    autonomous = installed.get("autonomous-delivery")
+    if isinstance(autonomous, dict):
+        validator_path = root / ".agent/capabilities/autonomous-delivery/validate.py"
+        if not validator_path.is_file() or validator_path.is_symlink():
+            errors.append(".agent/packages.json: autonomous-delivery validator is absent or unsafe")
+        else:
+            result = subprocess.run(
+                [sys.executable, "-I", "-B", str(validator_path)],
+                cwd=root,
+                env={key: os.environ[key] for key in ("PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR") if key in os.environ},
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=False,
+            )
+            if result.returncode != 0:
+                errors.append(".agent/packages.json: autonomous-delivery package validation failed")
     return errors
 
 

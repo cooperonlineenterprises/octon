@@ -147,6 +147,22 @@ Three states remain distinct throughout generation and validation:
 
 Neither of the first two states implies the third.
 
+Every 4.2 snapshot includes a dormant `octon delivery` surface plus inert,
+content-addressed local payload bytes for autonomous delivery and its
+long-running-work dependency. This is availability, not installation,
+activation, applicability, adoption, permission, repository/provider
+configuration, or readiness. The generated project records exactly
+`available_not_activated`, locked writes, locked external effects, no profile,
+no authorization reference, and an unassessed trigger.
+
+Pre-activation research, context, applicability, planning, status,
+explanation, and activation preview execute no project hook and mutate no
+target or external state. A deterministic standing-contract draft may be
+written only to an explicitly requested external review path. It remains
+non-authorizing until an independent human confirms its exact digest. The
+accepted record and confirmation remain outside the repository; generation
+never supplies either.
+
 Generation must not invent, transfer, or upgrade facts, decisions, evidence,
 credentials, providers, authority, or readiness. A template default is not a
 project observation. A source decision is not a target-project decision. A
@@ -531,6 +547,30 @@ review observation from PR creation and merge. It cannot infer required check
 names, reviewer eligibility, merge method, branch deletion, or authority from
 provider defaults. An agent or self-review never satisfies required peer
 approval.
+
+The separately activated autonomous-delivery adapter may add only exact
+workflow dispatch, annotated source tag, tag push, GitHub source Release, and
+read-back operations covered by a current independently confirmed standing
+record. It must revalidate revocation, emergency stop, current evidence for the
+one selected metered-API or included-subscription compute mode, repository,
+branch, task, exact plan, action, release type, evidence, and remaining limits
+before every effect. It persists an attempted marker before
+the call and never replays an unknown outcome. Direct external spending is
+always zero.
+
+The source checkout may route `octon work finish` to the existing
+work-completion engine through a source-only runner. That runner consumes an
+external immutable, digest-bound Codex task reference and a precommitted source
+candidate; it generates no target task record and is never copied as a second
+generated-project lifecycle. Source merge remains blocked until the required
+check and all 24 candidate matrix jobs pass; cleanup remains blocked until
+exact integrated-main validation evidence is recorded.
+
+The source checkout may route `octon delivery effect` through a source-only
+wrapper around the same closed delivery-effect adapter. Candidate dispatch is
+task-branch-bound; release effects are clean-`main`-bound. The source wrapper
+is not copied as a generated-project runtime and does not broaden the adapter's
+four supported operations.
 
 The generated portfolio excludes GitFlow, merge queues, release trains,
 stacked-PR dependency trains, fork-first internal contribution, multi-level
