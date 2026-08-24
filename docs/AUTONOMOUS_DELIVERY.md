@@ -161,7 +161,8 @@ domain, license, marketplace product, or other external good or service.
 
 The adapter supports only:
 
-- exact hosted-workflow dispatch and observation;
+- exact hosted-workflow dispatch and observation from either the bound task
+  branch or a receipt-proven, synchronized integrated `main` revision;
 - annotated local tag creation;
 - exact tag push;
 - GitHub source Release creation and read-back; and

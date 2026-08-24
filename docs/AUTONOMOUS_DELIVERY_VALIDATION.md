@@ -20,7 +20,9 @@ Source-mode coverage additionally requires external Codex-task digest and
 expiry checks, precommitted base/head/range binding, no source task store,
 existing work-completion ownership, dual-mode standing-authority revalidation,
 an intentional pre-merge pause until the required check and all 24 candidate
-matrix jobs pass, an intentional post-merge pause, and cleanup refusal until
+matrix jobs pass, authority revalidation before switching away from a source
+candidate that introduces its evaluator, receipt-bound integrated-`main`
+workflow dispatch, an intentional post-merge pause, and cleanup refusal until
 exact integrated-main smoke and full-matrix evidence passes.
 
 The final evidence bundle must retain all failed commands, samples, fault

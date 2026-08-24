@@ -112,11 +112,56 @@ class SourceDeliveryEffectTests(unittest.TestCase):
         self.assertEqual(plan["canonical_plan_digest"], self.runtime.digest({key: value for key, value in plan.items() if key != "canonical_plan_digest"}))
         self.assertEqual(git(self.root, "status", "--porcelain=v1"), before)
         wrong_branch = self.arguments(projection_path, "dispatch_hosted_workflow", "main", self.candidate)
-        with self.assertRaisesRegex(SOURCE.SourceEffectError, "wrong execution branch"):
+        with self.assertRaisesRegex(SOURCE.SourceEffectError, "differs from the exact execution branch"):
             SOURCE.source_plan(wrong_branch, self.root, self.runtime)
         wrong_commit = self.arguments(projection_path, "dispatch_hosted_workflow", "chore/autonomous-source-effect", self.main_revision)
-        with self.assertRaisesRegex(SOURCE.SourceEffectError, "differs from the exact task branch"):
+        with self.assertRaisesRegex(SOURCE.SourceEffectError, "differs from the exact execution branch"):
             SOURCE.source_plan(wrong_commit, self.root, self.runtime)
+
+    def test_post_merge_dispatch_requires_exact_integrated_receipt(self) -> None:
+        git(self.root, "switch", "main")
+        git(self.root, "merge", "--no-ff", "chore/autonomous-source-effect", "-m", "merge: synthetic candidate")
+        integrated = git(self.root, "rev-parse", "HEAD")
+        common = Path(git(self.root, "rev-parse", "--git-common-dir"))
+        common = common if common.is_absolute() else self.root / common
+        receipt_directory = common / "octon-mini/work-completion/receipts"
+        receipt_directory.mkdir(parents=True)
+        receipt = {
+            "schema_version": "harness.work-completion-receipt.v1",
+            "artifact_kind": "work_completion_receipt",
+            "permission_grant": False,
+            "receipt_id": "WCR-" + "a" * 24,
+            "plan_digest": "a" * 64,
+            "plan": {
+                "schema_version": "harness.source-work-completion-plan.v1",
+                "canonical_plan_digest": "a" * 64,
+                "branches": {"default": "main"},
+                "expected_revisions": {"candidate_head": self.candidate},
+            },
+            "revisions": {
+                "commit": self.candidate,
+                "integrated": integrated,
+                "synchronized_default": integrated,
+            },
+            "completed_operations": [
+                "record_candidate_matrix_validation",
+                "merge_pull_request",
+                "synchronize_local_default_branch",
+            ],
+        }
+        receipt_path = receipt_directory / f"{receipt['receipt_id']}.json"
+        write_json(receipt_path, receipt)
+        projection_path = self.area / "post-merge-projection.json"
+        write_json(projection_path, self.projection("dispatch_hosted_workflow"))
+        args = self.arguments(projection_path, "dispatch_hosted_workflow", "main", integrated)
+        plan = SOURCE.source_plan(args, self.root, self.runtime)
+        self.assertEqual(plan["default_branch"], "main")
+        self.assertEqual(plan["expected_commit"], integrated)
+        self.assertEqual(plan["operation_argv"], ["gh", "workflow", "run", "validate.yml", "--ref", "main"])
+        receipt["revisions"]["synchronized_default"] = self.main_revision
+        write_json(receipt_path, receipt)
+        with self.assertRaisesRegex(SOURCE.SourceEffectError, "integrated work-completion receipt"):
+            SOURCE.source_plan(args, self.root, self.runtime)
 
     def test_release_effects_require_main(self) -> None:
         git(self.root, "switch", "main")
