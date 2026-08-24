@@ -3,7 +3,7 @@
 All notable Octon Mini contract changes are recorded here. Project-specific
 snapshots do not upgrade automatically.
 
-## 4.2.0 — Unreleased
+## 4.2.0 — 2026-08-24
 
 ### Added
 
@@ -41,19 +41,32 @@ snapshots do not upgrade automatically.
   binding, a complete candidate-matrix pause before merge, and a mandatory
   integrated-main validation pause before cleanup;
 - source `octon delivery effect` reuses the closed four-operation adapter for
-  task-branch workflow dispatch and clean-`main` source release effects without
-  acquiring work-completion ownership;
-  and
+  task-branch workflow dispatch, receipt-bound integrated-`main` workflow
+  dispatch, and clean-`main` source release effects without acquiring
+  work-completion ownership; and
 - every snapshot carries exact inert package bytes without acquiring a
   project decision, repository/provider fact, credential, standing authority,
   package installation, adoption, or readiness.
 
-This source work is unreleased. The accepted decisions and local implementation
-authorization did not activate `SAC-01`; that predecessor is now revoked and
-confirmed `SAC-02` is the current standing envelope. No push, PR, workflow dispatch, merge,
-tag, Release, package publication, deployment, communication, purchase, or
-external-project mutation may proceed without a fresh exact-plan projection,
-current subscription-status evidence, and every live `SAC-02` gate.
+Pull requests #21 and #22 were integrated with `merge_commit`. Final corrective
+candidate `96d79099e5e84077565b0a9e91866084c62d50b0` passed required run
+`32703858216` and 24-job candidate matrix `32707378408`. Exact released main
+`22c1c142e42caa91edbf6550315c3938ff747c6f` passed automatic smoke run
+`32714926981` and 24-job integrated-main matrix `32715261752`.
+
+Annotated tag object `d5d67efea6105d9ec51eab3022420a49b3cf875c`
+targets that exact main revision, and the GitHub Release is published at
+`https://github.com/cooperonlineenterprises/octon-mini/releases/tag/v4.2.0`.
+No separate package, deployment, purchase, credential, or external-project
+effect occurred.
+
+Failed predecessor matrix `32681230721`, post-merge recovery stops, ambiguous
+read-back receipts, and the GitHub rate-limit pause remain retained. They led
+to Windows-stable bytes, authority revalidation before branch switching, and
+receipt-bound integrated-main dispatch without weakening a gate or threshold.
+The accepted disclosed-absence policy preserves unavailable independent field
+evidence and does not establish maturity, adoption, usability, readiness, or
+efficacy.
 
 ## 4.1.0 — 2026-08-22
 

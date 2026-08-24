@@ -1,25 +1,50 @@
 # Octon Mini Release-Readiness Record
 
-## 4.2.0 candidate — in progress
+## 4.2.0 completed release
 
-Octon Mini 4.2.0 is unreleased. `SRC-DEC-0019` and `SRC-DEC-0020` are
-accepted for source implementation. `SAC-01` is revoked and confirmed
-subscription-mode `SAC-02` is the current standing envelope; each external
-effect still requires a fresh exact-plan projection and live compute evidence.
+Octon Mini `4.2.0` was released on 2026-08-24 after separately authorized,
+receipt-backed source delivery under accepted `SRC-DEC-0019`, `SRC-DEC-0020`,
+and confirmed subscription-mode `SAC-02`.
 
-The accepted narrow `SRC-DEC-0019` amendment adds source-repository mode to the
-existing work-completion engine. It requires an external immutable,
-digest-bound Codex task reference and pauses cleanup until exact integrated-
-main smoke and full-matrix evidence is recorded. It also blocks merge until the
-stable required check and all 24 candidate source/acceptance matrix jobs pass
-on the exact head. It creates no source task store and grants no release-
-adapter ownership over push, PR, checks, merge, or cleanup.
+| Field | Observed value |
+|---|---|
+| Record state | `completed_with_known_limitations` |
+| Implementation / correction PRs | #21 / #22 |
+| Final corrective candidate | `96d79099e5e84077565b0a9e91866084c62d50b0` |
+| Exact released `main` | `22c1c142e42caa91edbf6550315c3938ff747c6f` |
+| Tag | annotated `v4.2.0`; object `d5d67efea6105d9ec51eab3022420a49b3cf875c` |
+| GitHub Release | `https://github.com/cooperonlineenterprises/octon-mini/releases/tag/v4.2.0` |
+| Evidence policy | accepted `SRC-DEC-0020` disclosed-absence treatment |
+| Package channel | `none`; GitHub-generated source archives only |
+| Independent field maturity | `not_established` |
 
-Current source evidence may demonstrate implementation, deterministic safety,
-migration, recovery, and performance. It cannot establish release, target-
-project adoption, independent human usability, field maturity, project
-readiness, or production readiness. No hosted candidate or integrated-main
-evidence exists until separately authorized external delivery occurs.
+### Technical gate evidence
+
+| Gate | Exact evidence | Result |
+|---|---|---|
+| Complete local validation | external manifest `f8d6f9ea…` | passed |
+| Benchmark-v2 | 3 × 129 samples | 387/387 passed |
+| Long-work benchmark | three 10k runs | all warm p90 <2s |
+| Required PR check | run `32703858216` | passed on final candidate |
+| Candidate matrix | run `32707378408` | 24/24 passed |
+| Automatic integrated-main smoke | run `32714926981` | passed on released main |
+| Integrated-main matrix | run `32715261752` | 24/24 passed |
+| Migration / snapshot independence | source and installed-snapshot suites | passed |
+| Tag / Release read-back | immutable effect receipts | exact target; final Release |
+
+Worst local p90 was 9.019s scaffold, 1.397s for the 10k read-only
+check, and 9.958s for bounded mutation. The mutation result passed the
+unchanged 10s threshold with narrow headroom and remains disclosed.
+
+Failed predecessor run `32681230721`, the post-merge evaluator-ordering stop,
+the initially absent integrated-main dispatch route, monotonic read-back
+continuations, and the GitHub API rate-limit pause remain retained. Every
+reproducible implementation defect became a bounded regression fixture.
+
+Unavailable unfamiliar-operator, independent-reviewer, independent external-
+project, and human-usability evidence remains disclosed. This release does not
+establish target-project adoption, independent maturity, usability, project
+readiness, production readiness, or efficacy.
 
 ## 4.1.0 completed release
 
