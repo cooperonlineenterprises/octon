@@ -1,94 +1,30 @@
-# Octon Mini
+# Octon
 
-Octon Mini is the lightweight, project-local version of Octon. OctonOS is the
-full-scale agent operating system.
+Octon is an independently usable, project-local harness and dossier for governed
+agent work. It continues the Octon Mini lineage. The original Octon runtime and
+OctonOS are separate references, not required layers or upgrade destinations.
 
-Octon Mini is a lightweight, project-local version of Octon for governed agent
-work. It gives any project a durable harness, dossier, setup workflow,
-validation system, work lifecycle, and recovery model without requiring the
-full OctonOS control plane.
+**5.0.0 is a local unpublished identity-transition candidate**, based on released
+Mini 4.2.0 plus release-record reconciliation. It includes no unfinished 4.3
+coordination work or Plectarium extraction. See [scope and compatibility](docs/IDENTITY_TRANSITION.md).
 
-Octon Mini Project Bootstrap is the capability that creates, adopts,
-configures, recovers, and upgrades the Octon Mini harness and project dossier.
-It works across software, product, business, brand, research, operations, and
-hybrid projects.
+Octon Project Bootstrap creates, adopts, configures, recovers and deliberately
+upgrades independent snapshots. The harness supplies project-local instructions,
+records and non-authorizing safety boundaries. The dossier documents the project;
+it never grants permission. Project owners retain permissions, decisions, state,
+evidence admission, acceptance and recovery. Templates invent none of them.
 
-Octon Mini works for any project and is standalone. It is not a seed, trial,
-free tier, required precursor to OctonOS, “OctonOS Lite,” or an OctonOS runtime. Its smaller scope
-does not weaken safety or evidentiary rigor. It retains deny-by-default,
-non-authorizing behavior, holds no credentials, and creates no authority for
-external effects.
+Generated projects do not follow source updates automatically. They need no source
+checkout, sibling reference repository or Plectarium for normal operation.
+Delivery remains `available_not_activated`, with writes and external effects locked
+until separate exact project-owned authorization and adoption requirements pass.
 
-The generated systems remain separate:
-
-- the **harness** defines repository-local guidance, deny-by-default authority
-  boundaries, work records, automation contracts, and validation;
-- the **dossier** documents definition, intended and observed state,
-  conformance, plans, provenance, evidence, and handoff.
-
-A dossier is never permission. Generated policy cannot create authority, and
-automation cannot invent facts, owners, identities, decisions, approvals,
-evidence, stable IDs, adoption, or readiness.
-
-Generated projects are independent snapshots. They do not track or acquire
-later Octon Mini changes automatically.
-
-## Current source and 4.0 changes
-
-Current unreleased 4.2 source work adds governed autonomous delivery under
-accepted `SRC-DEC-0019` and standing release-evidence policy
-`SRC-DEC-0020`. Every snapshot exposes a dormant, read-only delivery surface
-and exact inert offline payloads. Write-capable work and external effects remain
-locked until an operator independently confirms the complete deterministic
-standing contract digest and activates it. Each contract selects either
-host-enforced metered API ceilings or included-subscription allowance only.
-Direct spending is zero, unknown or unreadable compute state blocks, and
-ambiguous external effects are never replayed.
-
-Released 4.1 added the optional, trigger-installed long-running-work
-capability. It governs one external worker under an existing task through
-deterministic context, exact measurable limits, validated progress,
-no-progress detection, marker-backed checkpoints, and read-only resume. It
-does not host a model, create task scope, grant permission, or replace existing
-work owners.
-
-Version 4.0 makes the universal kernel thinner and ordinary operation faster:
-
-- one authoritative profile/layout/package/inventory/acceptance manifest;
-- one workflow-oriented `octon` command inventory projected into every snapshot;
-- one catalog-driven, resumable, non-authorizing setup interview feeding the
-  existing digest-bound initialization, adoption, and upgrade planners;
-- read-only semantic detection and diagnosis;
-- fully derived current state plus a small authoritative focus source;
-- selective project checks and bounded immutable evidence history;
-- one opt-in, provider-neutral, digest-bound and resumable small-team
-  work-completion engine;
-- trigger-installed Git, operations/observability, security/supply-chain,
-  sample restriction, and optional-schema packages;
-- compact physical dossier representation by default, with separated layout
-  still supported; and
-- fast, integration, and release validation tiers plus scale benchmarks; and
-- one versioned Continuation Contract, dependency-scoped setup successors,
-  concise plan summaries, conservative routine proof reuse, and compatible
-  reversible local transaction bundles.
-
-Decision governance extends the existing decision concern with one
-project-owned `DREG-####` register, gate-first trade-off review, compatibility
-findings, read-only assurance, and a minimum closure graph. Recommendations,
-owner selections, and accepted `DEC-####` authority remain distinct; scores
-cannot compensate for a failed gate or conceal an evidence gap. See
-`docs/DECISION_GOVERNANCE.md`.
-
-Repository-local transactions are staged, validated, instruction- and
-path-fingerprint-bound, receipted, and exactly recoverable. External Git and
-provider effects cannot be rolled back atomically; governed work completion
-records monotonic progress and resumes or fixes forward. There is no global
-force mode.
-
-Fail-closed mutation is continuation-oriented: a refusal states whether
-anything changed, identifies the smallest invalidated proof, preserves current
-inputs, and returns one shell-free next action. It never weakens an authority,
-freshness, instruction, path, digest, collision, or external-effect gate.
+Current source metadata is `octon.json`, bootstrap skill is
+`octon-project-bootstrap`, and current provenance is `.octon-origin.json` with
+`product: octon`. Historical schemas and producers remain unchanged. Stable
+Mini-lineage wire identifiers and kernel 4.2 compatibility are retained as
+explained in the identity-transition document. The GitHub repository URL remains
+`cooperonlineenterprises/octon-mini`; no publication or remote rename is claimed.
 
 ## Independent selection axes
 
@@ -116,17 +52,17 @@ boundary, and limitations.
 
 | Capability | Main command | Availability and boundary |
 |---|---|---|
-| Octon Mini Project Bootstrap | `octon init`, `octon adopt`, `octon upgrade` | interactive one-command flow or explicit plan/apply; every apply requires current inputs and the exact reviewed digest |
-| Octon Mini Guided Setup | `octon init\|adopt\|upgrade setup` | source workflow; target-read-only, with an optional explicit external session write |
-| Octon Mini Project Detection | `octon detect` | source workflow; read-only and non-adopting |
-| Octon Mini Project Validation | `octon check` | generated project; read-only and never runs hooks |
-| Octon Mini Diagnostics and Recovery | `octon doctor` | generated project; uses the shared typed Continuation Contract and any derived repair requires its reviewed digest |
-| Octon Mini Work Lifecycle | `octon work start\|block\|close\|reopen\|handoff\|resume` | generated project; views are read-only and lifecycle changes use explicit plan/apply receipts |
-| Octon Mini Governed Work Completion | `octon work finish` | generated disabled; source mode consumes an external immutable Codex task reference; planning is read-only and every effect requires exact current task/plan authorization |
-| Octon Mini Long-Running Work | `octon work run` | dormant generated route; executes only an installed, digest-valid, separately adopted optional package for one existing task |
-| Octon Mini Governed Autonomous Delivery | `octon delivery` | read-only and available while locked; write-capable activation requires exact independent standing-contract confirmation and locally bundled package installation |
-| Octon Mini Project Maintenance | `octon maintain` | source or generated by subcommand; every writer retains its specific review and authority gate |
-| Octon Mini Transaction Recovery | `octon transaction` | generated project; compatible reversible local plans may bundle, while apply, rollback, and recovery remain exact-plan or exact-receipt bound |
+| Octon Project Bootstrap | `octon init`, `octon adopt`, `octon upgrade` | interactive one-command flow or explicit plan/apply; every apply requires current inputs and the exact reviewed digest |
+| Octon Guided Setup | `octon init\|adopt\|upgrade setup` | source workflow; target-read-only, with an optional explicit external session write |
+| Octon Project Detection | `octon detect` | source workflow; read-only and non-adopting |
+| Octon Project Validation | `octon check` | generated project; read-only and never runs hooks |
+| Octon Diagnostics and Recovery | `octon doctor` | generated project; uses the shared typed Continuation Contract and any derived repair requires its reviewed digest |
+| Octon Work Lifecycle | `octon work start\|block\|close\|reopen\|handoff\|resume` | generated project; views are read-only and lifecycle changes use explicit plan/apply receipts |
+| Octon Governed Work Completion | `octon work finish` | generated disabled; source mode consumes an external immutable Codex task reference; planning is read-only and every effect requires exact current task/plan authorization |
+| Octon Long-Running Work | `octon work run` | dormant generated route; executes only an installed, digest-valid, separately adopted optional package for one existing task |
+| Octon Governed Autonomous Delivery | `octon delivery` | read-only and available while locked; write-capable activation requires exact independent standing-contract confirmation and locally bundled package installation |
+| Octon Project Maintenance | `octon maintain` | source or generated by subcommand; every writer retains its specific review and authority gate |
+| Octon Transaction Recovery | `octon transaction` | generated project; compatible reversible local plans may bundle, while apply, rollback, and recovery remain exact-plan or exact-receipt bound |
 
 ## Repository layout
 
@@ -136,7 +72,7 @@ boundary, and limitations.
 | `harness/` | harness architecture and acceptance contracts |
 | `shared/` | generation contract, source manifests, schemas |
 | `patterns/` | source-only pattern catalog and Architecture Proof assets |
-| `skills/octon-mini-project-bootstrap/` | Octon Mini Project Bootstrap skill, templates, detectors, packages, scripts, fixtures |
+| `skills/octon-project-bootstrap/` | Octon Project Bootstrap skill, templates, detectors, packages, scripts, fixtures |
 | `migrations/` | version-to-version migration guidance |
 | `docs/GOLDEN_PATHS.md` | verified operating paths |
 | `docs/COMPATIBILITY.md` | v4 compatibility, migration, and deprecation boundary |
@@ -386,74 +322,40 @@ installed disabled; readiness and enablement remain separate.
 
 ## Recovery and upgrades
 
-`./octon doctor` emits versioned codes with root cause, owning authority source,
-exact invalidated and preserved proofs, mutation state, one shell-free next
-action, safe read-only alternatives, successor availability, and repair class.
-Human output is concise; `--json` emits the strict contract. Doctor is read-only
-unless an exact derived-only repair digest is explicitly accepted.
+Existing snapshots remain independent. Octon 5.0 upgrades released Mini 4.2.0
+only through an explicit project-owned plan, complete review and exact digest
+confirmation. Earlier snapshots first use the released Mini upgrade path.
+See [4.2.0 to 5.0.0](migrations/4.2.0-to-5.0.0.md).
 
-```text
-./octon transaction recover --pending <journal>
-./octon transaction rollback --receipt <receipt>
-```
-
-Recovery restores only exact preimages or finalizes an exact terminal receipt.
-Rollback durably marks its in-progress state, resumes after interruption, and
-refuses a path changed independently. Stale plans, evidence, instructions, or
-target bytes require re-planning.
-
-Live upgrade is a three-way comparison of recorded old baselines, current
-project, and candidate Octon Mini snapshot:
-
-```text
-./octon upgrade plan --help
-```
-
-Use `./octon upgrade --target <path> --review-dir <external-path>` for the
-interactive path. The current Project Blueprint cross-brand migration may be
-recognized only as a reviewed legacy migration input and still requires its
-exact seed; no legacy runtime fallback is introduced.
-
-`octon upgrade setup` uses the same session engine. Every nonautomatic path still
-requires one exact disposition in the existing proposal-bound upgrade review;
-the session references that review rather than duplicating it.
-
-Only exact-pristine non-authoritative implementation assets, safe additions,
-and derived regeneration are automatic. Instructions, policy, project config,
-workflow adoption, dossier sources/registries, records, current facts, stable
-IDs, deletions/moves, permissions, symlinks, and modified content require
-explicit review. Project Blueprint 3.x→Octon Mini 4.0 is an explicit,
-reviewed, recoverable cross-brand migration. For 3.1→4.0, first create the
-reviewed legacy inventory seed described in
-`migrations/3.1.0-to-4.0.0.md`. The migration replaces the old launcher and
-provenance with `octon` and Octon Mini identities; it does not retain `pb`
-compatibility. Structural upgrade does not imply harness adoption or project
-readiness.
+The existing transaction engine preserves preimages, project records, initial
+generation and history. Use `octon doctor` and the exact recovery/rollback
+command it reports; never replay an uncertain application. Mixed origins and
+the original runtime's `.octon` installation refuse mutation.
 
 ## Validate, benchmark, and install
 
 ```text
-python3 -B skills/octon-mini-project-bootstrap/scripts/validate_skill_package.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/verify_reference_evidence.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/validate_source_contracts.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_architectural_patterns.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_benchmark_validation.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_octon_launchers.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_migration_1_0_1_to_2_0_0.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_migration_2_0_0_to_3_0_0.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_migration_3_1_0_to_4_0_0.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_velocity_workflows.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/validate_octon_mini.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/test_acceptance.py
-python3 -B skills/octon-mini-project-bootstrap/scripts/profile_large_project.py --sizes 0 2000 10000 20000
-python3 -B skills/octon-mini-project-bootstrap/scripts/benchmark_validation.py --enforce
+python3 -B skills/octon-project-bootstrap/scripts/validate_skill_package.py
+python3 -B skills/octon-project-bootstrap/scripts/verify_reference_evidence.py
+python3 -B skills/octon-project-bootstrap/scripts/validate_source_contracts.py
+python3 -B skills/octon-project-bootstrap/scripts/test_architectural_patterns.py
+python3 -B skills/octon-project-bootstrap/scripts/test_benchmark_validation.py
+python3 -B skills/octon-project-bootstrap/scripts/test_octon_launchers.py
+python3 -B skills/octon-project-bootstrap/scripts/test_migration_1_0_1_to_2_0_0.py
+python3 -B skills/octon-project-bootstrap/scripts/test_migration_2_0_0_to_3_0_0.py
+python3 -B skills/octon-project-bootstrap/scripts/test_migration_3_1_0_to_4_0_0.py
+python3 -B skills/octon-project-bootstrap/scripts/test_velocity_workflows.py
+python3 -B skills/octon-project-bootstrap/scripts/validate_octon_mini.py
+python3 -B skills/octon-project-bootstrap/scripts/test_acceptance.py
+python3 -B skills/octon-project-bootstrap/scripts/profile_large_project.py --sizes 0 2000 10000 20000
+python3 -B skills/octon-project-bootstrap/scripts/benchmark_validation.py --enforce
 ```
 
 The skill installer is collision-safe, bundles an independent source snapshot,
 and validates it before placement:
 
 ```text
-python3 -B skills/octon-mini-project-bootstrap/scripts/install_skill.py --dry-run
+python3 -B skills/octon-project-bootstrap/scripts/install_skill.py --dry-run
 ```
 
 When `SKILL.md` or `agents/openai.yaml` changes, also run the installed
@@ -467,18 +369,23 @@ The public `cooperonlineenterprises/octon-mini` source repository is licensed
 under the [MIT No Attribution license](LICENSE), SPDX identifier `MIT-0`, with
 `Copyright 2026 Cooper Online Enterprises`. This permits use, modification, and
 redistribution without an attribution-carrying condition. Octon Mini 4.2.0 is
-the current completed source release: annotated tag `v4.2.0` targets
+the historical completed source release: annotated tag `v4.2.0` targets
 `22c1c142e42caa91edbf6550315c3938ff747c6f`, and its GitHub Release is
 published. No separate package registry or package channel was used. Existing
 generated projects remain independent snapshots and do not acquire the release
 or optional long-running-work/autonomous-delivery packages automatically.
 
-An installed Octon Mini Project Bootstrap source bundle includes the repository
+An installed Octon Project Bootstrap source bundle includes the repository
 license. Generated target projects do not receive this `LICENSE` file and do not
 silently acquire a project-wide licensing decision. Each target project retains
 authority over its own overall license.
 
 ## Claim boundary
+
+The 5.0.0 candidate has not been published or independently accepted as a release.
+The following Mini release observations remain historical; they do not establish
+successor readiness or authorize any effect.
+
 
 Generation transfers structure, schemas, vocabulary, and validation behavior;
 never implementation state, decisions, permission, approvals, credentials,

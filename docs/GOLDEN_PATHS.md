@@ -426,16 +426,16 @@ There is no global force continuation.
 
 ## Upgrade
 
-For a native Octon Mini inventory-v2 project, run `octon upgrade plan`
-directly. Project Blueprint 3.x→Octon Mini 4.0 is an explicit cross-brand
-migration with no `pb` compatibility. For 3.1.0, follow
-`migrations/3.1.0-to-4.0.0.md`: inspect, supply an exact reviewed old baseline,
-create a non-applied seed, classify the three-way proposal, disposition every
-review path, then accept the exact transaction digest.
+Octon 5.0 directly upgrades only a released Mini 4.2.0 snapshot. Run
+`octon upgrade plan` with its current project-owned authority and evidence
+references, review every non-automatic classification, replan with the bound
+proposal/review, and apply only the exact resulting digest. See
+`migrations/4.2.0-to-5.0.0.md` for the current origin and recovery boundary.
 
-The interactive upgrade command accepts that exact seed as a migration input,
-pauses on the same three-way proposal, and resumes only after a bound review.
-It does not execute or restore the legacy command.
+Older Mini and Project Blueprint consumers first use the appropriate released
+Mini tools to reach 4.2.0. Their historical guides and schemas remain retained;
+they are not direct routes or accepted seed inputs to Octon 5.0. Existing
+snapshots are never upgraded automatically, and no legacy command is dispatched.
 
 After apply, distinguish the outcomes:
 

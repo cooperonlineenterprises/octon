@@ -1,3 +1,7 @@
+# Octon 5.0 identity compatibility
+
+The current transition is [Mini 4.2.0 to Octon 5.0.0](../migrations/4.2.0-to-5.0.0.md). Current product/skill/origin identities are defined in [IDENTITY_TRANSITION.md](IDENTITY_TRANSITION.md). Existing snapshots stay independent; no automatic consumer upgrade occurs. Earlier migrations below describe their released Mini versions, not a new direct path from those versions to Octon 5.0. Historical identities and records remain intact.
+
 # Octon Mini 4.0 Compatibility and Clean Break
 
 ## Product boundary

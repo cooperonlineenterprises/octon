@@ -1,4 +1,0 @@
-interface:
-  display_name: "Octon Mini Project Bootstrap"
-  short_description: "Bootstrap and upgrade governed Octon Mini projects"
-  default_prompt: "Use $octon-mini-project-bootstrap to inspect this repository read-only, conduct the guided setup interview, and produce a reviewed Octon Mini initialization, adoption, or upgrade plan."

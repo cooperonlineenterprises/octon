@@ -1,0 +1,57 @@
+# Handoff Start
+
+> Navigation only. Reinspect the repository and current instructions before
+> resuming work.
+
+## Current position
+
+- Octon scaffold generated on {{CREATED_DATE}}.
+- Project-specific current state is not assessed.
+- No project-specific decision, permission, or readiness is implied.
+
+## Resume in this order
+
+1. Read applicable instructions and `.agent/START_HERE.md`; run
+   `./octon work resume`.
+2. Inspect repository and source-control state.
+3. Read `project-dossier/AUTHORITY.md`.
+4. Reconcile `project-dossier/machine-readable/artifact-registry.json` and
+   assess conditional triggers without treating scaffold presence as
+   applicability.
+5. Establish provenance and a directly observed current-state baseline.
+6. Record requirements, findings, registers, and a dependency-aware plan.
+7. Inspect the derived ready frontier before selecting planned work; dates do not
+   satisfy dependencies or establish priority.
+8. Assess every project check hook. Run configured hooks only through the
+   explicit evidence writer after confirming authority for declared effects.
+9. Use the evidence-bound `./octon work close` plan/apply path, refresh derived
+   views, and run `./octon check` before claiming completion; neither structural
+   success nor adoption proves readiness.
+
+## Authority reconciliation before reliance
+
+This handoff is subordinate navigation. Before relying on any copied claim:
+
+1. Compare every gate statement with the authoritative gate record in
+   `project-dossier/validation/QUALITY_GATES.json`.
+2. Confirm accepted decision references resolve to accepted
+   `.agent/decisions/DEC-####*.md` records; a recommendation or owner selection
+   is not accepted authority.
+3. Compare version and ownership statements with the canonical project sources
+   and artifact registry.
+4. Reconcile recommendations and owner selections with
+   `.agent/decisions/governance-register.json` without presenting either as
+   adopted.
+5. Recheck implementation and readiness claims against current executable,
+   operational, and specialist evidence. Structural validation is insufficient.
+
+Prefer references over copied statuses. If a status must be copied, add one
+strict marker so `./octon check` can compare it mechanically:
+
+```text
+&lt;!-- octon-handoff-claim {"kind":"gate","ref":"GATE-0001","status":"proposed"} --&gt;
+```
+
+Supported claim kinds are `gate`, `decision`, `decision register`, and
+`readiness`. Version, ownership, semantic recommendation/adoption language,
+and the adequacy of evidence remain mandatory human review items.

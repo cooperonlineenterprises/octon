@@ -3,7 +3,7 @@
   "document_role": "exact_legacy_reference_exception_inventory",
   "permission_grant": false,
   "token_class": "mixed_legacy_identity",
-  "legacy_pattern": "Project Blueprint|\\bBlueprint\\b|project-blueprint|project_bootstrap|(?<!octon-mini-)project-bootstrap|blueprint_(?:version|implementation_asset)|BLUEPRINT_VERSION|blueprint:|(?<![A-Za-z0-9_])pb(?:_[A-Za-z0-9_]+|\\.py)?(?![A-Za-z0-9_])|pbv-",
+  "legacy_pattern": "Project Blueprint|\\bBlueprint\\b|project-blueprint|project_bootstrap|(?<!octon-mini-)(?<!octon-)project-bootstrap|blueprint_(?:version|implementation_asset)|BLUEPRINT_VERSION|blueprint:|(?<![A-Za-z0-9_])pb(?:_[A-Za-z0-9_]+|\\.py)?(?![A-Za-z0-9_])|pbv-",
   "classification_policies": {
     "truthful_historical_record": {
       "reason": "The file preserves accepted source history, release history, or evidence provenance under the identity that existed when it was recorded.",
@@ -18,69 +18,431 @@
       "retirement_condition": "Remove when the explicit cross-brand migration-input reader and provenance support are retired."
     },
     "breaking_transition_explanation": {
-      "reason": "The current document names the retired identity only to explain the deliberate breaking transition to Octon Mini.",
+      "reason": "The current document names a retired identity only to explain an explicit versioned identity transition; it never reactivates a legacy runtime.",
       "retirement_condition": "Remove when the breaking-transition explanation or cross-brand migration is retired."
     }
   },
   "entries": [
-    {"id": "LEGACY-0001", "path": "ARCHITECTURAL_PATTERN_INTEGRATION_REVIEW.md", "file_sha256": "05cc60bd78f899c5cdf9d11f1d981050eebabfb1c9b7466ee2622afef411e24e", "classification": "truthful_historical_record", "occurrence_count": 86},
-    {"id": "LEGACY-0002", "path": "ARCHITECTURE_DECISIONS.md", "file_sha256": "a0405178b266660091afe15052c720472daa1036d361b0c547dc7cd2654ec643", "classification": "truthful_historical_record", "occurrence_count": 13},
-    {"id": "LEGACY-0003", "path": "CHANGELOG.md", "file_sha256": "b1cba74a677f6849da643ac0d8dc9e55a3197082024da5d8da0b9c32fdcbb33b", "classification": "truthful_historical_record", "occurrence_count": 10},
-    {"id": "LEGACY-0004", "path": "GIT_WORKFLOW.md", "file_sha256": "645197ca05bc9dd0737073ea286e65d840d4f1312f9ad2d3713cd916edbdb62e", "classification": "breaking_transition_explanation", "occurrence_count": 1},
-    {"id": "LEGACY-0005", "path": "README.md", "file_sha256": "ec1c05f7b72ee5581aeea96f07df9261c0c4ec39744e3373fb76f6a8690e4949", "classification": "breaking_transition_explanation", "occurrence_count": 4},
-    {"id": "LEGACY-0006", "path": "RELEASE.md", "file_sha256": "a868d291b2008c4c08d194ca26e7e38fe1dee10bb3d7c3b72e927dd07fc4f33b", "classification": "truthful_historical_record", "occurrence_count": 7},
-    {"id": "LEGACY-0007", "path": "docs/COMPATIBILITY.md", "file_sha256": "4125d5fd846081396c6257786956964430664c5a5933b26c9c1025971eb53690", "classification": "breaking_transition_explanation", "occurrence_count": 10},
-    {"id": "LEGACY-0008", "path": "docs/GOLDEN_PATHS.md", "file_sha256": "bcee3ae75e2557f63e296db8466e1162d7290bdeb5e8b8582e171b38e57e0bca", "classification": "breaking_transition_explanation", "occurrence_count": 2},
-    {"id": "LEGACY-0009", "path": "docs/GUIDED_SETUP.md", "file_sha256": "6d63feba113920b2b191e830161d9b7cbfe3b69995c3bc23bee99d37f2159d4a", "classification": "breaking_transition_explanation", "occurrence_count": 3},
-    {"id": "LEGACY-0010", "path": "migrations/1.0.0-to-1.0.1.md", "file_sha256": "ef940e7eae274f0a974b61192260ff4e75236dc10b42a90b48cc30c4db9153c5", "classification": "closed_historical_fixture", "occurrence_count": 2},
-    {"id": "LEGACY-0011", "path": "migrations/1.0.1-to-2.0.0.md", "file_sha256": "8e9a7befa80aa9b805e502c8534112f688e02366aced320d4765d71db0020362", "classification": "closed_historical_fixture", "occurrence_count": 4},
-    {"id": "LEGACY-0012", "path": "migrations/2.0.0-to-3.0.0.md", "file_sha256": "effa51c912a601314077d195247af0bb8b4780d7eb455405f10875293ba15edc", "classification": "closed_historical_fixture", "occurrence_count": 4},
-    {"id": "LEGACY-0013", "path": "migrations/3.0.0-to-3.1.0.md", "file_sha256": "c94dbea76e867c09d9b7999f9ae9e88663dfc94939f1eecedcf2184b995b22b1", "classification": "closed_historical_fixture", "occurrence_count": 4},
-    {"id": "LEGACY-0014", "path": "migrations/3.1.0-to-4.0.0.md", "file_sha256": "852c2f3688430d0c13dd6e2f41bde17d52d706fb3d739933ccc3d0f8ba5a2b1d", "classification": "breaking_transition_explanation", "occurrence_count": 20},
-    {"id": "LEGACY-0015", "path": "patterns/records/PAT-0001-lifecycle-disposition.json", "file_sha256": "7acc8f30e1a46dc26e0b3402af56d33631484c90e5a5f8bbb29229e44dbd7360", "classification": "truthful_historical_record", "occurrence_count": 2},
-    {"id": "LEGACY-0016", "path": "patterns/records/PAT-0002-governed-change-and-effects.json", "file_sha256": "054fe80bc7d385f8b8683c778f5e9f0d9048bfc2f8e33f3384e2e66698491a81", "classification": "truthful_historical_record", "occurrence_count": 2},
-    {"id": "LEGACY-0017", "path": "patterns/records/PAT-0003-architecture-proof.json", "file_sha256": "fedb4fa357d74c0cb3bc08d04cb448e9e740833207cba53e0432592995145a49", "classification": "truthful_historical_record", "occurrence_count": 2},
-    {"id": "LEGACY-0018", "path": "shared/GENERATION_CONTRACT.md", "file_sha256": "a1b09a38414bb0b84d8902d43b8c62bd019c5e2838f27b058780ea29003762ca", "classification": "breaking_transition_explanation", "occurrence_count": 7},
-    {"id": "LEGACY-0019", "path": "shared/schemas/octon-mini-bootstrap-migration-seed.schema.json", "file_sha256": "e24d728154fec0604b839979097ad3295010afc54eb2ab2a07e42304fef4b733", "classification": "explicit_legacy_migration_input", "occurrence_count": 12},
-    {"id": "LEGACY-0020", "path": "shared/schemas/octon-mini-bootstrap-upgrade.schema.json", "file_sha256": "c787843cb3715d53a7a037757f24fd442edd927bbaa1b49918b8c226f6eb3a27", "classification": "explicit_legacy_migration_input", "occurrence_count": 1},
-    {"id": "LEGACY-0021", "path": "shared/schemas/octon-mini-project-origin.schema.json", "file_sha256": "0cecee45a69e3e1c9175d41078941f54802929a674c55973ee4ae5d79bc6ac85", "classification": "explicit_legacy_migration_input", "occurrence_count": 4},
-    {"id": "LEGACY-0022", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/README.md", "file_sha256": "24af01954297706f24b1e8500b50377a82db3ac9af3efb213f41808337d9c8e0", "classification": "closed_historical_fixture", "occurrence_count": 4},
-    {"id": "LEGACY-0023", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/adopted-without-v2-evidence.json", "file_sha256": "33d06bf24ec7e2d30b89d989c3b3d001e355a8ed11cc7f6ede99ef4db6595964", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0024", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/ambiguous-dependency.json", "file_sha256": "7f6a932c8dd35219b888e56fd251441cf1b791e2d84147bdc32257f9a664883c", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0025", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/configured-legacy-command.json", "file_sha256": "2ae7873ae6f176f2e916becb41abb6b60eb3360aa374c2d201b654abd9fd9891", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0026", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/hard-advisory-confusion.json", "file_sha256": "773f71e19531396fc66e3f07287d4f5cff752cfb5116a74befb2c6d5ebaa85fa", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0027", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/legacy-blocked-direct-to-execution.json", "file_sha256": "f221d27e2263f2fd822ea13193147eb76ef6b673a229595439dd7ec598b6f5b8", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0028", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mismatched-version-executable.json", "file_sha256": "81769a5066c062edfed6c6690cae3c778e4a3511e62c9f52e088f9d1146ad75b", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0029", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-authority.json", "file_sha256": "82b8097a77c9057bc159ea0923a22113792bb03b3a1dc8ade81eefeeccf00be3", "classification": "closed_historical_fixture", "occurrence_count": 2},
-    {"id": "LEGACY-0030", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-project-authority.json", "file_sha256": "01d582b4d70f1049c7188913228f9fd0c468743534a1aa8944ed2c2342aa623c", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0031", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-validator-authority.json", "file_sha256": "f0961146d3e471159ddb9b6361b99d1bb48e28f1ba0e4dcd12127dea73c62992", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0032", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/nonexternal-migration-authority.json", "file_sha256": "1d4243aa806151c018c4bc81e8e3288e3b6c2aa9fec67b5f7e9255407fc3ab3e", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0033", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/nonreciprocal-plan-task-link.json", "file_sha256": "0067953d376c9a7d81f1c39a049084fbe021b6582fee51a63897da93fe9ff5ee", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0034", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/task-cycle.json", "file_sha256": "0721001ee1ea47db69e0c000bd2eb80f8d0e931ed6c2f7886ced9fbb3d6c5af7", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0035", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/unsafe-explicit-command.json", "file_sha256": "a2d7d26546b3107e4c5ed54133cb5ac2d25dae897133de9b15cdc046fd2ec5df", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0036", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/valid/expectations.json", "file_sha256": "397936e73dfc659bf3490b8d6ffb3e7ee8309f5c2eca752937769c3d9a2a90e9", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0037", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/valid/v1-standard.json", "file_sha256": "7fb77c0e2084f5a725a1dc33dec7614092b78270a5e17f426d6f37cda6114577", "classification": "closed_historical_fixture", "occurrence_count": 12},
-    {"id": "LEGACY-0038", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/adopted-legacy-git-policy.json", "file_sha256": "9405be1e6a8c9d36d3c330b35fdf3f1f8f4ee639f7fb647c9d8eec712ae864cf", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0039", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/divergent-legacy-tools.json", "file_sha256": "af9999925e81e3fd58c60a4ff74d29b9e0e9f061ccfa719f775ba91e52bd6f61", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0040", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/fabricated-collaboration-evidence.json", "file_sha256": "6c2d536e1d2853b715e36f5ba07df023f279cad237d22ec714b45065693585b2", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0041", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/fabricated-workflow-adoption.json", "file_sha256": "390c2418bfd51615817455c6c25d9943f4a455b79c235388c4af446165b63dcf", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0042", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/mixed-live-project-version.json", "file_sha256": "6f5aa8ea592fb791550773f3cc356640c6676754fa8b31bf7bbb01319625804b", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0043", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/mixed-live-validator-version.json", "file_sha256": "054a6540063163b26488e9f9745bb3a230cef161ac5344acd9df3dc5ddea32c4", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0044", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/nonexternal-migration-authority.json", "file_sha256": "02cc2f9370e83e5f9c0930de2f360836759e74ccfbcb61c54a270a6e4f805299", "classification": "closed_historical_fixture", "occurrence_count": 1},
-    {"id": "LEGACY-0045", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/valid/v2-minimal.json", "file_sha256": "bca8033d660d2a5dd6d5c16d8b94996c6b7fc36dd42e7d744d3a26fb24fef5cc", "classification": "closed_historical_fixture", "occurrence_count": 9},
-    {"id": "LEGACY-0046", "path": "skills/octon-mini-project-bootstrap/fixtures/migrations/3.1.0-to-4.0.0/README.md", "file_sha256": "551751285ee55e34050a1cddbcd37fefba09ef95a61e8409db8be12bf22b0b0f", "classification": "breaking_transition_explanation", "occurrence_count": 5},
-    {"id": "LEGACY-0047", "path": "skills/octon-mini-project-bootstrap/references/generation-workflow.md", "file_sha256": "4024d62a2106204e24ef99a57183a80e49a49b74e3859c72db17239e53e8d992", "classification": "breaking_transition_explanation", "occurrence_count": 3},
-    {"id": "LEGACY-0048", "path": "skills/octon-mini-project-bootstrap/scripts/migrate_1_0_1_to_2_0_0.py", "file_sha256": "8637fabbd6e933cc3c9e586c70d3cbbd61e45d24247afc0062b2d8cb378397b9", "classification": "closed_historical_fixture", "occurrence_count": 40},
-    {"id": "LEGACY-0049", "path": "skills/octon-mini-project-bootstrap/scripts/migrate_2_0_0_to_3_0_0.py", "file_sha256": "29f55d891f9e476ce7a7e6670b6f7e75cf8bbd9b2b7ab690215b400f52c3238f", "classification": "closed_historical_fixture", "occurrence_count": 32},
-    {"id": "LEGACY-0050", "path": "skills/octon-mini-project-bootstrap/scripts/migrate_3_1_0_to_4_0_0.py", "file_sha256": "1383a38e76cf68819494cf18c880dd29efb4d0f7a645789ff2b6cc999fc8b266", "classification": "explicit_legacy_migration_input", "occurrence_count": 19},
-    {"id": "LEGACY-0051", "path": "skills/octon-mini-project-bootstrap/scripts/plan_adoption.py", "file_sha256": "0ed2962872823815f25c78d3a724b4e2724063f90d533579df1098ab340752c7", "classification": "explicit_legacy_migration_input", "occurrence_count": 1},
-    {"id": "LEGACY-0052", "path": "skills/octon-mini-project-bootstrap/scripts/test_migration_1_0_1_to_2_0_0.py", "file_sha256": "d13f3b84f891f1a077ba3229b839ff8785e353c7d4590b99c1af1423cf7548e5", "classification": "closed_historical_fixture", "occurrence_count": 3},
-    {"id": "LEGACY-0053", "path": "skills/octon-mini-project-bootstrap/scripts/test_migration_2_0_0_to_3_0_0.py", "file_sha256": "361a450556739205f5fc8eccc8bc46a670c656855c84eabe6b44775c15df6d0a", "classification": "closed_historical_fixture", "occurrence_count": 3},
-    {"id": "LEGACY-0054", "path": "skills/octon-mini-project-bootstrap/scripts/test_migration_3_1_0_to_4_0_0.py", "file_sha256": "a8edf8c8b1d0080d27a1eefd1d9b7dd21f571d73deb06e112dd8965eb12d21b4", "classification": "explicit_legacy_migration_input", "occurrence_count": 29},
-    {"id": "LEGACY-0055", "path": "skills/octon-mini-project-bootstrap/scripts/upgrade_project.py", "file_sha256": "ce2d8fb103d6dce4c29fab216ad1b128e9b2358f53ed99d99be8a96a4731a555", "classification": "explicit_legacy_migration_input", "occurrence_count": 25},
-    {"id": "LEGACY-0056", "path": "skills/octon-mini-project-bootstrap/scripts/guided_workflow.py", "file_sha256": "b9bb6f16953938cbf90f65dd4923c9d7b26992e379ebd5ba4a18872540dedf60", "classification": "explicit_legacy_migration_input", "occurrence_count": 2},
-    {"id": "LEGACY-0057", "path": "skills/octon-mini-project-bootstrap/scripts/setup_session.py", "file_sha256": "99ddbea391aef77f7b5a39005b1c3cd1917cf459b70384bdbdfef654ed5e3213", "classification": "explicit_legacy_migration_input", "occurrence_count": 8},
-    {"id": "LEGACY-0058", "path": "migrations/3.1.0-to-4.2.0.md", "file_sha256": "89375711203d83c3aababd66efba8d8ec190e2ace835c103f496379182a566dc", "classification": "breaking_transition_explanation", "occurrence_count": 2}
+    {
+      "id": "LEGACY-0001",
+      "path": "ARCHITECTURAL_PATTERN_INTEGRATION_REVIEW.md",
+      "file_sha256": "05cc60bd78f899c5cdf9d11f1d981050eebabfb1c9b7466ee2622afef411e24e",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 86
+    },
+    {
+      "id": "LEGACY-0002",
+      "path": "ARCHITECTURE_DECISIONS.md",
+      "file_sha256": "7e55c0455294b98cafa0b0b5d0f91f9f8c1462c6d1e3b417a39dbf8a2fa60b1c",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 13
+    },
+    {
+      "id": "LEGACY-0003",
+      "path": "CHANGELOG.md",
+      "file_sha256": "6b87c9448ab534667dbe0713325d6e871d0aa67c088c2d140fff19440e385bd1",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 10
+    },
+    {
+      "id": "LEGACY-0004",
+      "path": "GIT_WORKFLOW.md",
+      "file_sha256": "645197ca05bc9dd0737073ea286e65d840d4f1312f9ad2d3713cd916edbdb62e",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0005",
+      "path": "README.md",
+      "file_sha256": "07dfd09c7560bf2b08f05d467ccd181b7cce9afca3b93f9425d11bb7194be1b0",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0006",
+      "path": "RELEASE.md",
+      "file_sha256": "d2df58b23ce5dcfa6647af71652f95cb6afd21c8c8e805e19acd8a5492a0872f",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 7
+    },
+    {
+      "id": "LEGACY-0007",
+      "path": "docs/COMPATIBILITY.md",
+      "file_sha256": "cf4893c58a9f8054c223f14b990dd4f0cdc8448c15e5c36183b7dd1661590d2c",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 10
+    },
+    {
+      "id": "LEGACY-0008",
+      "path": "docs/GOLDEN_PATHS.md",
+      "file_sha256": "0894689f581d8a3a227904b82aec12feb17738dc7b1835a8fa74c1e793599418",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0009",
+      "path": "docs/GUIDED_SETUP.md",
+      "file_sha256": "6d63feba113920b2b191e830161d9b7cbfe3b69995c3bc23bee99d37f2159d4a",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0010",
+      "path": "migrations/1.0.0-to-1.0.1.md",
+      "file_sha256": "ef940e7eae274f0a974b61192260ff4e75236dc10b42a90b48cc30c4db9153c5",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0011",
+      "path": "migrations/1.0.1-to-2.0.0.md",
+      "file_sha256": "8e9a7befa80aa9b805e502c8534112f688e02366aced320d4765d71db0020362",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 4
+    },
+    {
+      "id": "LEGACY-0012",
+      "path": "migrations/2.0.0-to-3.0.0.md",
+      "file_sha256": "effa51c912a601314077d195247af0bb8b4780d7eb455405f10875293ba15edc",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 4
+    },
+    {
+      "id": "LEGACY-0013",
+      "path": "migrations/3.0.0-to-3.1.0.md",
+      "file_sha256": "c94dbea76e867c09d9b7999f9ae9e88663dfc94939f1eecedcf2184b995b22b1",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 4
+    },
+    {
+      "id": "LEGACY-0014",
+      "path": "migrations/3.1.0-to-4.0.0.md",
+      "file_sha256": "852c2f3688430d0c13dd6e2f41bde17d52d706fb3d739933ccc3d0f8ba5a2b1d",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 20
+    },
+    {
+      "id": "LEGACY-0015",
+      "path": "patterns/records/PAT-0001-lifecycle-disposition.json",
+      "file_sha256": "7acc8f30e1a46dc26e0b3402af56d33631484c90e5a5f8bbb29229e44dbd7360",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0016",
+      "path": "patterns/records/PAT-0002-governed-change-and-effects.json",
+      "file_sha256": "054fe80bc7d385f8b8683c778f5e9f0d9048bfc2f8e33f3384e2e66698491a81",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0017",
+      "path": "patterns/records/PAT-0003-architecture-proof.json",
+      "file_sha256": "fedb4fa357d74c0cb3bc08d04cb448e9e740833207cba53e0432592995145a49",
+      "classification": "truthful_historical_record",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0018",
+      "path": "shared/GENERATION_CONTRACT.md",
+      "file_sha256": "6d8dd8663c7fcc6cbf776e3facdc14468c17cdf070a3b1adc195347013fe3129",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 7
+    },
+    {
+      "id": "LEGACY-0019",
+      "path": "shared/schemas/octon-mini-bootstrap-migration-seed.schema.json",
+      "file_sha256": "e24d728154fec0604b839979097ad3295010afc54eb2ab2a07e42304fef4b733",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 12
+    },
+    {
+      "id": "LEGACY-0020",
+      "path": "shared/schemas/octon-mini-bootstrap-upgrade.schema.json",
+      "file_sha256": "c787843cb3715d53a7a037757f24fd442edd927bbaa1b49918b8c226f6eb3a27",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0021",
+      "path": "shared/schemas/octon-mini-project-origin.schema.json",
+      "file_sha256": "0cecee45a69e3e1c9175d41078941f54802929a674c55973ee4ae5d79bc6ac85",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 4
+    },
+    {
+      "id": "LEGACY-0022",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/README.md",
+      "file_sha256": "24af01954297706f24b1e8500b50377a82db3ac9af3efb213f41808337d9c8e0",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 4
+    },
+    {
+      "id": "LEGACY-0023",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/adopted-without-v2-evidence.json",
+      "file_sha256": "33d06bf24ec7e2d30b89d989c3b3d001e355a8ed11cc7f6ede99ef4db6595964",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0024",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/ambiguous-dependency.json",
+      "file_sha256": "7f6a932c8dd35219b888e56fd251441cf1b791e2d84147bdc32257f9a664883c",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0025",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/configured-legacy-command.json",
+      "file_sha256": "2ae7873ae6f176f2e916becb41abb6b60eb3360aa374c2d201b654abd9fd9891",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0026",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/hard-advisory-confusion.json",
+      "file_sha256": "773f71e19531396fc66e3f07287d4f5cff752cfb5116a74befb2c6d5ebaa85fa",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0027",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/legacy-blocked-direct-to-execution.json",
+      "file_sha256": "f221d27e2263f2fd822ea13193147eb76ef6b673a229595439dd7ec598b6f5b8",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0028",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mismatched-version-executable.json",
+      "file_sha256": "81769a5066c062edfed6c6690cae3c778e4a3511e62c9f52e088f9d1146ad75b",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0029",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-authority.json",
+      "file_sha256": "82b8097a77c9057bc159ea0923a22113792bb03b3a1dc8ade81eefeeccf00be3",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0030",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-project-authority.json",
+      "file_sha256": "01d582b4d70f1049c7188913228f9fd0c468743534a1aa8944ed2c2342aa623c",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0031",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/mixed-live-validator-authority.json",
+      "file_sha256": "f0961146d3e471159ddb9b6361b99d1bb48e28f1ba0e4dcd12127dea73c62992",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0032",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/nonexternal-migration-authority.json",
+      "file_sha256": "1d4243aa806151c018c4bc81e8e3288e3b6c2aa9fec67b5f7e9255407fc3ab3e",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0033",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/nonreciprocal-plan-task-link.json",
+      "file_sha256": "0067953d376c9a7d81f1c39a049084fbe021b6582fee51a63897da93fe9ff5ee",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0034",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/task-cycle.json",
+      "file_sha256": "0721001ee1ea47db69e0c000bd2eb80f8d0e931ed6c2f7886ced9fbb3d6c5af7",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0035",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/invalid/unsafe-explicit-command.json",
+      "file_sha256": "a2d7d26546b3107e4c5ed54133cb5ac2d25dae897133de9b15cdc046fd2ec5df",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0036",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/valid/expectations.json",
+      "file_sha256": "397936e73dfc659bf3490b8d6ffb3e7ee8309f5c2eca752937769c3d9a2a90e9",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0037",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/1.0.1-to-2.0.0/valid/v1-standard.json",
+      "file_sha256": "7fb77c0e2084f5a725a1dc33dec7614092b78270a5e17f426d6f37cda6114577",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 12
+    },
+    {
+      "id": "LEGACY-0038",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/adopted-legacy-git-policy.json",
+      "file_sha256": "9405be1e6a8c9d36d3c330b35fdf3f1f8f4ee639f7fb647c9d8eec712ae864cf",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0039",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/divergent-legacy-tools.json",
+      "file_sha256": "af9999925e81e3fd58c60a4ff74d29b9e0e9f061ccfa719f775ba91e52bd6f61",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0040",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/fabricated-collaboration-evidence.json",
+      "file_sha256": "6c2d536e1d2853b715e36f5ba07df023f279cad237d22ec714b45065693585b2",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0041",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/fabricated-workflow-adoption.json",
+      "file_sha256": "390c2418bfd51615817455c6c25d9943f4a455b79c235388c4af446165b63dcf",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0042",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/mixed-live-project-version.json",
+      "file_sha256": "6f5aa8ea592fb791550773f3cc356640c6676754fa8b31bf7bbb01319625804b",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0043",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/mixed-live-validator-version.json",
+      "file_sha256": "054a6540063163b26488e9f9745bb3a230cef161ac5344acd9df3dc5ddea32c4",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0044",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/invalid/nonexternal-migration-authority.json",
+      "file_sha256": "02cc2f9370e83e5f9c0930de2f360836759e74ccfbcb61c54a270a6e4f805299",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0045",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/2.0.0-to-3.0.0/valid/v2-minimal.json",
+      "file_sha256": "bca8033d660d2a5dd6d5c16d8b94996c6b7fc36dd42e7d744d3a26fb24fef5cc",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 9
+    },
+    {
+      "id": "LEGACY-0046",
+      "path": "skills/octon-project-bootstrap/fixtures/migrations/3.1.0-to-4.0.0/README.md",
+      "file_sha256": "551751285ee55e34050a1cddbcd37fefba09ef95a61e8409db8be12bf22b0b0f",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 5
+    },
+    {
+      "id": "LEGACY-0047",
+      "path": "skills/octon-project-bootstrap/references/generation-workflow.md",
+      "file_sha256": "4024d62a2106204e24ef99a57183a80e49a49b74e3859c72db17239e53e8d992",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0048",
+      "path": "skills/octon-project-bootstrap/scripts/migrate_1_0_1_to_2_0_0.py",
+      "file_sha256": "f417dcbb4337814460f28bb4ab51ff69e7f2331811a93b34d0eb83bf3ee04d0a",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 40
+    },
+    {
+      "id": "LEGACY-0049",
+      "path": "skills/octon-project-bootstrap/scripts/migrate_2_0_0_to_3_0_0.py",
+      "file_sha256": "5f7d2df2740416023856e2c267d364bb82371b0bb30962d8657107af6a0f54bf",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 32
+    },
+    {
+      "id": "LEGACY-0050",
+      "path": "skills/octon-project-bootstrap/scripts/migrate_3_1_0_to_4_0_0.py",
+      "file_sha256": "1383a38e76cf68819494cf18c880dd29efb4d0f7a645789ff2b6cc999fc8b266",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 19
+    },
+    {
+      "id": "LEGACY-0051",
+      "path": "skills/octon-project-bootstrap/scripts/plan_adoption.py",
+      "file_sha256": "07f3d78dcf7f0cd788389a5c015cec9f874361cba35c1d05ab04e69515034941",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0052",
+      "path": "skills/octon-project-bootstrap/scripts/test_migration_1_0_1_to_2_0_0.py",
+      "file_sha256": "d13f3b84f891f1a077ba3229b839ff8785e353c7d4590b99c1af1423cf7548e5",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0053",
+      "path": "skills/octon-project-bootstrap/scripts/test_migration_2_0_0_to_3_0_0.py",
+      "file_sha256": "361a450556739205f5fc8eccc8bc46a670c656855c84eabe6b44775c15df6d0a",
+      "classification": "closed_historical_fixture",
+      "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0054",
+      "path": "skills/octon-project-bootstrap/scripts/test_migration_3_1_0_to_4_0_0.py",
+      "file_sha256": "a8edf8c8b1d0080d27a1eefd1d9b7dd21f571d73deb06e112dd8965eb12d21b4",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 29
+    },
+    {
+      "id": "LEGACY-0055",
+      "path": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
+      "file_sha256": "1d2d71e768f3e68125d4b823984df75aa9287d5d9e3de195e84c8ec63c3fac6f",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 25
+    },
+    {
+      "id": "LEGACY-0056",
+      "path": "skills/octon-project-bootstrap/scripts/guided_workflow.py",
+      "file_sha256": "7b71bb07306e2c107405faaaa0760522ef1008cc16788c4aa793da67fb9ef16b",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0057",
+      "path": "skills/octon-project-bootstrap/scripts/setup_session.py",
+      "file_sha256": "792c38bb54d6a91a29d427c0440cbdb3dbf0ab4650382aff8b10d809ff8a93f3",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 9
+    },
+    {
+      "id": "LEGACY-0058",
+      "path": "migrations/3.1.0-to-4.2.0.md",
+      "file_sha256": "89375711203d83c3aababd66efba8d8ec190e2ace835c103f496379182a566dc",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0059",
+      "path": "shared/schemas/octon-project-origin.schema.json",
+      "file_sha256": "b2df51b10fb0c183aade1b0ba90267da51e149b9d24348fcff44922f6afa5d2a",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 6
+    },
+    {
+      "id": "LEGACY-0061",
+      "path": "skills/octon-project-bootstrap/scripts/adopt_project.py",
+      "file_sha256": "5dfe2ba3ba2f39d7fcf864eebb5ffe4c6aa8db9c93710d2c957b32734722b480",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 1
+    }
   ],
   "limitations": [
     "Entries are exact-path, exact-file-digest, exact-count exceptions for truthful history or inert migration input; they never authorize legacy runtime dispatch or compatibility.",

@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://octon.local/schemas/octon-bootstrap-upgrade.schema.json",
+  "title": "Octon Project Bootstrap Upgrade Artifacts",
+  "$defs": {
+    "path_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "type",
+        "mode",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "absent",
+            "file",
+            "directory",
+            "symlink",
+            "other"
+          ]
+        },
+        "mode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "classification",
+        "role",
+        "upgrade_policy",
+        "old_baseline",
+        "current",
+        "candidate",
+        "automatic",
+        "review_reason",
+        "allowed_dispositions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^UPG-[0-9]{4}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification": {
+          "enum": [
+            "unchanged_from_pristine",
+            "exact_pristine_update",
+            "project_modified",
+            "additive",
+            "removed_upstream",
+            "renamed",
+            "conflicting",
+            "derived",
+            "provenance"
+          ]
+        },
+        "role": {
+          "enum": [
+            "octon_mini_implementation_asset",
+            "project_owned_authoritative",
+            "review_required_governance",
+            "derived",
+            "provenance"
+          ]
+        },
+        "upgrade_policy": {
+          "enum": [
+            "exact_pristine_or_additive",
+            "always_review",
+            "regenerate",
+            "provenance_transaction_only"
+          ]
+        },
+        "old_baseline": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "current": {
+          "$ref": "#/$defs/path_state"
+        },
+        "candidate": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "automatic": {
+          "type": "boolean"
+        },
+        "review_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "allowed_dispositions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "accept_candidate",
+              "preserve_current",
+              "merge_version_only",
+              "migrate_legacy_project_contract",
+              "migrate_legacy_project_check_evidence",
+              "delete",
+              "defer"
+            ]
+          }
+        }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_kind",
+        "permission_grant",
+        "created_at",
+        "target",
+        "migration_kind",
+        "from_product",
+        "from_version",
+        "to_product",
+        "to_version",
+        "profile",
+        "layout",
+        "authority_source",
+        "evidence_refs",
+        "cross_brand_seed_digest",
+        "governing_instruction_fingerprint",
+        "classifications",
+        "limitations",
+        "canonical_proposal_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.bootstrap.upgrade-proposal.v1"
+        },
+        "artifact_kind": {
+          "const": "upgrade_proposal"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "migration_kind": {
+          "enum": [
+            "octon_mini_to_octon",
+            "octon_upgrade"
+          ]
+        },
+        "from_product": {
+          "enum": [
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "from_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "to_product": {
+          "const": "octon"
+        },
+        "to_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "profile": {
+          "enum": [
+            "minimal",
+            "standard",
+            "high-assurance"
+          ]
+        },
+        "layout": {
+          "enum": [
+            "compact",
+            "separated"
+          ]
+        },
+        "authority_source": {
+          "type": "string",
+          "pattern": "^(?:authority|external):.+$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EVD-[0-9]{4}$"
+          }
+        },
+        "cross_brand_seed_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "governing_instruction_fingerprint": {
+          "type": "object"
+        },
+        "classifications": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/classification"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "canonical_proposal_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "proposal_digest",
+        "dispositions",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.bootstrap.upgrade-review.v1"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "proposal_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "dispositions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "disposition",
+              "rationale"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^UPG-[0-9]{4}$"
+              },
+              "disposition": {
+                "enum": [
+                  "accept_candidate",
+                  "preserve_current",
+                  "merge_version_only",
+                  "migrate_legacy_project_contract",
+                  "migrate_legacy_project_check_evidence",
+                  "delete",
+                  "defer"
+                ]
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

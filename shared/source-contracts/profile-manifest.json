@@ -54,14 +54,24 @@
       "registry_combinations": [
         {
           "retained_representation_id": "REP-0002",
-          "absorbed_representation_ids": ["REP-0003"],
-          "artifact_type_ids": ["DOS-0002", "DOS-0003"],
+          "absorbed_representation_ids": [
+            "REP-0003"
+          ],
+          "artifact_type_ids": [
+            "DOS-0002",
+            "DOS-0003"
+          ],
           "representation_role": "combined_interpretation_and_source_map",
           "authority": "dossier_interpretation_and_source_ownership",
           "applicability_rationale": "Compact layout combines two required conceptual artifacts whose governance boundaries are aligned.",
           "owner_role": "project_governance_owner",
           "review_cadence": "on_authority_or_source_owner_change",
-          "update_triggers": ["authority_change", "information_class_change", "artifact_added", "source_direction_change"]
+          "update_triggers": [
+            "authority_change",
+            "information_class_change",
+            "artifact_added",
+            "source_direction_change"
+          ]
         }
       ]
     },
@@ -85,7 +95,7 @@
       ".agent/project.json"
     ],
     "origin": {
-      "path": ".octon-mini-origin.json",
+      "path": ".octon-origin.json",
       "ownership": "generated_snapshot_provenance"
     },
     "project_local_sources": [
@@ -157,7 +167,7 @@
     "operational_projection": {
       "include_exact": [
         "AGENTS.md",
-        ".octon-mini-origin.json"
+        ".octon-origin.json"
       ],
       "include_subtrees": [
         ".agent",
@@ -313,7 +323,9 @@
       "version": "2.0.0",
       "sha256": "db99dd9be245a4ecdbbcfb7ee16b3d4f10f26fbbcde1c815c18f82d026e67a5a",
       "source": "octon-mini:shared/optional-schemas",
-      "inventory_paths": ["context-pack-manifest.schema.json"],
+      "inventory_paths": [
+        "context-pack-manifest.schema.json"
+      ],
       "profiles": [
         "high-assurance"
       ],
@@ -323,37 +335,125 @@
     }
   ],
   "acceptance_criteria": [
-    {"id": 1, "title": "newcomer_discovery", "release_coverage": "project_demonstration_required"},
-    {"id": 2, "title": "nested_instruction_precedence", "release_coverage": "automated_pass"},
-    {"id": 3, "title": "authority_posture_enforcement", "release_coverage": "project_demonstration_required"},
-    {"id": 4, "title": "task_plan_and_decision_governance_lifecycle", "release_coverage": "automated_pass"},
-    {"id": 5, "title": "critical_deny_mutations", "release_coverage": "automated_pass"},
-    {"id": 6, "title": "clean_runtime_bootstrap", "release_coverage": "automated_pass"},
-    {"id": 7, "title": "read_only_and_project_check_evidence", "release_coverage": "automated_pass"},
-    {"id": 8, "title": "generated_evidence_freshness", "release_coverage": "automated_pass"},
-    {"id": 9, "title": "credential_detection_and_redaction", "release_coverage": "automated_pass"},
-    {"id": 10, "title": "extension_validation_and_disable", "release_coverage": "automated_pass"},
-    {"id": 11, "title": "timed_resumption", "release_coverage": "project_demonstration_required"},
-    {"id": 12, "title": "interruption_and_recovery", "release_coverage": "automated_pass"},
-    {"id": 13, "title": "exact_revision_handoff", "release_coverage": "project_demonstration_required"},
-    {"id": 14, "title": "truthful_final_reporting", "release_coverage": "project_demonstration_required"},
-    {"id": 15, "title": "small_team_collaboration_and_workflows", "release_coverage": "automated_pass"},
-    {"id": 16, "title": "governed_resumable_work_completion", "release_coverage": "automated_pass"},
-    {"id": 17, "title": "guided_resumable_setup_interview", "release_coverage": "automated_pass"},
-    {"id": 18, "title": "fail_closed_continuation_successors_proof_reuse_and_safe_bundles", "release_coverage": "automated_pass"},
-    {"id": 19, "title": "optional_long_running_work_limits_context_checkpoints_and_recovery", "release_coverage": "automated_pass"},
-    {"id": 20, "title": "representative_long_running_work_operator_evidence", "release_coverage": "project_demonstration_required"},
-    {"id": 21, "title": "governed_autonomous_delivery_activation_limits_effects_and_recovery", "release_coverage": "automated_pass"},
-    {"id": 22, "title": "representative_autonomous_delivery_operator_evidence", "release_coverage": "project_demonstration_required"}
+    {
+      "id": 1,
+      "title": "newcomer_discovery",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 2,
+      "title": "nested_instruction_precedence",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 3,
+      "title": "authority_posture_enforcement",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 4,
+      "title": "task_plan_and_decision_governance_lifecycle",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 5,
+      "title": "critical_deny_mutations",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 6,
+      "title": "clean_runtime_bootstrap",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 7,
+      "title": "read_only_and_project_check_evidence",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 8,
+      "title": "generated_evidence_freshness",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 9,
+      "title": "credential_detection_and_redaction",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 10,
+      "title": "extension_validation_and_disable",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 11,
+      "title": "timed_resumption",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 12,
+      "title": "interruption_and_recovery",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 13,
+      "title": "exact_revision_handoff",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 14,
+      "title": "truthful_final_reporting",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 15,
+      "title": "small_team_collaboration_and_workflows",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 16,
+      "title": "governed_resumable_work_completion",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 17,
+      "title": "guided_resumable_setup_interview",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 18,
+      "title": "fail_closed_continuation_successors_proof_reuse_and_safe_bundles",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 19,
+      "title": "optional_long_running_work_limits_context_checkpoints_and_recovery",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 20,
+      "title": "representative_long_running_work_operator_evidence",
+      "release_coverage": "project_demonstration_required"
+    },
+    {
+      "id": 21,
+      "title": "governed_autonomous_delivery_activation_limits_effects_and_recovery",
+      "release_coverage": "automated_pass"
+    },
+    {
+      "id": 22,
+      "title": "representative_autonomous_delivery_operator_evidence",
+      "release_coverage": "project_demonstration_required"
+    }
   ],
   "documentation_projections": [
     {
       "id": "profile-summary",
       "source": "profiles",
       "targets": [
-      "README.md#independent-selection-axes",
+        "README.md#independent-selection-axes",
         "harness/SPECIFICATION.md#11-profiles",
-        "skills/octon-mini-project-bootstrap/references/profile-selection.md"
+        "skills/octon-project-bootstrap/references/profile-selection.md"
       ]
     },
     {
@@ -361,7 +461,7 @@
       "source": "acceptance_criteria",
       "targets": [
         "harness/SPECIFICATION.md#14-acceptance-criteria",
-        "skills/octon-mini-project-bootstrap/scripts/test_acceptance.py"
+        "skills/octon-project-bootstrap/scripts/test_acceptance.py"
       ]
     }
   ],
@@ -561,10 +661,10 @@
         "harness-diagnostics-v2.schema.json",
         "harness-diagnostics.schema.json",
         "harness-extension-registry.schema.json",
-    "harness-focus.schema.json",
-    "harness-git-workflows.schema.json",
-    "harness-hook-candidate.schema.json",
-    "harness-kernel.schema.json",
+        "harness-focus.schema.json",
+        "harness-git-workflows.schema.json",
+        "harness-hook-candidate.schema.json",
+        "harness-kernel.schema.json",
         "harness-package-registry.schema.json",
         "harness-plan-summary.schema.json",
         "harness-project-check-evidence-v3.schema.json",
@@ -574,17 +674,19 @@
         "harness-transaction-v3.schema.json",
         "harness-transaction.schema.json",
         "harness-validation-proof.schema.json",
-    "harness-work-completion.schema.json",
-    "octon-mini-bootstrap-migration-seed.schema.json",
-    "octon-mini-project-origin.schema.json",
+        "harness-work-completion.schema.json",
+        "octon-bootstrap-upgrade.schema.json",
+        "octon-mini-bootstrap-migration-seed.schema.json",
         "octon-mini-bootstrap-setup-answers.schema.json",
         "octon-mini-bootstrap-setup-session-v2.schema.json",
         "octon-mini-bootstrap-setup-session.schema.json",
-    "octon-mini-bootstrap-upgrade.schema.json",
-    "reference-evidence.schema.json"
+        "octon-mini-bootstrap-upgrade.schema.json",
+        "octon-mini-project-origin.schema.json",
+        "octon-project-origin.schema.json",
+        "reference-evidence.schema.json"
       ],
-      "inventory_count": 37,
-      "inventory_paths_sha256": "c21c92ebf6d7d3dee5b5435b80a9d19630973471d505ca8a80a8ed694bb41605",
+      "inventory_count": 39,
+      "inventory_paths_sha256": "94688f87c60aba1b694a3478e4c3483fc608b2d7b8d9886bb531aa31c250aa95",
       "output": {
         "root": ".agent/schemas",
         "strip_suffix": null

@@ -1,0 +1,554 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://octon.local/schemas/octon-project-origin.schema.json",
+  "title": "Octon Generation and Upgrade Origin",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product",
+    "octon_mini_version",
+    "generator_version",
+    "generation_id",
+    "profile",
+    "layout",
+    "generated_on",
+    "project_name",
+    "project_slug",
+    "harness_kernel_version",
+    "authority",
+    "initial_generation",
+    "migration_history",
+    "generated_paths",
+    "installed_inventory"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "octon.project.origin.v1"
+    },
+    "product": {
+      "const": "octon"
+    },
+    "octon_mini_version": {
+      "$ref": "#/$defs/version",
+      "description": "Stable Mini-lineage version field; current producer is product=octon. Historical records keep their original producer and version."
+    },
+    "generator_version": {
+      "$ref": "#/$defs/version"
+    },
+    "generation_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "layout": {
+      "$ref": "#/$defs/layout"
+    },
+    "generated_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "harness_kernel_version": {
+      "$ref": "#/$defs/version"
+    },
+    "authority": {
+      "const": "Generation provenance only; does not grant permission or establish project facts, decisions, implementation, or readiness."
+    },
+    "generated_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "initial_generation": {
+      "$ref": "#/$defs/generation"
+    },
+    "migration_history": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/migration"
+      }
+    },
+    "installed_inventory": {
+      "$ref": "#/$defs/installed_inventory"
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+    },
+    "profile": {
+      "enum": [
+        "minimal",
+        "standard",
+        "high-assurance"
+      ]
+    },
+    "layout": {
+      "enum": [
+        "compact",
+        "separated"
+      ]
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product",
+        "version",
+        "generator_version",
+        "generation_id",
+        "generated_on",
+        "profile",
+        "layout"
+      ],
+      "properties": {
+        "product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "generator_version": {
+          "$ref": "#/$defs/version"
+        },
+        "generation_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "generated_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "from_product",
+        "from_version",
+        "to_product",
+        "to_version",
+        "generator_version",
+        "migrated_on",
+        "from_profile",
+        "to_profile",
+        "from_layout",
+        "to_layout",
+        "migration_guide",
+        "authority_source",
+        "evidence_refs",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "enum": [
+            "octon-mini.project.migration.v1",
+            "octon.project.migration.v1"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^MIG-[0-9]{4}$"
+        },
+        "from_product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "from_version": {
+          "$ref": "#/$defs/version"
+        },
+        "to_product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "to_version": {
+          "$ref": "#/$defs/version"
+        },
+        "generator_version": {
+          "$ref": "#/$defs/version"
+        },
+        "migrated_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "from_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "to_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "from_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "to_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "migration_guide": {
+          "type": "string",
+          "pattern": "^migrations/[0-9]+\\.[0-9]+\\.[0-9]+-to-[0-9]+\\.[0-9]+\\.[0-9]+\\.md$"
+        },
+        "authority_source": {
+          "type": "string",
+          "pattern": "^(?:authority|external):.+$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EVD-[0-9]{4}$"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "description": "History envelope; the validator dispatches each record to mini_migration or octon_migration by its exact schema_version."
+    },
+    "inventory_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "role",
+        "upgrade_policy",
+        "baseline_product",
+        "baseline_version",
+        "mode",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^[^/]+(?:/[^/]+)*$"
+        },
+        "role": {
+          "enum": [
+            "octon_mini_implementation_asset",
+            "project_owned_authoritative",
+            "review_required_governance",
+            "derived",
+            "provenance"
+          ]
+        },
+        "upgrade_policy": {
+          "enum": [
+            "exact_pristine_or_additive",
+            "always_review",
+            "regenerate",
+            "provenance_transaction_only"
+          ]
+        },
+        "baseline_product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "baseline_version": {
+          "$ref": "#/$defs/version"
+        },
+        "mode": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "installed_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "product",
+        "octon_mini_version",
+        "profile",
+        "layout",
+        "captured_on",
+        "profile_manifest_status",
+        "profile_manifest_sha256",
+        "paths"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.project.installed-inventory.v1"
+        },
+        "product": {
+          "const": "octon"
+        },
+        "octon_mini_version": {
+          "$ref": "#/$defs/version"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "captured_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "profile_manifest_status": {
+          "enum": [
+            "exact",
+            "legacy_unavailable_reviewed"
+          ]
+        },
+        "profile_manifest_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/inventory_path"
+          }
+        }
+      }
+    },
+    "mini_migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "from_product",
+        "from_version",
+        "to_product",
+        "to_version",
+        "generator_version",
+        "migrated_on",
+        "from_profile",
+        "to_profile",
+        "from_layout",
+        "to_layout",
+        "migration_guide",
+        "authority_source",
+        "evidence_refs",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon-mini.project.migration.v1"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^MIG-[0-9]{4}$"
+        },
+        "from_product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini"
+          ]
+        },
+        "from_version": {
+          "$ref": "#/$defs/version"
+        },
+        "to_product": {
+          "enum": [
+            "project-blueprint",
+            "octon-mini"
+          ]
+        },
+        "to_version": {
+          "$ref": "#/$defs/version"
+        },
+        "generator_version": {
+          "$ref": "#/$defs/version"
+        },
+        "migrated_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "from_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "to_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "from_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "to_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "migration_guide": {
+          "type": "string",
+          "pattern": "^migrations/[0-9]+\\.[0-9]+\\.[0-9]+-to-[0-9]+\\.[0-9]+\\.[0-9]+\\.md$"
+        },
+        "authority_source": {
+          "type": "string",
+          "pattern": "^(?:authority|external):.+$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EVD-[0-9]{4}$"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "octon_migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "from_product",
+        "from_version",
+        "to_product",
+        "to_version",
+        "generator_version",
+        "migrated_on",
+        "from_profile",
+        "to_profile",
+        "from_layout",
+        "to_layout",
+        "migration_guide",
+        "authority_source",
+        "evidence_refs",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.project.migration.v1"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^MIG-[0-9]{4}$"
+        },
+        "from_product": {
+          "enum": [
+            "octon-mini",
+            "octon"
+          ]
+        },
+        "from_version": {
+          "$ref": "#/$defs/version"
+        },
+        "to_product": {
+          "const": "octon"
+        },
+        "to_version": {
+          "$ref": "#/$defs/version"
+        },
+        "generator_version": {
+          "$ref": "#/$defs/version"
+        },
+        "migrated_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "from_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "to_profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "from_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "to_layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "migration_guide": {
+          "type": "string",
+          "pattern": "^migrations/[0-9]+\\.[0-9]+\\.[0-9]+-to-[0-9]+\\.[0-9]+\\.[0-9]+\\.md$"
+        },
+        "authority_source": {
+          "type": "string",
+          "pattern": "^(?:authority|external):.+$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EVD-[0-9]{4}$"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

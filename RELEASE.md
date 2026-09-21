@@ -1,3 +1,9 @@
+# Octon 5.0.0 local identity-transition candidate
+
+This candidate is unpublished. It starts from released Mini 4.2.0 plus release-record reconciliation. It includes no unfinished 4.3 coordination work. Current validation and review are recorded in `docs/IDENTITY_TRANSITION.md`. GitHub names and URLs remain unchanged; this task grants no publication authority.
+
+The following Mini release record is retained as history; its observations and grants do not establish a new Octon release or authorize any effect.
+
 # Release and Distribution
 
 > Octon Mini `4.2.0` is the current completed source release. Its observed tag,
@@ -311,7 +317,7 @@ version.
 
 ## Installation and provenance
 
-`skills/octon-mini-project-bootstrap/scripts/install_skill.py` installs a
+`skills/octon-project-bootstrap/scripts/install_skill.py` installs a
 collision-safe,
 self-contained personal skill snapshot with the required dossier taxonomy,
 schemas, migrations, and release metadata. It smoke-tests that staged copy

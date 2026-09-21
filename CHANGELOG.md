@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.0.0 — Local unpublished candidate
+
+- Rename the Mini-derived product and bootstrap capability to Octon.
+- Add a distinct Octon origin format and explicit reviewed Mini 4.2.0 upgrade.
+- Retain kernel 4.2 compatibility, immutable historical schemas/records, independent snapshots and dormant defaults.
+- No 4.3 coordination features, Plectarium extraction, remote rename or publication.
+
+
 All notable Octon Mini contract changes are recorded here. Project-specific
 snapshots do not upgrade automatically.
 

@@ -1,7 +1,7 @@
 [project]
-name = "octon-mini"
-version = "4.2.0"
-description = "Lightweight, project-local Octon harness and dossier for governed agent work"
+name = "octon"
+version = "5.0.0"
+description = "Project-local Octon harness and dossier for governed agent work"
 requires-python = ">=3.11"
 license = "MIT-0"
 license-files = ["LICENSE"]

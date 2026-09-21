@@ -12,7 +12,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 LAUNCHER = Path(__file__).resolve()
 DISPATCHER_CANDIDATES = (
-    ROOT / "skills/octon-mini-project-bootstrap/scripts/octon.py",
+    ROOT / "skills/octon-project-bootstrap/scripts/octon.py",
     ROOT.parent.parent / "scripts/octon.py",
 )
 

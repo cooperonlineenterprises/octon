@@ -1,0 +1,86 @@
+{
+  "schema_version": "harness.skill-provenance.v1",
+  "id": "change-review",
+  "version": "1.0.0",
+  "adoption_status": "generated_unadopted_baseline",
+  "adoption_decision_ref": null,
+  "permission_grant": false,
+  "entrypoint": ".agents/skills/change-review/SKILL.md",
+  "purpose": "Review a scoped repository change for correctness, regression risk, security boundaries, and missing validation.",
+  "scope": "current_task_and_changed_artifacts",
+  "authority": {
+    "source": "current_task_and_applicable_instructions",
+    "inherits_from": "current_task",
+    "may_expand": false
+  },
+  "side_effects": "read_only",
+  "inputs": {
+    "required": [
+      "task_record",
+      "changed_files_or_patch",
+      "applicable_instructions",
+      "validation_evidence"
+    ],
+    "optional": [
+      "accepted_decision_refs",
+      "current_state_refs"
+    ]
+  },
+  "outputs": {
+    "format": "structured_findings",
+    "required_fields": [
+      "id",
+      "severity",
+      "file",
+      "location",
+      "evidence",
+      "impact",
+      "recommendation",
+      "disposition_owner"
+    ],
+    "evidence_required": true
+  },
+  "prohibited": [
+    "modifying_files",
+    "resolving_own_findings",
+    "approving_external_actions",
+    "expanding_current_task_authority"
+  ],
+  "validation": "skill_metadata_and_capability_provenance_contract",
+  "owner": "unassigned",
+  "included_material": [
+    "generic_scoped_change_review_workflow",
+    "evidence_label_vocabulary",
+    "structured_finding_output_contract"
+  ],
+  "provenance": {
+    "source": "octon",
+    "source_version": "{{OCTON_MINI_VERSION}}",
+    "source_fingerprint": null,
+    "generated_on": "{{CREATED_DATE}}",
+    "license_review": "not_assessed",
+    "security_review": "not_assessed",
+    "included_files": [
+      ".agents/skills/change-review/SKILL.md",
+      ".agents/skills/change-review/references/provenance.json"
+    ],
+    "local_changes": [],
+    "exclusions": [
+      "project_facts",
+      "project_commands",
+      "project_permissions",
+      "accepted_decisions",
+      "reference_project_evidence",
+      "readiness_claims"
+    ],
+    "trust_class": "generated_unadopted_capability",
+    "update_strategy": "explicit_project_specific_migration"
+  },
+  "deprecated_at": null,
+  "removal_version": null,
+  "successor": null,
+  "limitations": [
+    "Project-specific scope, maintainer, trust, and validation remain unassessed.",
+    "This provenance record is informational and does not make the capability trusted or authorized."
+  ]
+}

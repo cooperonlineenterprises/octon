@@ -399,3 +399,34 @@ The accepted policy permits no release until the exact independent
 standing-authorization confirmation and every current gate are separately
 satisfied. A draft contract, profile selection, setup answer, plan, receipt,
 evidence record, or successful validator is not release authority.
+
+
+## SRC-DEC-0039 — Mini-derived Octon identity transition
+
+| Field | Value |
+|---|---|
+| Status | Accepted for this operator-authorized local transition |
+| Date | 2026-09-21 |
+| `permission_grant` | `false` |
+
+The active successor is Octon, based on released Mini 4.2.0 and preparation commit
+`5e2d3025aea6b1574ab984e5ebb89b5602a38535`. This supersedes SRC-DEC-0014's current
+product naming, not its historical producer identities or safety boundaries.
+Version 5.0.0 is an unpublished identity-major candidate with kernel 4.2 compatibility.
+Original Octon and OctonOS remain separate references. Plectarium is optional.
+
+SRC-DEC-0021 through SRC-DEC-0038 are reserved by separately preserved unfinished
+4.3 work. Those decisions, features, permissions and state are not imported here.
+No ID is reused. The explicit operator request supplies this local task's scope;
+this record creates no standing authority or publication permission.
+
+Use a distinct Octon origin and typed migration, preserving published Mini schemas,
+initial generation, prior migrations and project-owned records. Retain stable
+compatibility wire identifiers. New provenance names the actual Octon producer.
+Generation stays independent and non-authorizing; upgrades remain deliberate and
+recoverable through the existing transaction owner. Reference permissions, grants,
+credentials, operational state and readiness claims never transfer automatically.
+
+GitHub addresses, historical tags/releases and existing consumers are unchanged.
+Cutover and reference retirement remain separate gated outcomes; an identity label
+never closes a task, proves quiescence or resolves an uncertain effect.

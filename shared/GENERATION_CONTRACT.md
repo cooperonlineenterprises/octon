@@ -1,3 +1,9 @@
+# Octon 5.0 generation identity
+
+Current producer is Octon, source metadata `octon.json`, and current origin `.octon-origin.json` using `octon.project.origin.v1`. The published Mini origin schema remains unchanged. Newly generated capability provenance names Octon; historical producers are retained. Generic kernel 4.2 contracts, Mini-lineage wire keys and source namespaces below remain compatibility identifiers. See `docs/IDENTITY_TRANSITION.md` and the explicit 4.2.0-to-5.0.0 migration. No ownership, permission, package-activation or snapshot-independence boundary changes.
+
+The foundation contract below is retained where unchanged. Historical 3.x/4.x migration descriptions apply to those releases; 5.0 directly upgrades only Mini 4.2.0. Current origin locators use `.octon-origin.json` wherever the foundation described the former current `.octon-mini-origin.json`.
+
 # Generation Contract
 
 ## Source and output roles
@@ -68,7 +74,7 @@ output or contains a symlink or special file.
 Run the read-only recovery diagnostic with:
 
 ```text
-python3 skills/octon-mini-project-bootstrap/scripts/scaffold_project.py \
+python3 skills/octon-project-bootstrap/scripts/scaffold_project.py \
   --diagnose-generation-policy \
   --profile minimal
 ```

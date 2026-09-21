@@ -1,0 +1,86 @@
+{
+  "schema_version": "octon.source.repository.v1",
+  "product": "octon",
+  "display_name": "Octon",
+  "octon_mini_version_source": "VERSION",
+  "description": "Independent project-local harness, dossier, deliberate upgrades and governed work, derived from the released Octon Mini foundation.",
+  "license": {
+    "spdx": "MIT-0",
+    "file": "LICENSE",
+    "copyright": "Copyright 2026 Cooper Online Enterprises",
+    "installed_source_bundle_includes_license": true,
+    "generated_project_includes_license": false,
+    "generated_project_license_requires_project_owned_decision": true
+  },
+  "minimum_python": "3.11",
+  "modules": {
+    "dossier": {
+      "definition": "dossier/SPECIFICATION.md",
+      "artifact_type_source": "dossier/artifact-types.json",
+      "reference_evidence": "dossier/references/REFERENCE_EVIDENCE.md",
+      "generated_root": "project-dossier"
+    },
+    "harness": {
+      "definition": "harness/SPECIFICATION.md",
+      "reference_evidence": "harness/references/REFERENCE_EVIDENCE.md",
+      "generated_roots": [
+        "AGENTS.md",
+        ".agent",
+        ".agents",
+        "octon"
+      ],
+      "kernel_version": "4.2.0",
+      "command_manifest": "shared/source-contracts/commands.json",
+      "scm_trigger_file": ".agent/scm.json",
+      "package_registry_file": ".agent/packages.json",
+      "collaboration_workflow_package": "small-team-git-portfolio",
+      "installed_collaboration_workflow_file": ".agent/workflows/small-team-git.json",
+      "collaboration_workflow_installed_by_default": false,
+      "supported_base_workflows": [
+        "solo_direct",
+        "solo_hybrid",
+        "pair_pr",
+        "tiny_pr"
+      ],
+      "maximum_supported_write_capable_humans": 5,
+      "extension_api": "harness.extension.v1",
+      "canonical_structured_format": "strict_json"
+    }
+  },
+  "shared_schema_root": "shared/schemas",
+  "source_governance": {
+    "architecture_decisions": "ARCHITECTURE_DECISIONS.md",
+    "decision_governance": "docs/DECISION_GOVERNANCE.md",
+    "decision_governance_schema": "shared/schemas/harness-decision-governance.schema.json",
+    "architectural_pattern_catalog": "patterns/catalog.json",
+    "pattern_catalog_generated": false,
+    "pattern_catalog_automatic_adoption": false,
+    "profile_manifest": "shared/source-contracts/profile-manifest.json",
+    "information_state_semantics": "shared/source-contracts/information-state-semantics.json",
+    "setup_question_catalog": "shared/source-contracts/setup-questions.json",
+    "setup_question_catalog_generated": false,
+    "setup_session_schema": "shared/schemas/octon-mini-bootstrap-setup-session.schema.json",
+    "setup_answers_schema": "shared/schemas/octon-mini-bootstrap-setup-answers.schema.json",
+    "autonomous_delivery_schema": "shared/schemas/harness-autonomous-delivery.schema.json",
+    "architecture_proof_schema": "patterns/architecture-proof/schema.json",
+    "architecture_proof_generated": false
+  },
+  "bootstrap_capability": {
+    "display_name": "Octon Project Bootstrap",
+    "skill_id": "octon-project-bootstrap",
+    "description": "Create, adopt, configure, operate, recover, or upgrade a project-local Octon agent harness and project dossier."
+  },
+  "skill": "skills/octon-project-bootstrap/SKILL.md",
+  "workflow_interface": "skills/octon-project-bootstrap/scripts/octon.py",
+  "new_project_initializer": "skills/octon-project-bootstrap/scripts/init_project.py",
+  "established_project_adopter": "skills/octon-project-bootstrap/scripts/adopt_project.py",
+  "live_project_upgrader": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
+  "guided_setup_engine": "skills/octon-project-bootstrap/scripts/setup_session.py",
+  "advanced_new_project_generator": "skills/octon-project-bootstrap/scripts/scaffold_project.py",
+  "advanced_existing_project_planner": "skills/octon-project-bootstrap/scripts/plan_adoption.py",
+  "generation_contract": "shared/GENERATION_CONTRACT.md",
+  "reference_evidence_registry": "shared/reference-evidence.json",
+  "overwrite_existing_paths": false,
+  "new_generation_requires_empty_target": true,
+  "generated_snapshot_is_independent": true
+}
