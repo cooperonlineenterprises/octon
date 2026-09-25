@@ -244,27 +244,29 @@ class InstallationBindingTests(unittest.TestCase):
             self.assertEqual(target_after.state_root, target_moved / ".octon/agent/state")
 
     def test_occupied_target_root_refuses_adoption_and_upgrade(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="octon-entry-binding-") as temporary:
-            area = Path(temporary).resolve()
-            root = area / "project"
-            root.mkdir()
-            (root / ".octon").mkdir()
-            adoption = subprocess.run(
-                [sys.executable, "-B", str(ADOPTION_PATH), "--target", str(root), "--profile", "minimal"],
-                capture_output=True, text=True, check=False,
-            )
-            self.assertEqual(adoption.returncode, 2)
-            self.assertIn("occupied target installation path", adoption.stderr)
-            upgrade = subprocess.run(
-                [
-                    sys.executable, "-B", str(UPGRADE_PATH), "plan", "--target", str(root),
-                    "--output", str(area / "upgrade-plan.json"),
-                ],
-                capture_output=True, text=True, check=False,
-            )
-            self.assertNotEqual(upgrade.returncode, 0)
-            self.assertIn("original Octon runtime installation conflicts", upgrade.stderr)
-            self.assertFalse((area / "upgrade-plan.json").exists())
+        for reserved_name in (".octon", ".OCTON", ".Octon"):
+            with self.subTest(reserved_name=reserved_name):
+                with tempfile.TemporaryDirectory(prefix="octon-entry-binding-") as temporary:
+                    area = Path(temporary).resolve()
+                    root = area / "project"
+                    root.mkdir()
+                    (root / reserved_name).mkdir()
+                    adoption = subprocess.run(
+                        [sys.executable, "-B", str(ADOPTION_PATH), "--target", str(root), "--profile", "minimal"],
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertEqual(adoption.returncode, 2)
+                    self.assertIn("occupied target installation path", adoption.stderr)
+                    upgrade = subprocess.run(
+                        [
+                            sys.executable, "-B", str(UPGRADE_PATH), "plan", "--target", str(root),
+                            "--output", str(area / "upgrade-plan.json"),
+                        ],
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertNotEqual(upgrade.returncode, 0)
+                    self.assertIn("original Octon runtime installation conflicts", upgrade.stderr)
+                    self.assertFalse((area / "upgrade-plan.json").exists())
 
     def test_live_state_has_one_explicit_owner(self) -> None:
         with tempfile.TemporaryDirectory(prefix="octon-state-binding-") as temporary:

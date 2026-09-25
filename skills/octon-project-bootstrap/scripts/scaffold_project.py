@@ -965,6 +965,14 @@ def target_installation_root(policy: dict[str, object]) -> Path:
     return Path(contract["root_bindings"]["installation"]["path"])
 
 
+def target_installation_path_occupied(project_root: Path, policy: dict[str, object]) -> bool:
+    reserved_name = target_installation_root(policy).name.casefold()
+    try:
+        return any(path.name.casefold() == reserved_name for path in project_root.iterdir())
+    except OSError as error:
+        raise ValueError("target project root cannot be inspected") from error
+
+
 def current_dispatcher_parent_index(policy: dict[str, object]) -> int:
     target_installation_contract(policy)
     path = CURRENT_INSTALLATION_PATHS.relative_path(

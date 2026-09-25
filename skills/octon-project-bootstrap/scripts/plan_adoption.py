@@ -465,8 +465,7 @@ def build_plan(
         )
     templates, schemas = scaffolder.resolve_generation_inputs(profile, policy, layout)
     scaffolder.validate_generation_boundary(profile, templates, schemas, policy, layout)
-    reserved_target = resolved / scaffolder.target_installation_root(policy)
-    if reserved_target.exists() or reserved_target.is_symlink():
+    if scaffolder.target_installation_path_occupied(resolved, policy):
         raise ValueError("occupied target installation path requires lineage and ownership review")
     installation = scaffolder.InstallationBinding.current(resolved)
     intended = (
