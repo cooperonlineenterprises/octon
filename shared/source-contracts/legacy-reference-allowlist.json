@@ -145,7 +145,7 @@
     {
       "id": "LEGACY-0018",
       "path": "shared/GENERATION_CONTRACT.md",
-      "file_sha256": "6d8dd8663c7fcc6cbf776e3facdc14468c17cdf070a3b1adc195347013fe3129",
+      "file_sha256": "fa76217275ac4254d63f4e569704b4208b680880b0cda80fe86f86b9069c89bf",
       "classification": "breaking_transition_explanation",
       "occurrence_count": 7
     },
@@ -376,7 +376,7 @@
     {
       "id": "LEGACY-0051",
       "path": "skills/octon-project-bootstrap/scripts/plan_adoption.py",
-      "file_sha256": "8f30602d7b31921ef3b758d8d7419df06ce7c517d5eef34e2f57b95c47d87393",
+      "file_sha256": "f11233ab1333b1113c34a79246d446f10e98a329ecd15fd94cc039d96d8c0789",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
     },
@@ -404,7 +404,7 @@
     {
       "id": "LEGACY-0055",
       "path": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
-      "file_sha256": "1d2d71e768f3e68125d4b823984df75aa9287d5d9e3de195e84c8ec63c3fac6f",
+      "file_sha256": "8fba656bb80eb75a045ed0fc8741164a8cb745d99c5aa5b5bb0d384c6c056326",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 25
     },

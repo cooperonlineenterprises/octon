@@ -24,7 +24,10 @@ import octon_continuation as continuation
 import octon_transaction as transaction
 
 
-ROOT = Path(__file__).resolve().parents[2]
+_CURRENT_DISPATCHER_PARENT_INDEX = "{{CURRENT_DISPATCHER_PARENT_INDEX}}"
+ROOT = Path(__file__).resolve().parents[
+    2 if _CURRENT_DISPATCHER_PARENT_INDEX.startswith("{{") else int(_CURRENT_DISPATCHER_PARENT_INDEX)
+]
 TASK_ID = re.compile(r"^TASK-([0-9]{4})$")
 PLAN_ID = re.compile(r"^PLAN-([0-9]{4})$")
 ACTIVE_TASK_STATUSES = {"ready", "in_progress", "validating", "review", "blocked", "reopened"}

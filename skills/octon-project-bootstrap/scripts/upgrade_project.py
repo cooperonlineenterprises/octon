@@ -85,7 +85,11 @@ def input_origin_path(origin: dict[str, Any]) -> str:
 
 def load_upgrade_origin(target: Path) -> dict[str, Any]:
     """Admit exactly one typed origin; never treat the original runtime as this kit."""
-    runtime = target / ".octon"
+    try:
+        policy = SCAFFOLDER.load_generation_policy()
+        runtime = target / SCAFFOLDER.target_installation_root(policy)
+    except ValueError as error:
+        raise UpgradeError(f"target installation binding is invalid: {error}") from error
     if runtime.exists() or runtime.is_symlink():
         raise UpgradeError("original Octon runtime installation conflicts with the project-local successor")
     present = [

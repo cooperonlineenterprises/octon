@@ -1013,6 +1013,9 @@ def validate_templates(issues: list[str], scaffolder: Any) -> None:
         "PROFILE_OPERATIONAL_FILES_JSON": "[]",
         "DERIVED_OPERATIONAL_FILES_JSON": "[]",
         "KERNEL_FILES_JSON": "[]",
+        "CURRENT_DISPATCHER_PARENT_INDEX": str(
+            scaffolder.current_dispatcher_parent_index(manifest)
+        ),
         "GIT_PORTFOLIO_VERSION": str(
             scaffolder.package_contract(manifest, "small-team-git-portfolio")["version"]
         ),

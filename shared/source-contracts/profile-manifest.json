@@ -1,5 +1,5 @@
 {
-  "schema_version": "octon-mini.source.profile-manifest.v1",
+  "schema_version": "octon-mini.source.profile-manifest.v2",
   "document_role": "authoritative_profile_inventory_acceptance_and_generation_manifest",
   "permission_grant": false,
   "profiles": [
@@ -84,6 +84,327 @@
       "registry_combinations": []
     }
   ],
+  "installation_bindings": {
+    "schema_version": "octon.source.installation-bindings.v1",
+    "document_role": "source_owned_installation_layout_binding_contract",
+    "permission_grant": false,
+    "current": {
+      "layout_id": "current",
+      "generation_status": "active_existing_output",
+      "agent_root": ".agent",
+      "origin_path": ".octon-origin.json",
+      "dispatcher_path": ".agent/scripts/octon.py"
+    },
+    "target": {
+      "schema_version": "octon.source.target-installation-manifest.v1",
+      "version": "1.0.0",
+      "layout_id": "oep1_target",
+      "generation_status": "design_only_not_selectable",
+      "manifest_path": ".octon/manifest.json",
+      "inventory_scope": "mandatory_core_seed_design",
+      "root_bindings": {
+        "project": {
+          "path": ".",
+          "scope": "project",
+          "owner": "project"
+        },
+        "installation": {
+          "path": ".octon",
+          "scope": "project",
+          "owner": "project"
+        },
+        "runtime": {
+          "path": ".octon/runtime",
+          "scope": "project",
+          "owner": "runtime_release"
+        },
+        "agent": {
+          "path": ".octon/agent",
+          "scope": "project",
+          "owner": "project"
+        },
+        "agents": {
+          "path": ".octon/agents",
+          "scope": "project",
+          "owner": "project"
+        },
+        "dossier": {
+          "path": ".octon/dossier",
+          "scope": "project",
+          "owner": "project"
+        },
+        "packages": {
+          "path": ".octon/packages",
+          "scope": "project",
+          "owner": "package_release"
+        },
+        "generated": {
+          "path": ".octon/generated",
+          "scope": "project",
+          "owner": "derived_writer"
+        },
+        "sources": {
+          "path": ".octon/sources",
+          "scope": "project",
+          "owner": "project"
+        },
+        "archive": {
+          "path": ".octon/archive",
+          "scope": "project",
+          "owner": "project"
+        },
+        "local": {
+          "path": ".octon/local",
+          "scope": "project",
+          "owner": "project"
+        },
+        "workspace_worktrees": {
+          "path": ".worktrees",
+          "scope": "workspace",
+          "owner": "workspace"
+        },
+        "workspace_recovery": {
+          "path": ".recovery",
+          "scope": "workspace",
+          "owner": "workspace"
+        }
+      },
+      "state_binding": {
+        "owner_policy": "exactly_one",
+        "embedded_path": ".octon/agent/state",
+        "external_policy": "explicit_project_owned_single_writer_outside_project"
+      },
+      "file_inventory": [
+        {
+          "id": "entry.instructions",
+          "path": "AGENTS.md",
+          "root_id": "project",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "entry.navigation",
+          "path": "WORKSPACE.md",
+          "root_id": "project",
+          "owner": "project",
+          "information_class": "navigation",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "installation.manifest",
+          "path": ".octon/manifest.json",
+          "root_id": "installation",
+          "owner": "project",
+          "information_class": "provenance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "runtime.manifest",
+          "path": ".octon/runtime/manifest.json",
+          "root_id": "runtime",
+          "owner": "runtime_release",
+          "information_class": "immutable",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "runtime.entry",
+          "path": ".octon/runtime/octon",
+          "root_id": "runtime",
+          "owner": "runtime_release",
+          "information_class": "immutable",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.entry",
+          "path": ".octon/agent/START_HERE.md",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "navigation",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.policy",
+          "path": ".octon/agent/policy.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.context",
+          "path": ".octon/agent/context.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.schema",
+          "path": ".octon/agent/schema.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.lifecycle",
+          "path": ".octon/agent/lifecycle.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.tools",
+          "path": ".octon/agent/tools.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.validators",
+          "path": ".octon/agent/validators.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.project",
+          "path": ".octon/agent/project.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "governance",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.packages",
+          "path": ".octon/agent/packages.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "configuration",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.scm",
+          "path": ".octon/agent/scm.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "configuration",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.commands",
+          "path": ".octon/agent/commands.json",
+          "root_id": "agent",
+          "owner": "derived_writer",
+          "information_class": "derived",
+          "tracking": "ignored_rebuildable",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.state.focus",
+          "path": ".octon/agent/state/focus.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "authored",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.state.current",
+          "path": ".octon/agent/state/current.json",
+          "root_id": "agent",
+          "owner": "derived_writer",
+          "information_class": "derived",
+          "tracking": "ignored_rebuildable",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.decisions.governance-register",
+          "path": ".octon/agent/decisions/governance-register.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "authored",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "harness.decisions.reuse-policy",
+          "path": ".octon/agent/decisions/reuse-policy.json",
+          "root_id": "agent",
+          "owner": "project",
+          "information_class": "authored",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "dossier.registry.artifact",
+          "path": ".octon/dossier/machine-readable/artifact-registry.json",
+          "root_id": "dossier",
+          "owner": "project",
+          "information_class": "authored",
+          "tracking": "versioned",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        },
+        {
+          "id": "local.binding",
+          "path": ".octon/local/binding.json",
+          "root_id": "local",
+          "owner": "project",
+          "information_class": "local_durable",
+          "tracking": "ignored_durable",
+          "minimum_profile": "minimal",
+          "source_rule_id": null
+        }
+      ],
+      "inventory_count": 22,
+      "inventory_hash_algorithm": "sha256_canonical_json_v1",
+      "inventory_sha256": "ade178baff5247131df9d7b2391fd176afac70cf11b1f72d308317b95be3f7b1",
+      "limitations": [
+        "Target runtime source assets and content digests are not qualified.",
+        "This inventory is design-only and cannot select target generation or migration."
+      ]
+    }
+  },
   "project_paths": {
     "kernel_files": [
       ".agent/policy.json",

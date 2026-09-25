@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -14,6 +16,7 @@ from pathlib import Path
 
 SCAFFOLD_PATH = Path(__file__).resolve().parent / "scaffold_project.py"
 ADOPTION_PATH = Path(__file__).resolve().parent / "plan_adoption.py"
+UPGRADE_PATH = Path(__file__).resolve().parent / "upgrade_project.py"
 SPEC = importlib.util.spec_from_file_location("octon_binding_scaffold", SCAFFOLD_PATH)
 assert SPEC is not None and SPEC.loader is not None
 scaffolder = importlib.util.module_from_spec(SPEC)
@@ -23,6 +26,78 @@ SPEC.loader.exec_module(scaffolder)
 class InstallationBindingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.manifest = scaffolder.load_generation_policy()
+
+    @staticmethod
+    def rehash_target(manifest: dict[str, object]) -> None:
+        target = manifest["installation_bindings"]["target"]
+        inventory = target["file_inventory"]
+        target["inventory_count"] = len(inventory)
+        target["inventory_sha256"] = hashlib.sha256(
+            json.dumps(inventory, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+
+    def test_target_manifest_requires_version_and_complete_core_inventory(self) -> None:
+        missing = copy.deepcopy(self.manifest)
+        del missing["installation_bindings"]
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(missing)
+        wrong_version = copy.deepcopy(self.manifest)
+        wrong_version["installation_bindings"]["target"]["schema_version"] = "unknown"
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(wrong_version)
+        wrong_count = copy.deepcopy(self.manifest)
+        wrong_count["installation_bindings"]["target"]["inventory_count"] -= 1
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(wrong_count)
+        missing_root = copy.deepcopy(self.manifest)
+        del missing_root["installation_bindings"]["target"]["root_bindings"]["agent"]
+        with self.assertRaisesRegex(ValueError, "root inventory"):
+            scaffolder.target_installation_contract(missing_root)
+        missing_file = copy.deepcopy(self.manifest)
+        inventory = missing_file["installation_bindings"]["target"]["file_inventory"]
+        inventory[:] = [item for item in inventory if item["id"] != "harness.policy"]
+        self.rehash_target(missing_file)
+        with self.assertRaisesRegex(ValueError, "required identity"):
+            scaffolder.target_installation_contract(missing_file)
+        premature_generation = copy.deepcopy(self.manifest)
+        premature_generation["installation_bindings"]["target"]["generation_status"] = "active"
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(premature_generation)
+        unqualified_rule = copy.deepcopy(self.manifest)
+        unqualified_rule["installation_bindings"]["target"]["file_inventory"][0]["source_rule_id"] = "templates-core"
+        self.rehash_target(unqualified_rule)
+        with self.assertRaisesRegex(ValueError, "unqualified"):
+            scaffolder.target_installation_contract(unqualified_rule)
+
+    def test_target_manifest_rejects_escape_ownership_and_duplicate_state(self) -> None:
+        escaped_root = copy.deepcopy(self.manifest)
+        escaped_root["installation_bindings"]["target"]["root_bindings"]["agent"]["path"] = "../escape"
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(escaped_root)
+        escaped_file = copy.deepcopy(self.manifest)
+        escaped_file["installation_bindings"]["target"]["file_inventory"][0]["path"] = "../escape"
+        self.rehash_target(escaped_file)
+        with self.assertRaises(ValueError):
+            scaffolder.target_installation_contract(escaped_file)
+        wrong_owner = copy.deepcopy(self.manifest)
+        wrong_owner["installation_bindings"]["target"]["file_inventory"][6]["owner"] = "runtime_release"
+        self.rehash_target(wrong_owner)
+        with self.assertRaisesRegex(ValueError, "ownership"):
+            scaffolder.target_installation_contract(wrong_owner)
+        duplicate_state = copy.deepcopy(self.manifest)
+        duplicate_state["installation_bindings"]["target"]["file_inventory"].append({
+            "id": "harness.state.second-focus",
+            "path": ".octon/agent/state/second-focus.json",
+            "root_id": "agent",
+            "owner": "project",
+            "information_class": "authored",
+            "tracking": "versioned",
+            "minimum_profile": "minimal",
+            "source_rule_id": None,
+        })
+        self.rehash_target(duplicate_state)
+        with self.assertRaisesRegex(ValueError, "second live state"):
+            scaffolder.target_installation_contract(duplicate_state)
 
     def test_current_manifest_and_recovery_paths_remain_exact(self) -> None:
         with tempfile.TemporaryDirectory(prefix="octon-current-binding-") as temporary:
@@ -65,7 +140,7 @@ class InstallationBindingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="octon-target-binding-") as temporary:
             root = Path(temporary).resolve() / "project"
             root.mkdir()
-            binding = scaffolder.InstallationBinding.target(root)
+            binding = scaffolder.InstallationBinding.target(root, self.manifest)
             self.assertEqual(binding.layout_id, "oep1_target")
             self.assertEqual(binding.manifest_relative, Path(".octon/manifest.json"))
             self.assertEqual(binding.state_root, root / ".octon/agent/state")
@@ -140,15 +215,15 @@ class InstallationBindingTests(unittest.TestCase):
             old.mkdir()
             (old / ".OCTON").mkdir()
             with self.assertRaisesRegex(ValueError, "reserved-path disposition"):
-                scaffolder.InstallationBinding.target(old)
+                scaffolder.InstallationBinding.target(old, self.manifest)
             (old / ".OCTON").rmdir()
             (old / ".octon").write_text("unclassified occupant\n")
             with self.assertRaisesRegex(ValueError, "reserved-path disposition"):
-                scaffolder.InstallationBinding.target(old)
+                scaffolder.InstallationBinding.target(old, self.manifest)
             (old / ".octon").unlink()
             (old / ".agent").mkdir()
             with self.assertRaisesRegex(ValueError, "reserved-path disposition"):
-                scaffolder.InstallationBinding.target(old)
+                scaffolder.InstallationBinding.target(old, self.manifest)
             (old / ".agent/state").mkdir()
             (old / ".agent/state/focus.json").write_text("owner intent\n")
             before = scaffolder.InstallationBinding.current(old)
@@ -159,6 +234,37 @@ class InstallationBindingTests(unittest.TestCase):
             self.assertEqual(after.state_root, moved / ".agent/state")
             self.assertEqual(after.transaction_root, moved / ".agent/transactions")
             self.assertEqual((moved / ".agent/state/focus.json").read_text(), "owner intent\n")
+            target_old = area / "target-old"
+            target_old.mkdir()
+            target_before = scaffolder.InstallationBinding.target(target_old, self.manifest)
+            target_moved = area / "target-moved"
+            target_old.rename(target_moved)
+            target_after = scaffolder.InstallationBinding.target(target_moved, self.manifest)
+            self.assertEqual(target_before.state_root, target_old / ".octon/agent/state")
+            self.assertEqual(target_after.state_root, target_moved / ".octon/agent/state")
+
+    def test_occupied_target_root_refuses_adoption_and_upgrade(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="octon-entry-binding-") as temporary:
+            area = Path(temporary).resolve()
+            root = area / "project"
+            root.mkdir()
+            (root / ".octon").mkdir()
+            adoption = subprocess.run(
+                [sys.executable, "-B", str(ADOPTION_PATH), "--target", str(root), "--profile", "minimal"],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(adoption.returncode, 2)
+            self.assertIn("occupied target installation path", adoption.stderr)
+            upgrade = subprocess.run(
+                [
+                    sys.executable, "-B", str(UPGRADE_PATH), "plan", "--target", str(root),
+                    "--output", str(area / "upgrade-plan.json"),
+                ],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(upgrade.returncode, 0)
+            self.assertIn("original Octon runtime installation conflicts", upgrade.stderr)
+            self.assertFalse((area / "upgrade-plan.json").exists())
 
     def test_live_state_has_one_explicit_owner(self) -> None:
         with tempfile.TemporaryDirectory(prefix="octon-state-binding-") as temporary:
@@ -168,7 +274,7 @@ class InstallationBindingTests(unittest.TestCase):
             external = area / "state"
             external.mkdir()
             binding = scaffolder.InstallationBinding.target(
-                root, state_owner="external", external_state_root=external
+                root, self.manifest, state_owner="external", external_state_root=external
             )
             self.assertEqual(binding.state_root, external)
             with self.assertRaisesRegex(ValueError, "conflicts with the external owner"):
@@ -176,12 +282,12 @@ class InstallationBindingTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "conflicts with the external owner"):
                 binding.derived_path(".octon/agent/state/current.json", "fixture")
             with self.assertRaises(ValueError):
-                scaffolder.InstallationBinding.target(root, state_owner="external")
+                scaffolder.InstallationBinding.target(root, self.manifest, state_owner="external")
             with self.assertRaises(ValueError):
-                scaffolder.InstallationBinding.target(root, external_state_root=external)
+                scaffolder.InstallationBinding.target(root, self.manifest, external_state_root=external)
             with self.assertRaises(ValueError):
                 scaffolder.InstallationBinding.target(
-                    root, state_owner="external", external_state_root=root / "local-state"
+                    root, self.manifest, state_owner="external", external_state_root=root / "local-state"
                 )
             with self.assertRaises(ValueError):
                 scaffolder.InstallationBinding(
