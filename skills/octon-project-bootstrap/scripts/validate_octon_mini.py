@@ -222,6 +222,7 @@ REQUIRED_PATHS = (
     "skills/octon-project-bootstrap/scripts/test_source_work_completion.py",
     "skills/octon-project-bootstrap/scripts/test_guided_setup.py",
     "skills/octon-project-bootstrap/scripts/test_octon_launchers.py",
+    "skills/octon-project-bootstrap/scripts/test_installation_binding.py",
     "skills/octon-project-bootstrap/scripts/upgrade_project.py",
     "skills/octon-project-bootstrap/scripts/validate_octon_mini.py",
     "skills/octon-project-bootstrap/scripts/validate_source_contracts.py",
@@ -1578,6 +1579,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             ],
             ROOT,
             "cross-platform source, installed, and generated launcher fixtures",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],
+            ROOT,
+            "explicit installation binding, confinement, collision, and state-owner fixtures",
         ),
         (
             [

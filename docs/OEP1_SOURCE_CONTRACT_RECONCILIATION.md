@@ -83,11 +83,58 @@ remaining project-owned. Exact candidate logs and result JSON are under
 failures from this slice on the measured host; no cross-platform matrix or
 target-project adoption is claimed.
 
-The next bounded entry is the explicit installation root/binding resolver at
+The next bounded entry at this first-slice checkpoint was the explicit
+installation root/binding resolver at
 the `scaffold_project.py` project-path boundary (`project_local_source_paths`,
 `origin_path`, and their callers). `selected_layout` currently means compact
 or separated dossier representation and must stay independent of physical
-installation layout. Introduce a versioned, explicit current/target root
-binding, then qualify confinement, reserved `.octon` collisions, moved roots,
-and one state owner before switching any generated target path or migrating a
-project. This remains inside IMP-1; its exit gate is not yet claimed.
+installation layout. The binding and its focused checks are recorded below.
+The broader IMP-1 exit gate is not claimed.
+
+## Explicit installation binding slice
+
+The source-side `InstallationBinding` now requires `current` or `oep1_target`.
+It anchors paths to an explicit canonical project root, checks portable
+project-relative paths and symlink confinement, rejects occupied target
+namespaces and old-layout markers, and requires one embedded or explicitly
+external live-state owner. The current generator and adoption planner pass a
+rooted current binding through project-local sources, derived outputs and the
+historical origin. Existing manifest readers retain an unbound current-only
+path-shape compatibility shim. A target binding cannot treat the old origin as
+`.octon/manifest.json`; no target generation or migration is enabled.
+
+Five focused binding tests passed on local CPython 3.13.9 and 3.14. They cover
+current records and transaction roots, target/current separation, lexical and
+symlink confinement, reserved `.octon` collisions, a moved project root,
+platform-portable path spellings, a single live-state owner, and a real
+read-only adoption-plan refusal for an escaping symlink. With the same fixed
+fixture inputs, before/after Minimal generation produced the same 109 paths;
+105 file hashes matched and the four derived JSON differences were only refresh
+time or generation ID fields. Generated `check`, `doctor --json` and transaction
+help each returned exit `0` with byte-identical output before and after.
+
+The first complete source run on this slice exited `1` after 1,451.067 seconds
+solely because the exact `LEGACY-0051` file digest had become stale after the
+adoption-planner edit. Its one reviewed occurrence and
+`explicit_legacy_migration_input` classification were unchanged. Updating only
+that entry's digest to
+`8f30602d7b31921ef3b758d8d7419df06ce7c517d5eef34e2f57b95c47d87393`
+cleared the focused check. The final complete source validation exited `0` in
+1,472.228 seconds: 226 required files, 105 templates, and all six
+profile/representation builds. Both logs and result JSON are in
+`/private/tmp/octon-imp1-binding.2DZsLt/`.
+
+Acceptance was not rerun for this source-only slice: the generated path
+inventory and the observed read-only command outputs did not change. The
+previous acceptance pass remains the exact prior candidate result, not a
+qualification of a target-layout project. Real Windows-host execution,
+target-manifest reading, target generation/adoption, external-state writing,
+project-identity collision checks, and migration of existing records or
+receipts remain unqualified. The IMP-0 results remain unchanged.
+
+The next IMP-1 entry is to define the versioned target installation manifest
+and integrate its selected path inventory into the existing source profile
+manifest, then carry explicit bindings through adoption/upgrade and narrow
+generated runtime compatibility shims. Qualify source/target identity,
+reserved-name disposition, one state owner, and old receipt readability before
+any generated path switch.

@@ -17,7 +17,7 @@ import tempfile
 import zlib
 from collections.abc import Iterable
 from datetime import date
-from pathlib import Path, PurePath, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 
 GENERATOR_VERSION = "5.0.0"
@@ -611,12 +611,185 @@ def manifest_project_paths(manifest: dict[str, object]) -> dict[str, object]:
     return project_paths
 
 
-def kernel_paths(manifest: dict[str, object]) -> tuple[Path, ...]:
+class InstallationBinding:
+    """Resolve an explicitly selected installation without selecting output files."""
+
+    _ROOTS = {
+        "current": (
+            Path(".agent"), Path(".agents"), Path("project-dossier"),
+            Path(".octon-origin.json"),
+        ),
+        "oep1_target": (
+            Path(".octon/agent"), Path(".octon/agents"), Path(".octon/dossier"),
+            Path(".octon/manifest.json"),
+        ),
+    }
+    _RESERVED_WINDOWS_NAMES = {"CON", "PRN", "AUX", "NUL"} | {
+        f"{prefix}{index}" for prefix in ("COM", "LPT") for index in range(1, 10)
+    }
+
+    def __init__(
+        self,
+        layout_id: str,
+        project_root: Path | None,
+        *,
+        state_owner: str = "embedded",
+        external_state_root: Path | None = None,
+    ) -> None:
+        if layout_id not in self._ROOTS:
+            raise ValueError("installation layout must be current or oep1_target")
+        if project_root is None and layout_id != "current":
+            raise ValueError("target installation requires an explicit project root")
+        if state_owner not in {"embedded", "external"}:
+            raise ValueError("installation requires exactly one live state owner")
+        if layout_id == "current" and state_owner != "embedded":
+            raise ValueError("current snapshots retain their embedded state owner")
+        if (state_owner == "external") != (external_state_root is not None):
+            raise ValueError("external state requires exactly one explicit external binding")
+
+        self.layout_id = layout_id
+        self.agent_root, self.capabilities_root, self.dossier_root, self.manifest_relative = self._ROOTS[layout_id]
+        self.embedded_state_relative = self.agent_root / "state"
+        self.project_root = self._absolute_root(project_root, "project root") if project_root is not None else None
+        self.state_owner = state_owner
+        self.external_state_root = None
+        if external_state_root is not None:
+            external = self._absolute_root(external_state_root, "external state root")
+            if self.project_root is None:
+                raise ValueError("external state requires an explicit project root")
+            if external == self.project_root or external in self.project_root.parents or self.project_root in external.parents:
+                raise ValueError("external state root must be separate from the project root")
+            self.external_state_root = external
+
+        if layout_id == "oep1_target" and self.project_root is not None and self.project_root.exists():
+            if not self.project_root.is_dir():
+                raise ValueError("target project root is not a directory")
+            blocked = {".octon", ".agent", ".agents", "project-dossier", ".octon-origin.json", ".octon-mini-origin.json"}
+            try:
+                children = list(self.project_root.iterdir())
+            except OSError as error:
+                raise ValueError("target project root cannot be inspected") from error
+            for path in children:
+                if path.name.casefold() in blocked:
+                    raise ValueError(f"target installation requires a reviewed reserved-path disposition: {path.name}")
+
+    @staticmethod
+    def _absolute_root(value: Path, label: str) -> Path:
+        root = Path(value)
+        if not root.is_absolute():
+            raise ValueError(f"{label} must be absolute")
+        try:
+            resolved = root.resolve(strict=False)
+        except (OSError, RuntimeError) as error:
+            raise ValueError(f"{label} cannot be resolved") from error
+        if resolved == Path(resolved.anchor):
+            raise ValueError(f"{label} cannot be a filesystem root")
+        return resolved
+
+    @classmethod
+    def current(cls, project_root: Path) -> "InstallationBinding":
+        return cls("current", project_root)
+
+    @classmethod
+    def target(
+        cls,
+        project_root: Path,
+        *,
+        state_owner: str = "embedded",
+        external_state_root: Path | None = None,
+    ) -> "InstallationBinding":
+        return cls("oep1_target", project_root, state_owner=state_owner, external_state_root=external_state_root)
+
+    def relative_path(self, value: object, label: str) -> Path:
+        if not isinstance(value, str) or not value or "\\" in value or ":" in value or "\x00" in value:
+            raise ValueError(f"{label}: invalid portable path {value!r}")
+        parts = value.split("/")
+        if (
+            any(part in {"", ".", ".."} or part.endswith((" ", ".")) for part in parts)
+            or PurePosixPath(value).is_absolute()
+            or PureWindowsPath(value).drive
+            or PureWindowsPath(value).root
+        ):
+            raise ValueError(f"{label}: unsafe portable path {value!r}")
+        if any(part.split(".", 1)[0].rstrip(" ").upper() in self._RESERVED_WINDOWS_NAMES for part in parts):
+            raise ValueError(f"{label}: reserved platform path {value!r}")
+        relative = Path(*parts)
+        if self.project_root is not None:
+            try:
+                resolved = (self.project_root / relative).resolve(strict=False)
+            except (OSError, RuntimeError) as error:
+                raise ValueError(f"{label}: path cannot be resolved") from error
+            if not resolved.is_relative_to(self.project_root):
+                raise ValueError(f"{label}: path escapes the project root")
+        return relative
+
+    @staticmethod
+    def _under(path: Path, root: Path) -> bool:
+        return path == root or root in path.parents
+
+    def project_source_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        if not (
+            any(self._under(path, root) for root in (self.agent_root, self.capabilities_root, self.dossier_root))
+            or path in {Path("AGENTS.md"), Path("WORKSPACE.md")}
+        ):
+            raise ValueError(f"{label}: path is outside the selected installation")
+        if self.state_owner == "external" and self._under(path, self.embedded_state_relative):
+            raise ValueError(f"{label}: embedded live state conflicts with the external owner")
+        return path
+
+    def derived_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        roots = (self.agent_root, self.capabilities_root, self.dossier_root)
+        if self.layout_id == "oep1_target":
+            roots += (Path(".octon/generated"),)
+        if not any(self._under(path, root) for root in roots):
+            raise ValueError(f"{label}: path is outside the selected installation")
+        if self.state_owner == "external" and self._under(path, self.embedded_state_relative):
+            raise ValueError(f"{label}: embedded live state conflicts with the external owner")
+        return path
+
+    def kernel_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        if not self._under(path, self.agent_root):
+            raise ValueError(f"{label}: kernel path is outside the selected harness")
+        return path
+
+    def current_origin_path(self, value: object, label: str) -> Path:
+        if self.layout_id != "current":
+            raise ValueError("target installation manifest is not a historical origin alias")
+        path = self.relative_path(value, label)
+        if path != self.manifest_relative:
+            raise ValueError(f"{label}: current origin path differs")
+        return path
+
+    @property
+    def state_root(self) -> Path:
+        if self.external_state_root is not None:
+            return self.external_state_root
+        if self.project_root is None:
+            raise ValueError("unbound current installation has no live state root")
+        return self.project_root / self.embedded_state_relative
+
+    @property
+    def transaction_root(self) -> Path:
+        if self.project_root is None or self.state_owner != "embedded":
+            raise ValueError("transaction root requires an embedded project binding")
+        return self.project_root / self.agent_root / "transactions"
+
+
+CURRENT_INSTALLATION_PATHS = InstallationBinding("current", None)
+
+
+def kernel_paths(
+    manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> tuple[Path, ...]:
     raw_paths = manifest_project_paths(manifest).get("kernel_files")
     if not isinstance(raw_paths, list) or not raw_paths:
         raise ValueError("profile manifest requires kernel files")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths = tuple(
-        portable_project_path(item, "profile manifest kernel file")
+        selected.kernel_path(item, "profile manifest kernel file")
         for item in raw_paths
     )
     if len(paths) != len(set(paths)):
@@ -625,11 +798,12 @@ def kernel_paths(manifest: dict[str, object]) -> tuple[Path, ...]:
 
 
 def project_local_source_paths(
-    profile: str, manifest: dict[str, object]
+    profile: str, manifest: dict[str, object], *, installation: InstallationBinding | None = None
 ) -> set[Path]:
     raw_sources = manifest_project_paths(manifest).get("project_local_sources")
     if not isinstance(raw_sources, list) or not raw_sources:
         raise ValueError("profile manifest requires project-local source paths")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths: set[Path] = set()
     for index, raw in enumerate(raw_sources):
         if not isinstance(raw, dict) or set(raw) != {
@@ -639,17 +813,20 @@ def project_local_source_paths(
         }:
             raise ValueError(f"project-local source {index}: invalid contract")
         if profile_path_applies(profile, raw.get("minimum_profile"), manifest):
-            path = portable_project_path(raw.get("path"), f"project-local source {index}")
+            path = selected.project_source_path(raw.get("path"), f"project-local source {index}")
             if path in paths:
                 raise ValueError("profile manifest repeats a project-local source path")
             paths.add(path)
     return paths
 
 
-def derived_output_paths(profile: str, manifest: dict[str, object]) -> set[Path]:
+def derived_output_paths(
+    profile: str, manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> set[Path]:
     raw_outputs = manifest_project_paths(manifest).get("derived_outputs")
     if not isinstance(raw_outputs, list) or not raw_outputs:
         raise ValueError("profile manifest requires derived output paths")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths: set[Path] = set()
     for index, raw in enumerate(raw_outputs):
         if not isinstance(raw, dict) or set(raw) != {
@@ -662,14 +839,16 @@ def derived_output_paths(profile: str, manifest: dict[str, object]) -> set[Path]
         if raw.get("writer") != "refresh":
             raise ValueError(f"derived output {index}: writer must remain refresh")
         if profile_path_applies(profile, raw.get("minimum_profile"), manifest):
-            path = portable_project_path(raw.get("path"), f"derived output {index}")
+            path = selected.derived_path(raw.get("path"), f"derived output {index}")
             if path in paths:
                 raise ValueError("profile manifest repeats a derived output path")
             paths.add(path)
     return paths
 
 
-def origin_path(manifest: dict[str, object]) -> Path:
+def origin_path(
+    manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> Path:
     origin = manifest_project_paths(manifest).get("origin")
     if (
         not isinstance(origin, dict)
@@ -677,7 +856,8 @@ def origin_path(manifest: dict[str, object]) -> Path:
         or origin.get("ownership") != "generated_snapshot_provenance"
     ):
         raise ValueError("profile manifest origin contract is invalid")
-    return portable_project_path(origin.get("path"), "profile manifest origin")
+    selected = installation or CURRENT_INSTALLATION_PATHS
+    return selected.current_origin_path(origin.get("path"), "profile manifest origin")
 
 
 def load_generation_policy() -> dict[str, object]:
@@ -1961,9 +2141,18 @@ def main() -> int:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2
 
-    selected_project_sources = project_local_source_paths(profile, generation_policy)
-    selected_derived_outputs = derived_output_paths(profile, generation_policy)
-    selected_origin = origin_path(generation_policy)
+    try:
+        installation = InstallationBinding.current(target)
+        selected_project_sources = project_local_source_paths(
+            profile, generation_policy, installation=installation
+        )
+        selected_derived_outputs = derived_output_paths(
+            profile, generation_policy, installation=installation
+        )
+        selected_origin = origin_path(generation_policy, installation=installation)
+    except ValueError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
     expected = (
         set(templates)
         | set(schemas)
@@ -2038,7 +2227,7 @@ def main() -> int:
             separators=(",", ":"),
         ),
         "KERNEL_FILES_JSON": json.dumps(
-            canonical_posix_paths(kernel_paths(generation_policy)),
+            canonical_posix_paths(kernel_paths(generation_policy, installation=installation)),
             separators=(",", ":"),
         ),
         "GIT_PORTFOLIO_VERSION": str(git_portfolio_contract["version"]),

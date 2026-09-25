@@ -465,13 +465,16 @@ def build_plan(
         )
     templates, schemas = scaffolder.resolve_generation_inputs(profile, policy, layout)
     scaffolder.validate_generation_boundary(profile, templates, schemas, policy, layout)
+    installation = scaffolder.InstallationBinding.current(resolved)
     intended = (
         set(templates)
         | set(schemas)
-        | scaffolder.derived_output_paths(profile, policy)
-        | scaffolder.project_local_source_paths(profile, policy)
-        | {scaffolder.origin_path(policy)}
+        | scaffolder.derived_output_paths(profile, policy, installation=installation)
+        | scaffolder.project_local_source_paths(profile, policy, installation=installation)
+        | {scaffolder.origin_path(policy, installation=installation)}
     )
+    for relative in intended:
+        installation.relative_path(relative.as_posix(), "adoption intended path")
 
     collisions = sorted(
         path.as_posix() for path in intended if (resolved / path).exists()
