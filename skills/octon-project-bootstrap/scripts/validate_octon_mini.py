@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -1718,8 +1719,9 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "security and supply-chain extension fixtures",
         ),
     )
-    for command, cwd, label in commands:
-        result = subprocess.run(
+    def run_fixture(item: tuple[list[str], Path, str]) -> subprocess.CompletedProcess[str]:
+        command, cwd, _label = item
+        return subprocess.run(
             command,
             cwd=cwd,
             capture_output=True,
@@ -1727,6 +1729,12 @@ def validate_executable_contracts(issues: list[str]) -> None:
             check=False,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
+
+    # Each suite uses its own disposable fixtures. Keep all suites and their
+    # reporting order while bounding the Windows-heavy source gate's wall time.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(run_fixture, commands))
+    for (_command, _cwd, label), result in zip(commands, results):
         if result.returncode:
             issues.append(
                 f"{label} failed: {result.stderr.strip() or result.stdout.strip()}"
