@@ -274,6 +274,18 @@ class WorkCompletionTests(unittest.TestCase):
         self.finish = load_module("octon_work_completion_fixture", FINISH_SOURCE)
         self.validator = load_module("validate_finish_fixture", VALIDATOR_SOURCE)
 
+    def test_dispatcher_defers_completion_import_and_preserves_refusal(self) -> None:
+        with mock.patch.dict(sys.modules, {"octon_doctor": types.ModuleType("octon_doctor")}):
+            sys.modules.pop("octon_work_completion", None)
+            octon = load_module("octon_work_completion_dispatch_fixture", OCTON_SOURCE)
+            self.assertNotIn("octon_work_completion", sys.modules)
+            sys.modules["octon_work_completion"] = self.finish
+            blocked = self.finish.FinishBlocked("synthetic completion stop")
+            with mock.patch.object(self.finish, "build_plan", side_effect=blocked):
+                with self.assertRaises(octon.WorkflowError) as caught:
+                    octon.work_completion_call("build_plan", Path("."), None)
+            self.assertEqual(caught.exception.report, blocked.report)
+
     def authorization(self, plan: dict[str, object], path: Path) -> Path:
         current = datetime.now(timezone.utc)
         value = {
@@ -655,7 +667,7 @@ class WorkCompletionTests(unittest.TestCase):
                     return_value=({"receipt_id": "RCPT-" + "2" * 24}, receipt_path),
                 ),
                 mock.patch.object(
-                    octon.octon_work_completion,
+                    self.finish,
                     "run_completion_plan_event",
                     return_value=completion_plan,
                 ) as event,
