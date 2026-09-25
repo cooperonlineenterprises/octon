@@ -376,7 +376,7 @@
     {
       "id": "LEGACY-0051",
       "path": "skills/octon-project-bootstrap/scripts/plan_adoption.py",
-      "file_sha256": "f11233ab1333b1113c34a79246d446f10e98a329ecd15fd94cc039d96d8c0789",
+      "file_sha256": "31dd1a9a02a70977b4f09595ffa5ee282b95c26035acb4c474d77a5c85320f1e",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
     },
@@ -404,7 +404,7 @@
     {
       "id": "LEGACY-0055",
       "path": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
-      "file_sha256": "8fba656bb80eb75a045ed0fc8741164a8cb745d99c5aa5b5bb0d384c6c056326",
+      "file_sha256": "d59c0a2c0b2130a5aec86aec6f8c493e00f211955df9e51d1c0892eeb4f5ce09",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 25
     },
