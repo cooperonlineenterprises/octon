@@ -509,3 +509,104 @@ sequencing and gate requirements. Specification packages link to these sources;
 their links do not create a second decision record. No new runtime version,
 release, provider qualification, project adoption or implementation completion is
 claimed by this record.
+
+## SRC-DEC-0041 — Intent-linked delegated technical decisions
+
+| Field | Accepted successor direction |
+|---|---|
+| Status | Accepted for the inactive source foundation and versioned successor design |
+| Date | 2026-09-27 |
+| Authority | Current repository-owner request to complete the next recommended agent-first sequence, beginning with the bounded governance-foundation PR |
+| Scope | O-AUTONOMY: intent lineage and authenticated delegated technical decision actors |
+| Supersession | For the separately adopted behavioral successor, supersedes SRC-DEC-0019's unconditional human-only technical priority/architecture ownership and amends SRC-DEC-0012's actor vocabulary; legacy runtime/consumer contracts keep their original meanings until explicit conversion |
+| Permission effect | None; no grant, consumer adoption, release or live effect is authorized by this record |
+
+The principal owns root ends and sovereign boundaries. Authorized agents may
+derive work, select ready-work priority and accept material technical decisions
+within authenticated delegation and current obligations. Material decisions stay
+in the existing DEC concern; ordinary choices need sufficient rationale rather
+than a second decision lifecycle. Accepted technical decisions do not grant
+operational permission. Intent links are necessary but do not prove intent fidelity.
+
+Admit decisions against exact intent, actor, delegated class, evidence and
+protected constraints. Preserve real qualified-human obligations and principal
+reservations; human headcount and model confidence do not determine assurance.
+Root changes and an enlarged envelope require their legitimate principal channel.
+
+This first implementation creates no task or decision writer. Its source-only
+shadow evaluator qualifies declared bindings with execution authority always
+false. Existing human-only and single-worker paths remain active legacy behavior.
+Live acceptance requires versioned record conversion, protected authority/evidence
+admission and the actual project delegation. See `docs/GOVERNANCE_FOUNDATION.md`.
+
+## SRC-DEC-0042 — One generalized coverage concern with shadow-first qualification
+
+| Field | Accepted successor direction |
+|---|---|
+| Status | Accepted for the inactive source foundation and versioned successor design |
+| Date | 2026-09-27 |
+| Authority | Current repository-owner implementation request for the governance foundation |
+| Scope | O-DELEGATION: non-amplifying parent/child coverage, exact action binding and live-admission prerequisites |
+| Existing owner | Evolve the standing-delivery authority concern from SRC-DEC-0019; do not create an independent issuer or parallel live evaluator |
+| Compatibility | Existing grant bytes, IDs, compute modes, limits, expiry and revocation meanings remain unchanged; shadow schemas are not accepted legacy activation inputs |
+| Permission effect | None; current independent exact-contract activation requirements remain in force |
+
+A successor envelope binds principal/subject, intent, exact resources, permitted
+operations/decision classes, environments/data/destinations/credential categories,
+obligations, reservations, validity and shared/per-run limits. Child issuance can
+only narrow its parent and cannot remove obligations or reserved choices.
+Coverage intersects the grant chain and all applicable project/tenant/host/provider
+restrictions. Current policy, state, revocation, evidence and budgets are checked
+at consequential boundaries; a cached plan/result cannot supply stale permission.
+
+The protected authority channel owns issuance, revocation and stop. Producing
+workers cannot rewrite those controls or the active verification baseline.
+Technical control changes require their own scope and evaluation under the
+previously active policy. Actual shared reservations belong to the one project
+coordinator; arithmetic over a supplied snapshot creates no reservation.
+
+The executable source slice is deliberately read-only: covered, uncovered or
+indeterminate *hypothetical coverage*, with no authentication, effect dispatch,
+activation or lease creation. The schema/result namespace is separate from live
+authorization projections. Protected current readers, authenticated authority,
+atomic reservations and host/provider enforcement remain activation prerequisites.
+Before a live cutover, adapt/replace the existing owner once; never leave the
+legacy evaluator and a new evaluator as competing permission authorities.
+
+## SRC-DEC-0043 — Versioned source governance records and consumer preservation
+
+| Field | Accepted successor direction |
+|---|---|
+| Status | Accepted for source-only contracts and qualification |
+| Date | 2026-09-27 |
+| Authority | Current repository-owner request for versioned intent/delegation contracts, compatibility fixtures and source baseline preservation |
+| Scope | O-RECORDS: new intent identity and non-authorizing binding projections, extending existing record concerns |
+| Registration | `octon.json` source-governance registration and `shared/source-contracts/governance-foundation.schema.json` |
+| Generation owner | Existing profile manifest; new foundation files retain its default source-only disposition and do not enter current generated outputs |
+| Permission effect | None; schemas, typed references, digests, fixtures and passing gates cannot create authority or readiness |
+
+Intent revisions have their own stable identity and immutable content binding.
+Derived objectives remain existing tasks; accepted decisions remain DEC records;
+work graphs and current views remain derived; outcome claims remain evidence plus
+acceptance. Work/usage/control input bindings are snapshots of existing owners,
+not new mutable stores. Physical record placement must follow the qualified
+installation/state binding rather than creating a second ledger.
+
+The foundation declares new versioned source contracts and adversarial tests.
+Opaque IDs are scoped by project and type; no live record IDs or new kernel 4.2
+prefixes are allocated by fixtures. SRC-DEC-0021–0038 stay reserved, and existing
+0039/0040 identity/strategy decisions remain intact. Prior record/schema bytes,
+accepted decisions and grants are preserved rather than silently generalized.
+
+The 5.0 identity runtime, current templates/packages, generation rules and kernel
+compatibility are unchanged. The behavioral successor needs a separate versioned
+release, exact consumer inventory/conversion and interruption/recovery evidence.
+Plectarium's custom 1.0.0 snapshot and other external/custom state owners are not
+automatic 5.0 inputs. Do not invent a supported upgrade from a similar directory
+name. Source-host work continues to use the existing external task owner.
+
+Qualification includes strict input/digest/lineage cases, every child narrowing
+dimension, revocation/freshness, cumulative budgets, mandatory/qualified-human
+obligations, read-only execution and legacy/generation compatibility. Full existing
+source/acceptance gates remain required; structural success alone establishes no
+project adoption, live authorization, sandboxing or delivered outcome.

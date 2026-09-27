@@ -1557,6 +1557,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "architectural pattern adversarial fixtures",
         ),
         (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_governance_shadow.py")],
+            ROOT,
+            "intent/delegation shadow coverage and compatibility fixtures",
+        ),
+        (
             [
                 sys.executable,
                 "-B",

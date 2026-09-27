@@ -63,7 +63,15 @@
     "setup_answers_schema": "shared/schemas/octon-mini-bootstrap-setup-answers.schema.json",
     "autonomous_delivery_schema": "shared/schemas/harness-autonomous-delivery.schema.json",
     "architecture_proof_schema": "patterns/architecture-proof/schema.json",
-    "architecture_proof_generated": false
+    "architecture_proof_generated": false,
+    "intent_delegation_foundation": {
+      "status": "source_only_shadow",
+      "schema": "shared/source-contracts/governance-foundation.schema.json",
+      "implementation": "skills/octon-project-bootstrap/scripts/governance_shadow.py",
+      "qualification": "skills/octon-project-bootstrap/scripts/test_governance_shadow.py",
+      "generated": false,
+      "runtime_authorization": false
+    }
   },
   "bootstrap_capability": {
     "display_name": "Octon Project Bootstrap",
