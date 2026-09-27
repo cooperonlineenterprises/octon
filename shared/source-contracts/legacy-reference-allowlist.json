@@ -467,7 +467,7 @@
     {
       "id": "LEGACY-0065",
       "path": "skills/octon-project-bootstrap/scripts/test_governance_shadow.py",
-      "file_sha256": "04eaeaa4721254c6dfd651cb23abfbda928aaf177ee1466a2df5ed6086ee781b",
+      "file_sha256": "e1bccabd6cc817834b202cfa8178153f6c7e2724e05f63929bc65bb171c3b7aa",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 3
     }

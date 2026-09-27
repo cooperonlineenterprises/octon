@@ -323,6 +323,14 @@ class GovernanceShadowTests(unittest.TestCase):
                 (root / "octon.json").write_text(json.dumps(bad))
                 self.assertTrue(G.validate_contract_source(root))
 
+    def test_full_source_metadata_gate_accepts_the_explicit_registration(self) -> None:
+        spec = importlib.util.spec_from_file_location("governance_full_metadata_gate", SCRIPTS / "validate_octon_mini.py")
+        assert spec and spec.loader
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        issues = []
+        module.validate_config_and_schemas(issues, module.load_scaffolder())
+        self.assertEqual(issues, [])
+
     def test_cli_diagnostics_do_not_echo_rejected_input_values(self) -> None:
         with tempfile.TemporaryDirectory() as area:
             path = Path(area) / "input.json"
