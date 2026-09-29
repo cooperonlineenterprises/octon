@@ -430,3 +430,82 @@ credentials, operational state and readiness claims never transfer automatically
 GitHub addresses, historical tags/releases and existing consumers are unchanged.
 Cutover and reference retirement remain separate gated outcomes; an identity label
 never closes a task, proves quiescence or resolves an uncertain effect.
+
+<a id="src-dec-0040"></a>
+
+## SRC-DEC-0040 - Retain the Octon repository and qualify a staged implementation redesign
+
+| Field | Accepted decision |
+|---|---|
+| Status | Accepted for development strategy and its documentation |
+| Date | 2026-09-24 |
+| Authority | Current repository-owner instruction to record the reviewed recommendation, create its implementation plan, and update the specification references |
+| Scope | The active Mini-derived Octon product and its transition toward OEP-1 and the ecosystem target |
+| Baseline | Inspected local source revision `a1d528e1cfd4272c953c7d50ea6e9d16d283e002`; fresh execution qualification remains a first implementation gate |
+| Decision | Keep this repository, product identity and history; preserve the baseline; reconstruct implementation boundaries selectively through qualified migrations |
+| Alternative considered | Retire/archive the active project and create a fresh implementation/repository |
+| Implementation status | Planned; this documentation change does not implement the target runtime or migrate a project |
+| Permission effect | None from this record; current task authority and operation-specific controls continue to bound every effect |
+| Supersession | No historical decision or published wire identity is rewritten; conflicting implementation changes require their specific successor/migration records |
+| Execution plan | [OEP-1 implementation plan](docs/OEP1_IMPLEMENTATION_PLAN.md) |
+
+### Basis and rationale
+
+The inspected source contains initialization, detection, adoption, upgrade,
+profile/package selection, strict record validation, project checks, exact-plan
+transactions, preimages, receipts, interruption recovery and rollback. Existing
+fixtures encode preservation of project-owned records, stale-plan refusal,
+invalid-authority refusal, unsafe-operation handling and historical transitions.
+Identity-transition tests extract an exact predecessor commit, so repository
+history also serves a concrete regression purpose.
+
+The static assessment counted 24 source test scripts and an 8,539-line validator
+template. The generated dispatcher imports work-completion implementation at
+module load, and legacy layout references are distributed across the templates.
+These observations justify substantial modularization and selective replacement.
+They do not establish that the implementation is irreparable, that the tests
+currently pass, or that line count alone measures quality. The assessment did not
+rerun the full suites or measure the complete dependency graph.
+
+A fresh repository would still need the same preservation, migration, recovery
+and qualification obligations. Retaining the project permits bounded comparisons
+and reuse of useful contracts and regression cases while creating clean runtime,
+catalog, path-resolution and package boundaries.
+
+### Development and retirement boundary
+
+Retain required semantics and assess code for reuse. Replace packaging,
+dispatch/import boundaries, path handling or individual components when the
+target design and evidence justify it. Keep an operating baseline separate from
+candidate development. The original Octon runtime, OctonOS and unfinished Mini
+4.3 remain reference lineages; their presence does not import features or authority.
+
+Qualify one complete slice first: generate a minimal target project, inspect and
+validate it, perform a task transition, interrupt an operation, recover it, and
+demonstrate bounded rollback. Then qualify adoption of an existing project fixture
+with its records preserved. Expand through the source-owned implementation plan.
+
+Retire superseded implementation only after its replacement, consumer mappings,
+required compatibility/readers, failure behavior and recovery meet their gates.
+Retirement can remove obsolete active code while retaining historical versions
+and evidence. Archiving the active repository is not the selected strategy.
+
+Revisit a particular component when the first slice or dependency analysis shows
+that its boundaries cannot be isolated reliably, or a measured replacement offers
+better maintainability with equivalent required behavior. Reconsidering the whole
+product/repository requires a successor decision with evidence, consumer impact
+and a transition plan; one failed check does not itself authorize a restart.
+
+### References and compatibility
+
+- [OEP-1 target architecture](../../../../octon-project-standard/SPECIFICATION.md)
+- [Ecosystem migration context](../../../../octon_plectarium_quoris_ecosystem_specification/docs/12-migration.md)
+- [Identity-transition boundary](docs/IDENTITY_TRANSITION.md)
+- [Source and acceptance CI declarations](.github/workflows/validate.yml)
+- [Identity-transition regression source](skills/octon-project-bootstrap/scripts/test_identity_transition.py)
+
+This decision owns the strategy and rationale. The implementation plan owns
+sequencing and gate requirements. Specification packages link to these sources;
+their links do not create a second decision record. No new runtime version,
+release, provider qualification, project adoption or implementation completion is
+claimed by this record.

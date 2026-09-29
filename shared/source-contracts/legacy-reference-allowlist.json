@@ -33,7 +33,7 @@
     {
       "id": "LEGACY-0002",
       "path": "ARCHITECTURE_DECISIONS.md",
-      "file_sha256": "7e55c0455294b98cafa0b0b5d0f91f9f8c1462c6d1e3b417a39dbf8a2fa60b1c",
+      "file_sha256": "ee1f86d37665082db052c9c131f6e41e1d9aa928a0fdb6914baed0f3c114f6f6",
       "classification": "truthful_historical_record",
       "occurrence_count": 13
     },
@@ -145,7 +145,7 @@
     {
       "id": "LEGACY-0018",
       "path": "shared/GENERATION_CONTRACT.md",
-      "file_sha256": "6d8dd8663c7fcc6cbf776e3facdc14468c17cdf070a3b1adc195347013fe3129",
+      "file_sha256": "fa76217275ac4254d63f4e569704b4208b680880b0cda80fe86f86b9069c89bf",
       "classification": "breaking_transition_explanation",
       "occurrence_count": 7
     },
@@ -376,7 +376,7 @@
     {
       "id": "LEGACY-0051",
       "path": "skills/octon-project-bootstrap/scripts/plan_adoption.py",
-      "file_sha256": "07f3d78dcf7f0cd788389a5c015cec9f874361cba35c1d05ab04e69515034941",
+      "file_sha256": "31dd1a9a02a70977b4f09595ffa5ee282b95c26035acb4c474d77a5c85320f1e",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
     },
@@ -404,7 +404,7 @@
     {
       "id": "LEGACY-0055",
       "path": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
-      "file_sha256": "1d2d71e768f3e68125d4b823984df75aa9287d5d9e3de195e84c8ec63c3fac6f",
+      "file_sha256": "d59c0a2c0b2130a5aec86aec6f8c493e00f211955df9e51d1c0892eeb4f5ce09",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 25
     },
@@ -442,6 +442,13 @@
       "file_sha256": "5dfe2ba3ba2f39d7fcf864eebb5ffe4c6aa8db9c93710d2c957b32734722b480",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0062",
+      "path": "docs/OEP1_IMPLEMENTATION_PLAN.md",
+      "file_sha256": "9788fd3987ecdfec4bc347d7e0e4dbb1293da086f16daaaaf6ae182de7d7bf89",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 2
     }
   ],
   "limitations": [

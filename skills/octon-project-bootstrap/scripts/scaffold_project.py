@@ -17,7 +17,7 @@ import tempfile
 import zlib
 from collections.abc import Iterable
 from datetime import date
-from pathlib import Path, PurePath, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 
 GENERATOR_VERSION = "5.0.0"
@@ -35,6 +35,7 @@ KNOWN_VARIABLES = {
     "PROFILE_OPERATIONAL_FILES_JSON",
     "DERIVED_OPERATIONAL_FILES_JSON",
     "KERNEL_FILES_JSON",
+    "CURRENT_DISPATCHER_PARENT_INDEX",
     "GIT_PORTFOLIO_VERSION",
     "GIT_PORTFOLIO_SHA256",
     "AUTONOMOUS_DELIVERY_VERSION",
@@ -57,6 +58,7 @@ GENERATION_POLICY_KEYS = {
     "permission_grant",
     "profiles",
     "layouts",
+    "installation_bindings",
     "project_paths",
     "packages",
     "acceptance_criteria",
@@ -611,12 +613,384 @@ def manifest_project_paths(manifest: dict[str, object]) -> dict[str, object]:
     return project_paths
 
 
-def kernel_paths(manifest: dict[str, object]) -> tuple[Path, ...]:
+class InstallationBinding:
+    """Resolve an explicitly selected installation without selecting output files."""
+
+    _ROOTS = {
+        "current": (
+            Path(".agent"), Path(".agents"), Path("project-dossier"),
+            Path(".octon-origin.json"),
+        ),
+        "oep1_target": None,
+    }
+    _RESERVED_WINDOWS_NAMES = {"CON", "PRN", "AUX", "NUL"} | {
+        f"{prefix}{index}" for prefix in ("COM", "LPT") for index in range(1, 10)
+    }
+
+    def __init__(
+        self,
+        layout_id: str,
+        project_root: Path | None,
+        *,
+        state_owner: str = "embedded",
+        external_state_root: Path | None = None,
+        target_contract: dict[str, object] | None = None,
+    ) -> None:
+        if layout_id not in self._ROOTS:
+            raise ValueError("installation layout must be current or oep1_target")
+        if project_root is None and layout_id != "current":
+            raise ValueError("target installation requires an explicit project root")
+        if state_owner not in {"embedded", "external"}:
+            raise ValueError("installation requires exactly one live state owner")
+        if layout_id == "current" and state_owner != "embedded":
+            raise ValueError("current snapshots retain their embedded state owner")
+        if (state_owner == "external") != (external_state_root is not None):
+            raise ValueError("external state requires exactly one explicit external binding")
+
+        self.layout_id = layout_id
+        if layout_id == "oep1_target":
+            if target_contract is None:
+                raise ValueError("target installation requires its source manifest contract")
+            roots = target_contract["root_bindings"]
+            assert isinstance(roots, dict)
+            self.agent_root = Path(str(roots["agent"]["path"]))
+            self.capabilities_root = Path(str(roots["agents"]["path"]))
+            self.dossier_root = Path(str(roots["dossier"]["path"]))
+            self.manifest_relative = Path(str(target_contract["manifest_path"]))
+        else:
+            if target_contract is not None:
+                raise ValueError("current installation cannot adopt a target manifest")
+            self.agent_root, self.capabilities_root, self.dossier_root, self.manifest_relative = self._ROOTS[layout_id]
+        self.embedded_state_relative = self.agent_root / "state"
+        self.project_root = self._absolute_root(project_root, "project root") if project_root is not None else None
+        self.state_owner = state_owner
+        self.external_state_root = None
+        if external_state_root is not None:
+            external = self._absolute_root(external_state_root, "external state root")
+            if self.project_root is None:
+                raise ValueError("external state requires an explicit project root")
+            if external == self.project_root or external in self.project_root.parents or self.project_root in external.parents:
+                raise ValueError("external state root must be separate from the project root")
+            self.external_state_root = external
+
+        if layout_id == "oep1_target" and self.project_root is not None and self.project_root.exists():
+            if not self.project_root.is_dir():
+                raise ValueError("target project root is not a directory")
+            blocked = {".octon", ".agent", ".agents", "project-dossier", ".octon-origin.json", ".octon-mini-origin.json"}
+            try:
+                children = list(self.project_root.iterdir())
+            except OSError as error:
+                raise ValueError("target project root cannot be inspected") from error
+            for path in children:
+                if path.name.casefold() in blocked:
+                    raise ValueError(f"target installation requires a reviewed reserved-path disposition: {path.name}")
+
+    @staticmethod
+    def _absolute_root(value: Path, label: str) -> Path:
+        root = Path(value)
+        if not root.is_absolute():
+            raise ValueError(f"{label} must be absolute")
+        try:
+            resolved = root.resolve(strict=False)
+        except (OSError, RuntimeError) as error:
+            raise ValueError(f"{label} cannot be resolved") from error
+        if resolved == Path(resolved.anchor):
+            raise ValueError(f"{label} cannot be a filesystem root")
+        return resolved
+
+    @classmethod
+    def current(cls, project_root: Path) -> "InstallationBinding":
+        return cls("current", project_root)
+
+    @classmethod
+    def target(
+        cls,
+        project_root: Path,
+        policy: dict[str, object],
+        *,
+        state_owner: str = "embedded",
+        external_state_root: Path | None = None,
+    ) -> "InstallationBinding":
+        contract = target_installation_contract(policy)
+        return cls(
+            "oep1_target", project_root, state_owner=state_owner,
+            external_state_root=external_state_root, target_contract=contract,
+        )
+
+    def relative_path(self, value: object, label: str) -> Path:
+        if not isinstance(value, str) or not value or "\\" in value or ":" in value or "\x00" in value:
+            raise ValueError(f"{label}: invalid portable path {value!r}")
+        parts = value.split("/")
+        if (
+            any(part in {"", ".", ".."} or part.endswith((" ", ".")) for part in parts)
+            or PurePosixPath(value).is_absolute()
+            or PureWindowsPath(value).drive
+            or PureWindowsPath(value).root
+        ):
+            raise ValueError(f"{label}: unsafe portable path {value!r}")
+        if any(part.split(".", 1)[0].rstrip(" ").upper() in self._RESERVED_WINDOWS_NAMES for part in parts):
+            raise ValueError(f"{label}: reserved platform path {value!r}")
+        relative = Path(*parts)
+        if self.project_root is not None:
+            try:
+                resolved = (self.project_root / relative).resolve(strict=False)
+            except (OSError, RuntimeError) as error:
+                raise ValueError(f"{label}: path cannot be resolved") from error
+            if not resolved.is_relative_to(self.project_root):
+                raise ValueError(f"{label}: path escapes the project root")
+        return relative
+
+    @staticmethod
+    def _under(path: Path, root: Path) -> bool:
+        return path == root or root in path.parents
+
+    def project_source_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        if not (
+            any(self._under(path, root) for root in (self.agent_root, self.capabilities_root, self.dossier_root))
+            or path in {Path("AGENTS.md"), Path("WORKSPACE.md")}
+        ):
+            raise ValueError(f"{label}: path is outside the selected installation")
+        if self.state_owner == "external" and self._under(path, self.embedded_state_relative):
+            raise ValueError(f"{label}: embedded live state conflicts with the external owner")
+        return path
+
+    def derived_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        roots = (self.agent_root, self.capabilities_root, self.dossier_root)
+        if self.layout_id == "oep1_target":
+            roots += (Path(".octon/generated"),)
+        if not any(self._under(path, root) for root in roots):
+            raise ValueError(f"{label}: path is outside the selected installation")
+        if self.state_owner == "external" and self._under(path, self.embedded_state_relative):
+            raise ValueError(f"{label}: embedded live state conflicts with the external owner")
+        return path
+
+    def kernel_path(self, value: object, label: str) -> Path:
+        path = self.relative_path(value, label)
+        if not self._under(path, self.agent_root):
+            raise ValueError(f"{label}: kernel path is outside the selected harness")
+        return path
+
+    def current_origin_path(self, value: object, label: str) -> Path:
+        if self.layout_id != "current":
+            raise ValueError("target installation manifest is not a historical origin alias")
+        path = self.relative_path(value, label)
+        if path != self.manifest_relative:
+            raise ValueError(f"{label}: current origin path differs")
+        return path
+
+    @property
+    def state_root(self) -> Path:
+        if self.external_state_root is not None:
+            return self.external_state_root
+        if self.project_root is None:
+            raise ValueError("unbound current installation has no live state root")
+        return self.project_root / self.embedded_state_relative
+
+    @property
+    def transaction_root(self) -> Path:
+        if self.project_root is None or self.state_owner != "embedded":
+            raise ValueError("transaction root requires an embedded project binding")
+        return self.project_root / self.agent_root / "transactions"
+
+
+CURRENT_INSTALLATION_PATHS = InstallationBinding("current", None)
+
+
+TARGET_ROOT_CONTRACT = {
+    "project": (".", "project", "project"),
+    "installation": (".octon", "project", "project"),
+    "runtime": (".octon/runtime", "project", "runtime_release"),
+    "agent": (".octon/agent", "project", "project"),
+    "agents": (".octon/agents", "project", "project"),
+    "dossier": (".octon/dossier", "project", "project"),
+    "packages": (".octon/packages", "project", "package_release"),
+    "generated": (".octon/generated", "project", "derived_writer"),
+    "sources": (".octon/sources", "project", "project"),
+    "archive": (".octon/archive", "project", "project"),
+    "local": (".octon/local", "project", "project"),
+    "workspace_worktrees": (".worktrees", "workspace", "workspace"),
+    "workspace_recovery": (".recovery", "workspace", "workspace"),
+}
+TARGET_FILE_KEYS = {
+    "id", "path", "root_id", "owner", "information_class", "tracking",
+    "minimum_profile", "source_rule_id",
+}
+
+
+def target_installation_contract(policy: dict[str, object]) -> dict[str, object]:
+    """Validate the inactive target inventory in the one source manifest."""
+    bindings = policy.get("installation_bindings")
+    if not isinstance(bindings, dict) or set(bindings) != {
+        "schema_version", "document_role", "permission_grant", "current", "target"
+    } or (
+        bindings.get("schema_version") != "octon.source.installation-bindings.v1"
+        or bindings.get("document_role") != "source_owned_installation_layout_binding_contract"
+        or bindings.get("permission_grant") is not False
+    ):
+        raise ValueError("installation binding source contract is missing or invalid")
+    current = bindings.get("current")
+    expected_current = {
+        "layout_id": "current",
+        "generation_status": "active_existing_output",
+        "agent_root": ".agent",
+        "origin_path": ".octon-origin.json",
+        "dispatcher_path": ".agent/scripts/octon.py",
+    }
+    if current != expected_current or manifest_project_paths(policy)["origin"]["path"] != current["origin_path"]:
+        raise ValueError("current installation binding differs from the active source inventory")
+
+    target = bindings.get("target")
+    target_keys = {
+        "schema_version", "version", "layout_id", "generation_status", "manifest_path",
+        "inventory_scope", "root_bindings", "state_binding", "file_inventory",
+        "inventory_count", "inventory_hash_algorithm", "inventory_sha256", "limitations",
+    }
+    if not isinstance(target, dict) or set(target) != target_keys or (
+        target.get("schema_version") != "octon.source.target-installation-manifest.v1"
+        or target.get("version") != "1.0.0"
+        or target.get("layout_id") != "oep1_target"
+        or target.get("generation_status") != "design_only_not_selectable"
+        or target.get("inventory_scope") != "mandatory_core_seed_design"
+        or target.get("inventory_hash_algorithm") != "sha256_canonical_json_v1"
+        or target.get("manifest_path") != ".octon/manifest.json"
+    ):
+        raise ValueError("target installation manifest identity or inactive status differs")
+    roots = target.get("root_bindings")
+    if not isinstance(roots, dict) or set(roots) != set(TARGET_ROOT_CONTRACT):
+        raise ValueError("target installation root inventory is incomplete")
+    for root_id, expected in TARGET_ROOT_CONTRACT.items():
+        raw = roots[root_id]
+        if not isinstance(raw, dict) or raw != dict(zip(("path", "scope", "owner"), expected)):
+            raise ValueError(f"target root binding {root_id} differs")
+        if root_id != "project":
+            CURRENT_INSTALLATION_PATHS.relative_path(raw["path"], f"target root {root_id}")
+    if target.get("state_binding") != {
+        "owner_policy": "exactly_one",
+        "embedded_path": ".octon/agent/state",
+        "external_policy": "explicit_project_owned_single_writer_outside_project",
+    }:
+        raise ValueError("target live state binding has more than one owner or differs")
+
+    inventory = target.get("file_inventory")
+    if not isinstance(inventory, list) or not inventory or target.get("inventory_count") != len(inventory):
+        raise ValueError("target file inventory is missing or has the wrong count")
+    digest = hashlib.sha256(json.dumps(
+        inventory, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+    if target.get("inventory_sha256") != digest:
+        raise ValueError("target file inventory digest differs")
+    profiles = set(profile_ranks(policy))
+    by_id: dict[str, Path] = {}
+    observed_paths: set[Path] = set()
+    for index, raw in enumerate(inventory):
+        if not isinstance(raw, dict) or set(raw) != TARGET_FILE_KEYS:
+            raise ValueError(f"target file {index}: invalid ownership entry")
+        identifier = raw.get("id")
+        root_id = raw.get("root_id")
+        if not isinstance(identifier, str) or not re.fullmatch(r"[a-z0-9]+(?:[._-][a-z0-9]+)*", identifier):
+            raise ValueError(f"target file {index}: invalid stable ID")
+        if not isinstance(root_id, str) or root_id not in roots or roots[root_id]["scope"] != "project":
+            raise ValueError(f"target file {identifier}: invalid project root binding")
+        path = CURRENT_INSTALLATION_PATHS.relative_path(raw.get("path"), f"target file {identifier}")
+        if identifier in by_id or path in observed_paths:
+            raise ValueError(f"target file {identifier}: duplicate ID or path")
+        by_id[identifier] = path
+        observed_paths.add(path)
+        minimum_profile = raw.get("minimum_profile")
+        if not isinstance(minimum_profile, str) or minimum_profile not in profiles or raw.get("source_rule_id") is not None:
+            raise ValueError(f"target file {identifier}: unqualified profile or source rule")
+        matching_roots = [
+            (name, len(Path(value["path"]).parts))
+            for name, value in roots.items()
+            if value["scope"] == "project" and (
+                name == "project" or path == Path(value["path"]) or Path(value["path"]) in path.parents
+            )
+        ]
+        owning_root = max(matching_roots, key=lambda item: item[1])[0]
+        if root_id != owning_root:
+            raise ValueError(f"target file {identifier}: path belongs to {owning_root}")
+        info = raw.get("information_class")
+        owner = raw.get("owner")
+        tracking = raw.get("tracking")
+        root_owner = roots[root_id]["owner"]
+        if root_owner in {"runtime_release", "package_release", "derived_writer"} and owner != root_owner:
+            raise ValueError(f"target file {identifier}: owner conflicts with its root binding")
+        if info == "immutable":
+            valid = owner == "runtime_release" and root_id == "runtime" and tracking == "versioned"
+        elif info == "derived":
+            valid = owner == "derived_writer" and tracking in {"versioned", "ignored_rebuildable"}
+        elif info == "local_durable":
+            valid = owner == "project" and root_id == "local" and tracking == "ignored_durable"
+        else:
+            valid = info in {"governance", "navigation", "provenance", "configuration", "authored"} and owner == "project" and tracking == "versioned"
+        if not valid:
+            raise ValueError(f"target file {identifier}: ownership or retention conflicts")
+    required = {
+        "entry.instructions": Path("AGENTS.md"),
+        "entry.navigation": Path("WORKSPACE.md"),
+        "installation.manifest": Path(target["manifest_path"]),
+        "runtime.manifest": Path(".octon/runtime/manifest.json"),
+        "runtime.entry": Path(".octon/runtime/octon"),
+        "harness.state.focus": Path(".octon/agent/state/focus.json"),
+        "harness.state.current": Path(".octon/agent/state/current.json"),
+        "local.binding": Path(".octon/local/binding.json"),
+        **{
+            f"harness.{path.stem}": Path(".octon/agent") / path.name
+            for path in kernel_paths(policy)
+        },
+    }
+    if any(by_id.get(identifier) != path for identifier, path in required.items()):
+        raise ValueError("target core file inventory lacks a required identity or path")
+    allowed_state_paths = {
+        Path(".octon/agent/state/focus.json"),
+        Path(".octon/agent/state/current.json"),
+    }
+    state_root = Path(target["state_binding"]["embedded_path"])
+    for path in observed_paths:
+        if (state_root in path.parents or path == state_root) and path not in allowed_state_paths:
+            raise ValueError("target core inventory has an undeclared second live state path")
+        if path.name in {"focus.json", "current.json"} and "state" in path.parts and path not in allowed_state_paths:
+            raise ValueError("target core inventory duplicates live state ownership")
+    limitations = target.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(not isinstance(item, str) or not item.strip() for item in limitations):
+        raise ValueError("target installation limitations are missing")
+    return target
+
+
+def target_installation_root(policy: dict[str, object]) -> Path:
+    contract = target_installation_contract(policy)
+    return Path(contract["root_bindings"]["installation"]["path"])
+
+
+def target_installation_path_occupied(project_root: Path, policy: dict[str, object]) -> bool:
+    reserved_name = target_installation_root(policy).name.casefold()
+    try:
+        return any(path.name.casefold() == reserved_name for path in project_root.iterdir())
+    except OSError as error:
+        raise ValueError("target project root cannot be inspected") from error
+
+
+def current_dispatcher_parent_index(policy: dict[str, object]) -> int:
+    target_installation_contract(policy)
+    path = CURRENT_INSTALLATION_PATHS.relative_path(
+        policy["installation_bindings"]["current"]["dispatcher_path"],
+        "current dispatcher path",
+    )
+    return len(path.parts) - 1
+
+
+def kernel_paths(
+    manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> tuple[Path, ...]:
     raw_paths = manifest_project_paths(manifest).get("kernel_files")
     if not isinstance(raw_paths, list) or not raw_paths:
         raise ValueError("profile manifest requires kernel files")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths = tuple(
-        portable_project_path(item, "profile manifest kernel file")
+        selected.kernel_path(item, "profile manifest kernel file")
         for item in raw_paths
     )
     if len(paths) != len(set(paths)):
@@ -625,11 +999,12 @@ def kernel_paths(manifest: dict[str, object]) -> tuple[Path, ...]:
 
 
 def project_local_source_paths(
-    profile: str, manifest: dict[str, object]
+    profile: str, manifest: dict[str, object], *, installation: InstallationBinding | None = None
 ) -> set[Path]:
     raw_sources = manifest_project_paths(manifest).get("project_local_sources")
     if not isinstance(raw_sources, list) or not raw_sources:
         raise ValueError("profile manifest requires project-local source paths")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths: set[Path] = set()
     for index, raw in enumerate(raw_sources):
         if not isinstance(raw, dict) or set(raw) != {
@@ -639,17 +1014,20 @@ def project_local_source_paths(
         }:
             raise ValueError(f"project-local source {index}: invalid contract")
         if profile_path_applies(profile, raw.get("minimum_profile"), manifest):
-            path = portable_project_path(raw.get("path"), f"project-local source {index}")
+            path = selected.project_source_path(raw.get("path"), f"project-local source {index}")
             if path in paths:
                 raise ValueError("profile manifest repeats a project-local source path")
             paths.add(path)
     return paths
 
 
-def derived_output_paths(profile: str, manifest: dict[str, object]) -> set[Path]:
+def derived_output_paths(
+    profile: str, manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> set[Path]:
     raw_outputs = manifest_project_paths(manifest).get("derived_outputs")
     if not isinstance(raw_outputs, list) or not raw_outputs:
         raise ValueError("profile manifest requires derived output paths")
+    selected = installation or CURRENT_INSTALLATION_PATHS
     paths: set[Path] = set()
     for index, raw in enumerate(raw_outputs):
         if not isinstance(raw, dict) or set(raw) != {
@@ -662,14 +1040,16 @@ def derived_output_paths(profile: str, manifest: dict[str, object]) -> set[Path]
         if raw.get("writer") != "refresh":
             raise ValueError(f"derived output {index}: writer must remain refresh")
         if profile_path_applies(profile, raw.get("minimum_profile"), manifest):
-            path = portable_project_path(raw.get("path"), f"derived output {index}")
+            path = selected.derived_path(raw.get("path"), f"derived output {index}")
             if path in paths:
                 raise ValueError("profile manifest repeats a derived output path")
             paths.add(path)
     return paths
 
 
-def origin_path(manifest: dict[str, object]) -> Path:
+def origin_path(
+    manifest: dict[str, object], *, installation: InstallationBinding | None = None
+) -> Path:
     origin = manifest_project_paths(manifest).get("origin")
     if (
         not isinstance(origin, dict)
@@ -677,7 +1057,8 @@ def origin_path(manifest: dict[str, object]) -> Path:
         or origin.get("ownership") != "generated_snapshot_provenance"
     ):
         raise ValueError("profile manifest origin contract is invalid")
-    return portable_project_path(origin.get("path"), "profile manifest origin")
+    selected = installation or CURRENT_INSTALLATION_PATHS
+    return selected.current_origin_path(origin.get("path"), "profile manifest origin")
 
 
 def load_generation_policy() -> dict[str, object]:
@@ -687,7 +1068,7 @@ def load_generation_policy() -> dict[str, object]:
     if not isinstance(value, dict) or set(value) != GENERATION_POLICY_KEYS:
         raise ValueError("profile manifest has an invalid top-level contract")
     if (
-        value.get("schema_version") != "octon-mini.source.profile-manifest.v1"
+        value.get("schema_version") != "octon-mini.source.profile-manifest.v2"
         or value.get("document_role")
         != "authoritative_profile_inventory_acceptance_and_generation_manifest"
         or value.get("permission_grant") is not False
@@ -705,6 +1086,7 @@ def load_generation_policy() -> dict[str, object]:
     for profile in profiles:
         derived_output_paths(profile, value)
     origin_path(value)
+    target_installation_contract(value)
 
     packages = value.get("packages")
     if not isinstance(packages, list) or not packages:
@@ -1961,9 +2343,18 @@ def main() -> int:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2
 
-    selected_project_sources = project_local_source_paths(profile, generation_policy)
-    selected_derived_outputs = derived_output_paths(profile, generation_policy)
-    selected_origin = origin_path(generation_policy)
+    try:
+        installation = InstallationBinding.current(target)
+        selected_project_sources = project_local_source_paths(
+            profile, generation_policy, installation=installation
+        )
+        selected_derived_outputs = derived_output_paths(
+            profile, generation_policy, installation=installation
+        )
+        selected_origin = origin_path(generation_policy, installation=installation)
+    except ValueError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
     expected = (
         set(templates)
         | set(schemas)
@@ -2038,8 +2429,11 @@ def main() -> int:
             separators=(",", ":"),
         ),
         "KERNEL_FILES_JSON": json.dumps(
-            canonical_posix_paths(kernel_paths(generation_policy)),
+            canonical_posix_paths(kernel_paths(generation_policy, installation=installation)),
             separators=(",", ":"),
+        ),
+        "CURRENT_DISPATCHER_PARENT_INDEX": str(
+            current_dispatcher_parent_index(generation_policy)
         ),
         "GIT_PORTFOLIO_VERSION": str(git_portfolio_contract["version"]),
         "GIT_PORTFOLIO_SHA256": str(git_portfolio_contract["sha256"]),

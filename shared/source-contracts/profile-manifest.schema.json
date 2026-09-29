@@ -490,6 +490,101 @@
         }
       }
     },
+    "installation_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "scope", "owner"],
+      "properties": {
+        "path": {"$ref": "#/$defs/project_path"},
+        "scope": {"enum": ["project", "workspace"]},
+        "owner": {"enum": ["project", "runtime_release", "package_release", "derived_writer", "workspace"]}
+      }
+    },
+    "target_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "root_id", "owner", "information_class", "tracking", "minimum_profile", "source_rule_id"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"},
+        "path": {"$ref": "#/$defs/project_path"},
+        "root_id": {"type": "string", "minLength": 1},
+        "owner": {"enum": ["project", "runtime_release", "derived_writer"]},
+        "information_class": {"enum": ["governance", "navigation", "provenance", "immutable", "configuration", "derived", "authored", "local_durable"]},
+        "tracking": {"enum": ["versioned", "ignored_rebuildable", "ignored_durable"]},
+        "minimum_profile": {"$ref": "#/$defs/profile_id"},
+        "source_rule_id": {"type": "null"}
+      }
+    },
+    "installation_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "document_role", "permission_grant", "current", "target"],
+      "properties": {
+        "schema_version": {"const": "octon.source.installation-bindings.v1"},
+        "document_role": {"const": "source_owned_installation_layout_binding_contract"},
+        "permission_grant": {"const": false},
+        "current": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layout_id", "generation_status", "agent_root", "origin_path", "dispatcher_path"],
+          "properties": {
+            "layout_id": {"const": "current"},
+            "generation_status": {"const": "active_existing_output"},
+            "agent_root": {"$ref": "#/$defs/project_path"},
+            "origin_path": {"$ref": "#/$defs/project_path"},
+            "dispatcher_path": {"$ref": "#/$defs/project_path"}
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "version", "layout_id", "generation_status", "manifest_path", "inventory_scope", "root_bindings", "state_binding", "file_inventory", "inventory_count", "inventory_hash_algorithm", "inventory_sha256", "limitations"],
+          "properties": {
+            "schema_version": {"const": "octon.source.target-installation-manifest.v1"},
+            "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "layout_id": {"const": "oep1_target"},
+            "generation_status": {"const": "design_only_not_selectable"},
+            "manifest_path": {"$ref": "#/$defs/project_path"},
+            "inventory_scope": {"const": "mandatory_core_seed_design"},
+            "root_bindings": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["project", "installation", "runtime", "agent", "agents", "dossier", "packages", "generated", "sources", "archive", "local", "workspace_worktrees", "workspace_recovery"],
+              "properties": {
+                "project": {"$ref": "#/$defs/installation_root"},
+                "installation": {"$ref": "#/$defs/installation_root"},
+                "runtime": {"$ref": "#/$defs/installation_root"},
+                "agent": {"$ref": "#/$defs/installation_root"},
+                "agents": {"$ref": "#/$defs/installation_root"},
+                "dossier": {"$ref": "#/$defs/installation_root"},
+                "packages": {"$ref": "#/$defs/installation_root"},
+                "generated": {"$ref": "#/$defs/installation_root"},
+                "sources": {"$ref": "#/$defs/installation_root"},
+                "archive": {"$ref": "#/$defs/installation_root"},
+                "local": {"$ref": "#/$defs/installation_root"},
+                "workspace_worktrees": {"$ref": "#/$defs/installation_root"},
+                "workspace_recovery": {"$ref": "#/$defs/installation_root"}
+              }
+            },
+            "state_binding": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["owner_policy", "embedded_path", "external_policy"],
+              "properties": {
+                "owner_policy": {"const": "exactly_one"},
+                "embedded_path": {"$ref": "#/$defs/project_path"},
+                "external_policy": {"const": "explicit_project_owned_single_writer_outside_project"}
+              }
+            },
+            "file_inventory": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/target_file"}},
+            "inventory_count": {"type": "integer", "minimum": 1},
+            "inventory_hash_algorithm": {"const": "sha256_canonical_json_v1"},
+            "inventory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "limitations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 10}}
+          }
+        }
+      }
+    },
     "forbidden_output": {
       "type": "object",
       "additionalProperties": false,
@@ -524,6 +619,7 @@
     "permission_grant",
     "profiles",
     "layouts",
+    "installation_bindings",
     "project_paths",
     "packages",
     "acceptance_criteria",
@@ -536,7 +632,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "octon-mini.source.profile-manifest.v1"
+      "const": "octon-mini.source.profile-manifest.v2"
     },
     "document_role": {
       "const": "authoritative_profile_inventory_acceptance_and_generation_manifest"
@@ -560,6 +656,7 @@
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/layout"}
     },
+    "installation_bindings": {"$ref": "#/$defs/installation_bindings"},
     "project_paths": {
       "type": "object",
       "additionalProperties": false,

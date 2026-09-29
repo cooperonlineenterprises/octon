@@ -1273,7 +1273,7 @@ def main() -> int:
         f"- decision governance: valid baseline plus {mutation_count} fail-closed mutations"
     )
     print(
-        "- profile manifest: v1 explicit allowlists, derived profile projections, "
+        "- profile manifest: v2 source contract with retained explicit allowlists, derived profile projections, "
         "capability-scoped degradation, and strict repository drift validation"
     )
     guided_mutation_count = len(

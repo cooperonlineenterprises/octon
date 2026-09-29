@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -222,6 +223,7 @@ REQUIRED_PATHS = (
     "skills/octon-project-bootstrap/scripts/test_source_work_completion.py",
     "skills/octon-project-bootstrap/scripts/test_guided_setup.py",
     "skills/octon-project-bootstrap/scripts/test_octon_launchers.py",
+    "skills/octon-project-bootstrap/scripts/test_installation_binding.py",
     "skills/octon-project-bootstrap/scripts/upgrade_project.py",
     "skills/octon-project-bootstrap/scripts/validate_octon_mini.py",
     "skills/octon-project-bootstrap/scripts/validate_source_contracts.py",
@@ -1012,6 +1014,9 @@ def validate_templates(issues: list[str], scaffolder: Any) -> None:
         "PROFILE_OPERATIONAL_FILES_JSON": "[]",
         "DERIVED_OPERATIONAL_FILES_JSON": "[]",
         "KERNEL_FILES_JSON": "[]",
+        "CURRENT_DISPATCHER_PARENT_INDEX": str(
+            scaffolder.current_dispatcher_parent_index(manifest)
+        ),
         "GIT_PORTFOLIO_VERSION": str(
             scaffolder.package_contract(manifest, "small-team-git-portfolio")["version"]
         ),
@@ -1580,6 +1585,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "cross-platform source, installed, and generated launcher fixtures",
         ),
         (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],
+            ROOT,
+            "explicit installation binding, confinement, collision, and state-owner fixtures",
+        ),
+        (
             [
                 sys.executable,
                 "-B",
@@ -1709,8 +1719,9 @@ def validate_executable_contracts(issues: list[str]) -> None:
             "security and supply-chain extension fixtures",
         ),
     )
-    for command, cwd, label in commands:
-        result = subprocess.run(
+    def run_fixture(item: tuple[list[str], Path, str]) -> subprocess.CompletedProcess[str]:
+        command, cwd, _label = item
+        return subprocess.run(
             command,
             cwd=cwd,
             capture_output=True,
@@ -1718,6 +1729,12 @@ def validate_executable_contracts(issues: list[str]) -> None:
             check=False,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
+
+    # Each suite uses its own disposable fixtures. Keep all suites and their
+    # reporting order while bounding the Windows-heavy source gate's wall time.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(run_fixture, commands))
+    for (_command, _cwd, label), result in zip(commands, results):
         if result.returncode:
             issues.append(
                 f"{label} failed: {result.stderr.strip() or result.stdout.strip()}"

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import importlib.util
 import json
 import os
@@ -20,11 +21,13 @@ sys.dont_write_bytecode = True
 
 import octon_doctor
 import octon_continuation as continuation
-import octon_work_completion
 import octon_transaction as transaction
 
 
-ROOT = Path(__file__).resolve().parents[2]
+_CURRENT_DISPATCHER_PARENT_INDEX = "{{CURRENT_DISPATCHER_PARENT_INDEX}}"
+ROOT = Path(__file__).resolve().parents[
+    2 if _CURRENT_DISPATCHER_PARENT_INDEX.startswith("{{") else int(_CURRENT_DISPATCHER_PARENT_INDEX)
+]
 TASK_ID = re.compile(r"^TASK-([0-9]{4})$")
 PLAN_ID = re.compile(r"^PLAN-([0-9]{4})$")
 ACTIVE_TASK_STATUSES = {"ready", "in_progress", "validating", "review", "blocked", "reopened"}
@@ -56,6 +59,20 @@ class WorkflowError(ValueError):
         )
         self.report = report
         super().__init__(str(report.get("root_cause", "workflow blocked")))
+
+
+def work_completion_call(action: str, *arguments: Any) -> Any:
+    """Load completion mechanics only when a completion action needs them."""
+    try:
+        completion = importlib.import_module("octon_work_completion")
+    except ModuleNotFoundError as error:
+        if error.name != "octon_work_completion":
+            raise
+        raise WorkflowError("work completion implementation is unavailable") from error
+    try:
+        return getattr(completion, action)(*arguments)
+    except completion.FinishError as error:
+        raise WorkflowError(error.report) from error
 
 
 class ContinuationParser(argparse.ArgumentParser):
@@ -695,7 +712,7 @@ def apply_workflow_plan(args: argparse.Namespace, expected_prefix: str) -> int:
         print(f"[RECEIPT] {receipt_path.relative_to(ROOT)}")
         print("[TIMING] " + json.dumps(transaction.LAST_PHASE_TIMINGS, sort_keys=True))
     if plan.get("operation") == "work.close":
-        completion_plan = octon_work_completion.run_completion_plan_event(ROOT)
+        completion_plan = work_completion_call("run_completion_plan_event", ROOT)
         if completion_plan is not None:
             print("[COMPLETION PLAN EVENT]")
             print(json.dumps(completion_plan, indent=2, sort_keys=True))
@@ -1191,7 +1208,7 @@ def main() -> int:
             return dispatch_long_running_work(args.run_args)
         if args.work_action == "finish":
             if args.finish_action == "plan":
-                plan = octon_work_completion.build_plan(ROOT, args.task_id)
+                plan = work_completion_call("build_plan", ROOT, args.task_id)
                 if args.details_json:
                     print(json.dumps(plan, indent=2, sort_keys=True, allow_nan=False))
                 else:
@@ -1203,14 +1220,16 @@ def main() -> int:
                     )
                 return 0
             if args.finish_action == "apply":
-                receipt = octon_work_completion.apply(
+                receipt = work_completion_call(
+                    "apply",
                     ROOT,
                     args.accept_digest,
                     project_path(args.authorization_file),
                     args.task_id,
                 )
             else:
-                receipt = octon_work_completion.resume(
+                receipt = work_completion_call(
+                    "resume",
                     ROOT,
                     args.receipt_id,
                     project_path(args.authorization_file) if args.authorization_file else None,
@@ -1293,7 +1312,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (WorkflowError, octon_work_completion.FinishError, transaction.TransactionError) as error:
+    except (WorkflowError, transaction.TransactionError) as error:
         report = getattr(error, "report", None)
         if not isinstance(report, dict):
             report = continuation.fallback(

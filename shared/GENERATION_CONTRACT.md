@@ -31,8 +31,12 @@ its schema is versioned separately. Every source path defaults to `source_only`;
 only a reviewed rule with disposition `generated` or an explicitly installed,
 content-addressed package may enter the selected profile.
 
-Profile-manifest v1 generated rules enumerate the exact reviewed relative paths and bind
-that list by count and SHA-256 digest. Adding, removing, renaming, or moving a
+Profile-manifest v2 retains the v1 generated rules: they enumerate the exact
+reviewed relative paths and bind that list by count and SHA-256 digest. Its
+versioned OEP-1 target installation section is source-only and not selectable
+for generation. It binds a reviewed core seed inventory and root ownership but
+does not claim qualified runtime assets, target adoption, or migration. Adding,
+removing, renaming, or moving a
 template or copied schema therefore requires an explicit policy inventory
 review. A file's location under a template directory is not sufficient
 authority to generate it.
