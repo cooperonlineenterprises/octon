@@ -63,7 +63,8 @@ interrupts after a durable pending journal and partial write, refuses divergent
 unknown local state, reconciles before retry, finalizes an already receipted apply,
 and resumes interrupted rollback. IDs, preimages, receipts and recovery journals
 remain under their existing owners. Controlled external outcome tests remain
-under the existing completion owner, with no actual external provider effect.
+under the existing autonomous-delivery source release-effect owner, with no
+actual external provider effect.
 
 The supported predecessor fixture starts at exact Mini 4.2 source revision
 `5e2d3025aea6b1574ab984e5ebb89b5602a38535`, uses the existing reviewed 4.2→5.0
