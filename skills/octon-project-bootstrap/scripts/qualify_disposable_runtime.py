@@ -192,6 +192,25 @@ def fixture_conversion_plan(target):
         expected=inventory.get(value)
         if not expected or reader.digest((target/value).read_bytes()) != expected.get('sha256'):
             raise ValueError('custom control or verifier conversion unsupported: '+value)
+    supported_authored={
+        'AGENTS.md','.agent/state/focus.json','.agent/decisions/governance-register.json',
+        '.agent/decisions/reuse-policy.json','project-dossier/machine-readable/artifact-registry.json'}
+    derived_predecessor={'.agent/state/current.json','project-dossier/ARTIFACT_CATALOG.json',
+                         'project-dossier/MANIFEST.json','project-dossier/machine-readable/path-authority.json'}
+    for relative,expected in inventory.items():
+        path=target/relative
+        if relative in derived_predecessor or relative=='.octon-origin.json':
+            continue
+        if not path.is_file() or path.is_symlink():
+            raise ValueError('missing or unsafe predecessor inventory dependency: '+relative)
+        if relative=='.agent/project.json':
+            # The existing identity upgrader's reviewed version-only merge is
+            # checked against canonical configuration after rendering below.
+            continue
+        supported=relative in supported_authored or (relative.startswith('project-dossier/') and relative.endswith('.md'))
+        if not supported and (expected.get('sha256') is None or reader.digest(path.read_bytes()) != expected['sha256']):
+            raise ValueError('modified recognized predecessor row requires separate qualification: '+relative)
+
     with tempfile.TemporaryDirectory(prefix='octon-conversion-candidate-') as temporary:
         candidate=Path(temporary)/'target'
         generated=set(inventory) | {'.octon-origin.json'}

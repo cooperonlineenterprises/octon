@@ -300,11 +300,21 @@ class FixtureConversionTests(unittest.TestCase):
         with self.assertRaises(upgrade.UpgradeError):upgrade.plan_command(args)
 
     def test_collision_mixed_unsupported_pending_and_custom_controls_refuse(self):
-        for case in ['collision','case-collision','mixed','unsupported','pending','unknown-effect','git','extra-app','mode','control']:
+        for case in ['collision','case-collision','mixed','unsupported','pending','unknown-effect','git','extra-app','mode','known-gate','known-evidence','known-schema','known-implementation','control']:
             target=Path(self.area.name)/case;shutil.copytree(self.root,target)
             if case=='collision':(target/'.octon').mkdir()
             elif case=='case-collision':(target/'.OCTON').mkdir()
             elif case=='extra-app':(target/'app.py').write_text('project-owned implementation\n')
+            elif case=='known-gate':
+                path=target/'project-dossier/validation/QUALITY_GATES.json';value=reader.load(path)
+                value['gates'][0]['title']='Project-owned qualification gate title'
+                write(path,value)
+            elif case=='known-evidence':
+                path=target/'.agent/project-checks/evidence.json';value=reader.load(path);value['limitations']=['Project-owned retained evidence limitation'];write(path,value)
+            elif case=='known-schema':
+                path=target/'.agent/schemas/harness-record.schema.json';path.write_bytes(path.read_bytes()+b'\n')
+            elif case=='known-implementation':
+                path=target/'.agent/diagnostics/diagnostic-catalog.json';path.write_bytes(path.read_bytes()+b'\n')
             elif case=='mode':(target/'.agent/tasks/TASK-0001.md').chmod(0o600)
             elif case=='mixed':(target/'.octon-mini-origin.json').write_bytes(self.old_origin)
             elif case=='unsupported':

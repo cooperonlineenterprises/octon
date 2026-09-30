@@ -81,7 +81,11 @@ all IDs, owners, facts and non-path fields are preserved. Original bytes remain
 in the archive for both transformations.
 Only the declared pristine controls receive canonical target path bindings.
 Unclassified project files, case-folded reserved collisions and mode drift refuse
-before mutation; no application content is silently archived away.
+before mutation; no application content is silently archived away. Every
+recognized predecessor inventory row is classified before rendering: supported
+authored bytes/typed fields are preserved, declared derived outputs regenerate,
+and all other modified, missing or unsafe rows refuse. Custom quality gates and
+project-check evidence therefore require separate qualification.
 Historical plans and receipts retain their original path meanings and are never
 replayed through the target dispatcher. The conversion receipt remains in
 `.agent/transactions` as a predecessor recovery capsule, containing no live task
