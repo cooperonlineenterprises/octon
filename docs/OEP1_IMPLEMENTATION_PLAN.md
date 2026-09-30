@@ -84,6 +84,16 @@ preserved or explicitly amended; no second state owner or production registry.
 
 ### IMP-2 - Qualify one complete target slice
 
+The agent-first governance foundation is an IMP-1 contract/qualification slice
+before live successor behavior: [intent and delegation contracts](GOVERNANCE_FOUNDATION.md),
+[source/consumer baseline](GOVERNANCE_FOUNDATION_BASELINE.md), and source decisions
+SRC-DEC-0041–0043. Its shadow evaluator does not activate grants or update consumers.
+Qualify and integrate the existing authority owner once before any live caller;
+preserve current consumer schemas and all previously active controls meanwhile.
+The runtime/manifest reader, one complete target installation, custom-consumer
+conversion, isolated multi-run coordination and ChangeSet integration gates below
+remain separate. The prototype does not close those milestones.
+
 Depends on IMP-1. Produce one minimal OEP-1 project with the pinned runtime and
 selected harness/dossier files. Demonstrate read-only inspection/checking, a real
 task transition, an interrupted local operation, recovery and bounded rollback.

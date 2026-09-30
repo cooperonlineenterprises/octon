@@ -36,6 +36,14 @@ A working harness enables a newcomer to determine:
 
 ## 2. Design basis
 
+The source-only [intent/delegation foundation](../docs/GOVERNANCE_FOUNDATION.md)
+and SRC-DEC-0041–0043 define the versioned behavioral successor direction.
+Its executable interface computes hypothetical coverage only. It is not emitted
+by the current profiles, does not authenticate or activate authority, and does
+not reinterpret the active kernel 4.2 contracts below. A live successor must
+qualify protected admission, explicit record/consumer migration and host controls.
+The existing task, DEC, evidence, transaction, run and completion owners remain.
+
 Evidence labels used in this specification:
 
 - **Observed — Commerce Foundry:** present in the Commerce Foundry reference

@@ -33,7 +33,7 @@
     {
       "id": "LEGACY-0002",
       "path": "ARCHITECTURE_DECISIONS.md",
-      "file_sha256": "ee1f86d37665082db052c9c131f6e41e1d9aa928a0fdb6914baed0f3c114f6f6",
+      "file_sha256": "4a877c6ba750560653aaf6ae8e88b3d971c8b2b816279f8e8313cf8a70a8d32e",
       "classification": "truthful_historical_record",
       "occurrence_count": 13
     },
@@ -145,7 +145,7 @@
     {
       "id": "LEGACY-0018",
       "path": "shared/GENERATION_CONTRACT.md",
-      "file_sha256": "fa76217275ac4254d63f4e569704b4208b680880b0cda80fe86f86b9069c89bf",
+      "file_sha256": "ecf3edc39e10e8d8cc6a7de7361c1c1572f2d002e077b5f063f50e335c7bfb73",
       "classification": "breaking_transition_explanation",
       "occurrence_count": 7
     },
@@ -446,9 +446,30 @@
     {
       "id": "LEGACY-0062",
       "path": "docs/OEP1_IMPLEMENTATION_PLAN.md",
-      "file_sha256": "9788fd3987ecdfec4bc347d7e0e4dbb1293da086f16daaaaf6ae182de7d7bf89",
+      "file_sha256": "dc83f559c948b80b5c59e8881594b762d18623778b3b81a1384292911adff83a",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 2
+    },
+    {
+      "id": "LEGACY-0063",
+      "path": "docs/GOVERNANCE_FOUNDATION.md",
+      "file_sha256": "1100eac0b5dcda4ea1a36601fb3c1b1874d43c91b6af97a3f4d06a39be274df3",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0064",
+      "path": "docs/GOVERNANCE_FOUNDATION_BASELINE.md",
+      "file_sha256": "e4683901e78448243acb1a16e47a7ae3c29197504039a2e8f8fba161f462159b",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0065",
+      "path": "skills/octon-project-bootstrap/scripts/test_governance_shadow.py",
+      "file_sha256": "c764cd6cc5684f6e93d5bfd9e9db31b60c50bd6d7027fcc6d1f86010e31928c2",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 3
     }
   ],
   "limitations": [

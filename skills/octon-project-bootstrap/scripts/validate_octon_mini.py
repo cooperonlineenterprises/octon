@@ -716,6 +716,14 @@ def validate_config_and_schemas(issues: list[str], scaffolder: Any) -> None:
         "autonomous_delivery_schema": "shared/schemas/harness-autonomous-delivery.schema.json",
         "architecture_proof_schema": "patterns/architecture-proof/schema.json",
         "architecture_proof_generated": False,
+        "intent_delegation_foundation": {
+            "status": "source_only_shadow",
+            "schema": "shared/source-contracts/governance-foundation-v2.schema.json",
+            "implementation": "skills/octon-project-bootstrap/scripts/governance_shadow.py",
+            "qualification": "skills/octon-project-bootstrap/scripts/test_governance_shadow.py",
+            "generated": False,
+            "runtime_authorization": False,
+        },
     }:
         issues.append("octon.json source-governance contract differs")
     if "profiles" in config or "optional_contracts" in config:
@@ -1555,6 +1563,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             ],
             ROOT,
             "architectural pattern adversarial fixtures",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_governance_shadow.py")],
+            ROOT,
+            "intent/delegation shadow coverage and compatibility fixtures",
         ),
         (
             [

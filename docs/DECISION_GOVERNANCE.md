@@ -12,6 +12,14 @@ system, permission, or readiness.
 
 ## 1. Authority and identity model
 
+SRC-DEC-0041 adopts an authenticated human-or-delegated-agent decision actor for
+the separately versioned successor described in [the governance foundation](GOVERNANCE_FOUNDATION.md).
+That source-only foundation does not change the active record schema or create
+accepted decisions in current snapshots. The distinctions and canonical owners
+below remain: a recommendation/selection, durable technical choice and operational
+authorization are separate. Live successor admission requires exact intent,
+delegation, evidence and prior-policy control bindings; root ends remain principal-owned.
+
 `.agent/decisions/governance-register.json` owns the inventory of material
 decision questions, recommendations, owner selections, reviews, compatibility
 findings, and the minimum closure sequence. Each entry has a stable

@@ -127,6 +127,14 @@ generated empty; generation creates no reusable decision record.
 
 ## Non-transfer rules
 
+The intent/delegation foundation registered in `octon.json` is source-only.
+Its versioned schema, synthetic fixture and shadow helper are not selected by
+the current profile rules and are not a generated project capability. Installed
+bootstrap source bundles may retain them as source governance/qualification data.
+No intent, grant, shadow result, activated policy or new DEC actor is copied into
+an existing or freshly generated consumer. Actual successor adoption requires its
+separately versioned release and exact project-owned migration.
+
 Generation transfers structure, schemas, vocabulary, and validation patterns.
 It does not transfer:
 

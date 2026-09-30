@@ -1,0 +1,330 @@
+{
+  "schema_version": "octon.governance-shadow-input.v2",
+  "information_role": "hypothetical_non_authorizing_input",
+  "evaluation_time": "2030-01-02T00:01:00Z",
+  "intent": {
+    "schema_version": "harness.intent-revision.v1",
+    "id": "intent-fixture",
+    "project_id": "fixture-project",
+    "revision": 1,
+    "principal_ref": "principal:fixture-owner",
+    "authority_source_ref": "external:synthetic-fixture-only",
+    "original_expression": "Demonstrate bounded technical coverage without executing effects.",
+    "interpretation": "Evaluate a synthetic architecture decision and preserve all authority limits.",
+    "assumptions": [
+      "Every authority and evidence input is synthetic and unverified."
+    ],
+    "acceptance_criteria": [
+      "No result grants execution authority."
+    ],
+    "supersedes": null,
+    "digest": "3090228bd3cdea261613be38b66384ed43c56b3e77f27e0ee37b8300537f7601",
+    "permission_grant": false
+  },
+  "work_binding": {
+    "record_ref": "TASK-0001",
+    "contract_digest": "9939bd58ff62a1bc715f3ee7d77131630321b659f8bf042f1584001979ca7da7",
+    "intent_ref": {
+      "id": "intent-fixture",
+      "revision": 1,
+      "digest": "3090228bd3cdea261613be38b66384ed43c56b3e77f27e0ee37b8300537f7601"
+    },
+    "resources": [
+      "resource:fixture-source"
+    ],
+    "required_obligations": [
+      "obligation:intent-fidelity"
+    ],
+    "permission_grant": false
+  },
+  "delegations": [
+    {
+      "schema_version": "harness.project-delegation.v1",
+      "id": "delegation-root-fixture",
+      "project_id": "fixture-project",
+      "issuer_ref": "principal:fixture-owner",
+      "subject_ref": "role:fixture-coordinator",
+      "authority_source_ref": "external:synthetic-fixture-only",
+      "intent_ref": {
+        "id": "intent-fixture",
+        "revision": 1,
+        "digest": "3090228bd3cdea261613be38b66384ed43c56b3e77f27e0ee37b8300537f7601"
+      },
+      "parent_ref": null,
+      "scope": {
+        "resources": [
+          "resource:fixture-source"
+        ],
+        "operations": [
+          "decision.accept",
+          "work.plan"
+        ],
+        "decision_classes": [
+          "technical.architecture",
+          "technical.priority"
+        ],
+        "environments": [
+          "sandbox"
+        ],
+        "data_classes": [
+          "synthetic"
+        ],
+        "destinations": [],
+        "credential_classes": []
+      },
+      "valid_from": "2030-01-01T00:00:00Z",
+      "valid_until": "2030-02-01T00:00:00Z",
+      "period_limits": {
+        "actions": 10,
+        "compute_units": 100
+      },
+      "per_run_limits": {
+        "actions": 3,
+        "compute_units": 20
+      },
+      "concurrency_limit": 2,
+      "remaining_delegation_depth": 1,
+      "required_obligations": [
+        "obligation:intent-fidelity",
+        "obligation:tests"
+      ],
+      "reserved_decision_classes": [
+        "sovereign.intent"
+      ],
+      "policy_ref": "policy:fixture",
+      "digest": "b1effc56f0dd5d3bdbafd796b0d48e7f31db26621b5d196b0c97a4d918bb580b",
+      "compute_unit_ref": "unit:synthetic-compute",
+      "permission_grant": false,
+      "authority_controls_ref": "control:fixture-project"
+    },
+    {
+      "schema_version": "harness.project-delegation.v1",
+      "id": "delegation-child-fixture",
+      "project_id": "fixture-project",
+      "issuer_ref": "role:fixture-coordinator",
+      "subject_ref": "agent:fixture-worker",
+      "authority_source_ref": "external:synthetic-child-only",
+      "intent_ref": {
+        "id": "intent-fixture",
+        "revision": 1,
+        "digest": "3090228bd3cdea261613be38b66384ed43c56b3e77f27e0ee37b8300537f7601"
+      },
+      "parent_ref": {
+        "id": "delegation-root-fixture",
+        "digest": "b1effc56f0dd5d3bdbafd796b0d48e7f31db26621b5d196b0c97a4d918bb580b"
+      },
+      "scope": {
+        "resources": [
+          "resource:fixture-source"
+        ],
+        "operations": [
+          "decision.accept",
+          "work.plan"
+        ],
+        "decision_classes": [
+          "technical.architecture",
+          "technical.priority"
+        ],
+        "environments": [
+          "sandbox"
+        ],
+        "data_classes": [
+          "synthetic"
+        ],
+        "destinations": [],
+        "credential_classes": []
+      },
+      "valid_from": "2030-01-01T00:00:00Z",
+      "valid_until": "2030-01-20T00:00:00Z",
+      "period_limits": {
+        "actions": 5,
+        "compute_units": 50
+      },
+      "per_run_limits": {
+        "actions": 2,
+        "compute_units": 10
+      },
+      "concurrency_limit": 2,
+      "remaining_delegation_depth": 0,
+      "required_obligations": [
+        "obligation:intent-fidelity",
+        "obligation:tests"
+      ],
+      "reserved_decision_classes": [
+        "sovereign.intent"
+      ],
+      "policy_ref": "policy:fixture",
+      "digest": "928141031b39e592694e3fc93bfc1528b261e0189e0aaed7d5968f59690eaf27",
+      "compute_unit_ref": "unit:synthetic-compute",
+      "permission_grant": false,
+      "authority_controls_ref": "control:fixture-project"
+    }
+  ],
+  "action": {
+    "schema_version": "harness.action-coverage-request.v1",
+    "id": "request-fixture",
+    "project_id": "fixture-project",
+    "actor_ref": "agent:fixture-worker",
+    "intent_ref": {
+      "id": "intent-fixture",
+      "revision": 1,
+      "digest": "3090228bd3cdea261613be38b66384ed43c56b3e77f27e0ee37b8300537f7601"
+    },
+    "work_ref": "TASK-0001",
+    "work_contract_digest": "9939bd58ff62a1bc715f3ee7d77131630321b659f8bf042f1584001979ca7da7",
+    "operation": "decision.accept",
+    "decision_class": "technical.architecture",
+    "resources": [
+      "resource:fixture-source"
+    ],
+    "environment": "sandbox",
+    "data_class": "synthetic",
+    "destinations": [],
+    "credential_classes": [],
+    "plan_digest": "6a83f9d7b5831c646b3d163dc0831dd6b606fd70ed64607832980cc874018af4",
+    "expected_state_digest": "647947e4ddcd9062c57b9ff4620650840b27c46ff79f6c0f3b1a5952c06ce500",
+    "policy_digest": "6d281328a0a20cdd93c6fe23c7576618655d9a1289ea7add2fe8d34bc25e38bd",
+    "proposed_usage": {
+      "actions": 1,
+      "compute_units": 2
+    },
+    "starts_run": true,
+    "changes_sovereign_boundary": false,
+    "required_obligations": [],
+    "digest": "863a6bde6f1ee2f7f3cc84258c6b3cf24533bcb539d9dca9d7e8df478838b801",
+    "compute_unit_ref": "unit:synthetic-compute",
+    "run_ref": "run:fixture",
+    "permission_grant": false,
+    "expected_authority_epoch": 1
+  },
+  "controls": {
+    "schema_version": "harness.shadow-control-snapshot.v2",
+    "project_id": "fixture-project",
+    "observed_at": "2030-01-02T00:00:00Z",
+    "fresh_until": "2030-01-02T00:10:00Z",
+    "policy_ref": "policy:fixture",
+    "policy_digest": "6d281328a0a20cdd93c6fe23c7576618655d9a1289ea7add2fe8d34bc25e38bd",
+    "state_digest": "647947e4ddcd9062c57b9ff4620650840b27c46ff79f6c0f3b1a5952c06ce500",
+    "policy_scope": {
+      "resources": [
+        "resource:fixture-source"
+      ],
+      "operations": [
+        "decision.accept",
+        "work.plan"
+      ],
+      "decision_classes": [
+        "technical.architecture",
+        "technical.priority"
+      ],
+      "environments": [
+        "sandbox"
+      ],
+      "data_classes": [
+        "synthetic"
+      ],
+      "destinations": [],
+      "credential_classes": []
+    },
+    "required_obligations": [
+      "obligation:tests"
+    ],
+    "qualified_human_obligations": [],
+    "reserved_decision_classes": [
+      "sovereign.intent"
+    ],
+    "revoked_delegation_ids": [],
+    "emergency_stop": false,
+    "budget_snapshots": [
+      {
+        "delegation_ref": {
+          "id": "delegation-root-fixture",
+          "digest": "b1effc56f0dd5d3bdbafd796b0d48e7f31db26621b5d196b0c97a4d918bb580b"
+        },
+        "committed": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "reserved": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "active_runs": 0,
+        "run_ref": "run:fixture",
+        "run_committed": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "run_reserved": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "run_admission_state": "not_admitted",
+        "run_accounting": "cumulative_including_descendants",
+        "period_accounting": {
+          "start": "2030-01-02T00:00:00Z",
+          "end": "2030-01-03T00:00:00Z",
+          "includes_descendants": true
+        },
+        "run_period_relation": "whole_run_within_period"
+      },
+      {
+        "delegation_ref": {
+          "id": "delegation-child-fixture",
+          "digest": "928141031b39e592694e3fc93bfc1528b261e0189e0aaed7d5968f59690eaf27"
+        },
+        "committed": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "reserved": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "active_runs": 0,
+        "run_ref": "run:fixture",
+        "run_committed": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "run_reserved": {
+          "actions": 0,
+          "compute_units": 0
+        },
+        "run_admission_state": "not_admitted",
+        "run_accounting": "cumulative_including_descendants",
+        "period_accounting": {
+          "start": "2030-01-02T00:00:00Z",
+          "end": "2030-01-03T00:00:00Z",
+          "includes_descendants": true
+        },
+        "run_period_relation": "whole_run_within_period"
+      }
+    ],
+    "obligation_results": [
+      {
+        "id": "obligation:intent-fidelity",
+        "outcome": "satisfied",
+        "actor_kind": "system",
+        "evidence_ref": "external:synthetic-observation",
+        "action_digest": "863a6bde6f1ee2f7f3cc84258c6b3cf24533bcb539d9dca9d7e8df478838b801",
+        "observed_at": "2030-01-02T00:00:00Z",
+        "fresh_until": "2030-01-02T00:05:00Z"
+      },
+      {
+        "id": "obligation:tests",
+        "outcome": "satisfied",
+        "actor_kind": "system",
+        "evidence_ref": "external:synthetic-observation",
+        "action_digest": "863a6bde6f1ee2f7f3cc84258c6b3cf24533bcb539d9dca9d7e8df478838b801",
+        "observed_at": "2030-01-02T00:00:00Z",
+        "fresh_until": "2030-01-02T00:05:00Z"
+      }
+    ],
+    "digest": "926f3d6ce6556d804c8fc5e9de22231833a0144df017611e5a736debf41922ef",
+    "permission_grant": false,
+    "authority_controls_ref": "control:fixture-project",
+    "authority_epoch": 1,
+    "accounting_observation": "coherent_at_observed_at"
+  }
+}

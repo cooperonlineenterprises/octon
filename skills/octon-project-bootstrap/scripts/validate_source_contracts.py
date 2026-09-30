@@ -71,6 +71,9 @@ SOURCE_ONLY_MARKERS = {
     "lifecycle-disposition",
     "governed-change-and-effects",
     "patterns/architecture-proof",
+    "harness.intent-revision.v1",
+    "harness.project-delegation.v1",
+    "octon.governance-shadow",
 }
 SENTINELS = {
     "",
@@ -1136,6 +1139,8 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         root / "shared/source-contracts/setup-questions.schema.json",
         root / "shared/source-contracts/legacy-reference-allowlist.schema.json",
         root / "shared/source-contracts/validation-benchmark-report.schema.json",
+        root / "shared/source-contracts/governance-foundation.schema.json",
+        root / "shared/source-contracts/governance-foundation-v2.schema.json",
         root / "shared/optional-schemas/context-pack-manifest.schema.json",
         root / "shared/schemas/octon-mini-bootstrap-setup-answers.schema.json",
         root / "shared/schemas/octon-mini-bootstrap-setup-session.schema.json",
@@ -1246,6 +1251,16 @@ def validate_repository(root: Path = ROOT) -> list[str]:
     errors.extend(validate_decision_governance_fixtures(root))
     errors.extend(validate_guided_setup_contracts(root))
     errors.extend(validate_command_capability_catalog(root))
+    # A source-only successor foundation; never a generated runtime authorizer.
+    spec = importlib.util.spec_from_file_location(
+        "octon_governance_shadow_source_gate", SKILL_ROOT / "scripts/governance_shadow.py"
+    )
+    if spec is None or spec.loader is None:
+        errors.append("governance foundation source gate is unavailable")
+    else:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        errors.extend(module.validate_contract_source(root))
     return errors
 
 
@@ -1263,6 +1278,7 @@ def main() -> int:
     print("- pattern records: 3 reviewed, 0 generated or automatically adopted")
     print("- semantic roles: 10 cross-walked without a universal status enum")
     print("- optional contracts: Context Pack v1 and Architecture Proof v1")
+    print("- intent/delegation foundation: source-only shadow coverage; no execution authority")
     mutation_count = len(
         load_json(
             SKILL_ROOT
