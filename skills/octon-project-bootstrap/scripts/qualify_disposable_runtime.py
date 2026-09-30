@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -56,7 +57,7 @@ def generate(target, project_name='Disposable Runtime Fixture'):
         SCRIPTS/'scaffold_project.py',SCRIPTS/'installation_runtime.py',Path(__file__).resolve(),
         ROOT/'shared/source-contracts/profile-manifest.json',ROOT/'shared/source-contracts/profile-manifest-v3.schema.json',
         ROOT/'dossier/artifact-types.json',ROOT/'octon.json',ROOT/'VERSION'}
-    inputs = [{'path':str(path.relative_to(ROOT)), 'sha256':reader.digest(path.read_bytes())}
+    inputs = [{'path':path.relative_to(ROOT).as_posix(), 'sha256':reader.digest(path.read_bytes())}
               for path in sorted(source_inputs)]
     revision = subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     with tempfile.TemporaryDirectory(prefix='octon-disposable-stage-',dir=target.parent) as temporary:
@@ -95,8 +96,28 @@ def generate(target, project_name='Disposable Runtime Fixture'):
                         text = text.replace('value = load_json(root / ".octon/agent" / "schemas" / name)', 'value = qualification_schema_paths(load_json(root / ".octon/agent" / "schemas" / name))')
                         text = text.replace('value.update(relative_path.encode("utf-8"))', 'value.update(relative_path.replace(".octon/agent/", ".agent/", 1).encode("utf-8"))')
                     if relative == '.agent/scripts/octon_transaction.py':
-                        text = text.replace('ROOT = Path(__file__).resolve().parents[3]', 'import sys\nsys.path.insert(0, str(Path(__file__).resolve().parents[1]))\nfrom installation_runtime import protected_paths, admit_work_plan\nROOT = Path(__file__).resolve().parents[3]')
-                        text = text.replace('LAST_PHASE_TIMINGS.clear()', 'admit_work_plan(root, plan)\n    LAST_PHASE_TIMINGS.clear()')
+                        text = text.replace('ROOT = Path(__file__).resolve().parents[3]', 'import sys\nsys.path.insert(0, str(Path(__file__).resolve().parents[1]))\nfrom installation_runtime import protected_paths, admit_work_plan, admit_recovery_record, load as qualification_json_load\nROOT = Path(__file__).resolve().parents[3]')
+                        admission = """def qualification_work_admission(root, plan):
+    try:
+        admit_work_plan(root, plan)
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise TransactionError(str(error)) from error
+
+
+def qualification_recovery_admission(root, record):
+    try:
+        admit_recovery_record(root, record)
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise TransactionError(str(error)) from error
+
+
+"""
+                        text = text.replace('def apply_plan(', admission+'def apply_plan(')
+                        text = text.replace('json.loads(receipt_path.read_text(encoding="utf-8"))', 'qualification_json_load(receipt_path)')
+                        text = text.replace('json.loads(pending_path.read_text(encoding="utf-8"))', 'qualification_json_load(pending_path)')
+                        text = text.replace('    if receipt["status"] == "applied":', '    qualification_recovery_admission(root, receipt)\n    if receipt["status"] == "applied":')
+                        text = text.replace('    recovery_path = confined_path(', '    qualification_recovery_admission(root, pending)\n    recovery_path = confined_path(')
+                        text = text.replace('LAST_PHASE_TIMINGS.clear()', 'qualification_work_admission(root, plan)\n    LAST_PHASE_TIMINGS.clear()')
                         text = text.replace('root = root.resolve()\n    if not operations:', 'root = root.resolve()\n    if operation_name.startswith("work."):\n        evidence_paths = list(dict.fromkeys([*(evidence_paths or []), *protected_paths(root)]))\n    if not operations:')
                     if relative == '.agent/scripts/octon.py':
                         text = text.replace('_CURRENT_DISPATCHER_PARENT_INDEX = "2"','_CURRENT_DISPATCHER_PARENT_INDEX = "3"')
@@ -153,6 +174,11 @@ def main():
         return 2
 
 # Conversion is intentionally a source qualification API, not a consumer command.
+def supported_mode(mode, host=os.name):
+    """Use the host's actual chmod contract; Windows exposes read-only only."""
+    return bool(mode & 0o200) if host == 'nt' else mode
+
+
 def fixture_conversion_plan(target):
     """Plan one exact pristine-control Mini4.2→Octon5→disposable bridge fixture."""
     import upgrade_project as upgrade
@@ -225,7 +251,7 @@ def fixture_conversion_plan(target):
                     raise ValueError('unclassified project content requires separate qualification: '+relative)
                 expected=inventory.get(relative)
                 expected_mode=expected.get('mode') if expected else (0o600 if relative.startswith('.agent/transactions/') else 0o644)
-                if expected_mode is not None and path.stat().st_mode & 0o777 != expected_mode:
+                if expected_mode is not None and supported_mode(path.stat().st_mode & 0o777) != supported_mode(expected_mode):
                     raise ValueError('fixture mode drift requires separate qualification: '+relative)
         generate(candidate,origin['project_name'])
         if json.loads(project_text(json.dumps(project))) != reader.load(candidate/'.octon/agent/project.json'):

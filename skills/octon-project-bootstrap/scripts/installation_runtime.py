@@ -150,19 +150,46 @@ def protected_paths(root):
                   + ['.octon/manifest.json','.octon/runtime/installation_runtime.py','.octon-origin.json'])
 
 
+WORK_OPERATIONS = {'work.start','work.block','work.handoff'}
+DERIVED_PATHS = ['.octon/agent/state/current.json','.octon/dossier/ARTIFACT_CATALOG.json',
+                 '.octon/dossier/MANIFEST.json','.octon/dossier/machine-readable/path-authority.json']
+
+
+def work_path(root, path, operation):
+    confined(root,path)
+    if path == '.octon/agent/state/focus.json':
+        return True
+    return operation != 'work.handoff' and re.fullmatch(
+        r'\.octon/agent/(?:tasks/TASK|plans/PLAN)-[0-9]{4}\.md',path) is not None
+
+
+def admit_recovery_record(root, record):
+    operation = record.get('operation')
+    if operation not in WORK_OPERATIONS:
+        raise ValueError('unsupported qualification recovery operation')
+    for item in record['paths']:
+        path = item['path']
+        confined(root,path)
+        if path not in DERIVED_PATHS and not work_path(root,path,operation):
+            raise ValueError('unauthorized qualification recovery control/verifier path: '+path)
+    permitted_directories={'.octon/agent/tasks','.octon/agent/plans','.octon/agent/state',
+                           '.octon/dossier/machine-readable'}
+    for directory in record.get('created_directories',[]):
+        confined(root,directory)
+        if directory not in permitted_directories:
+            raise ValueError('unauthorized qualification recovery directory: '+directory)
+
+
 def admit_work_plan(root, plan):
-    if plan.get('operation') not in {'work.start','work.block','work.handoff'}:
+    if plan.get('operation') not in WORK_OPERATIONS:
         raise ValueError('qualification admits only local work plans')
     for item in plan['operations']:
         path = item['path']
         confined(root,path)
-        if not (path.startswith('.octon/agent/tasks/') or path.startswith('.octon/agent/plans/') or
-                path.startswith('.octon/agent/handoffs/') or path == '.octon/agent/state/focus.json'):
+        if not work_path(root,path,plan['operation']):
             raise ValueError('unauthorized qualification control/verifier operation: '+path)
     validation = plan['validation']
-    derived = ['.octon/agent/state/current.json','.octon/dossier/ARTIFACT_CATALOG.json',
-               '.octon/dossier/MANIFEST.json','.octon/dossier/machine-readable/path-authority.json']
-    if validation['declared_write_paths'] != derived or validation['external_effects'] != [] or validation['shell_interpretation'] is not False:
+    if validation['declared_write_paths'] != DERIVED_PATHS or validation['external_effects'] != [] or validation['shell_interpretation'] is not False:
         raise ValueError('unauthorized qualification derived/control operation')
     expected_check = [sys.executable,'-B','.octon/runtime/scripts/validate.py','--check']
     expected_refresh = [sys.executable,'-B','.octon/runtime/scripts/refresh.py','--refresh']

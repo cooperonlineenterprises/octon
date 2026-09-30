@@ -50,7 +50,9 @@ and local transaction apply/recover/rollback. Every work apply alias reaches the
 same admission guard. It accepts only the declared work operation classes,
 record/focus paths, exact derived writes and exact validation argv. Plans bind
 the prior control/verifier bytes through the existing evidence-preimage facility.
-A stale policy/verifier, forged control write, derived verifier write or changed
+Recovery and rollback enforce the same typed record/derived path boundary and
+reject forged control/verifier paths and unrelated directory removal. A stale
+policy/verifier, forged control write, derived verifier write or changed
 validation command refuses. Direct invocation supplies disposable fixture
 operation authority; shadow coverage supplies none. These checks do not activate
 standing delivery or prove host/provider enforcement.
@@ -81,7 +83,9 @@ all IDs, owners, facts and non-path fields are preserved. Original bytes remain
 in the archive for both transformations.
 Only the declared pristine controls receive canonical target path bindings.
 Unclassified project files, case-folded reserved collisions and mode drift refuse
-before mutation; no application content is silently archived away. Every
+before mutation. Mode admission uses exact POSIX bits or the Windows read-only
+attribute, matching the host chmod contract; archive/receipt evidence preserves
+actual observed modes. This does not qualify ACL or host enforcement. No application content is silently archived away. Every
 recognized predecessor inventory row is classified before rendering: supported
 authored bytes/typed fields are preserved, declared derived outputs regenerate,
 and all other modified, missing or unsafe rows refuse. Custom quality gates and

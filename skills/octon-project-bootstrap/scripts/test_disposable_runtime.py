@@ -57,8 +57,8 @@ class DisposableRuntimeTests(unittest.TestCase):
         self.assertEqual(result.returncode,code,result.stderr or result.stdout)
         return result
 
-    def plan(self):
-        path=Path(self.temp.name)/'start.json'
+    def plan(self,name='start'):
+        path=Path(self.temp.name)/(name+'.json')
         self.cli('work','start','--title','Disposable existing work owner','--scope','Prove local lifecycle',
                  '--authority-basis','authority:current-user-bounded-disposable-fixture','--owner','fixture-owner',
                  '--operator','fixture-operator','--acceptance','Actual target state, recovery and rollback observed',
@@ -77,6 +77,7 @@ class DisposableRuntimeTests(unittest.TestCase):
         return module(self.root/'.octon/runtime/scripts/octon_transaction.py','disposable_case_transaction')
 
     def test_independent_actual_target_check_readonly_optional_absence(self):
+        self.assertTrue(all('\\' not in item['path'] for item in reader.load(self.root/'.octon/manifest.json')['inputs']))
         self.assertFalse((self.root/'.agent').exists())
         self.assertFalse((self.root/'project-dossier').exists())
         self.assertFalse((self.root/'.octon/agent/capabilities').exists())
@@ -182,6 +183,35 @@ class DisposableRuntimeTests(unittest.TestCase):
         recovered=self.root/'.octon/agent/transactions/recovered'/pending_path.name
         self.assertTrue(recovered.is_file());self.assertEqual(reader.load(recovered)['plan_digest'],plan['canonical_plan_digest'])
 
+    def test_recovery_and_rollback_refuse_forged_control_scope(self):
+        path,plan=self.plan();transaction=self.engine()
+        decoded=transaction._decode_operations(plan)
+        derived,_,_=transaction._staged_result(self.root,plan,decoded)
+        outcomes=transaction._planned_outcomes(plan,decoded,derived)
+        receipt_paths=transaction._receipt_paths(self.root,plan,outcomes)
+        created=transaction._created_parent_directories(self.root,[item['path'] for item in receipt_paths])
+        pending,pending_path=transaction._write_pending(self.root,plan['planned_receipt_id'],plan,receipt_paths,created)
+        policy=transaction.path_state(self.root,'.octon/agent/policy.json')
+        forged=copy.deepcopy(pending);forged['paths'][0]['path']=policy['path']
+        forged['paths'][0]['before']=policy;forged['paths'][0]['after']=policy
+        write(pending_path,forged);before=snapshot(self.root)
+        self.cli('transaction','recover','--pending',pending_path,code=2)
+        self.assertEqual(before,snapshot(self.root))
+        forged=copy.deepcopy(pending);forged['created_directories']=['.octon/runtime']
+        write(pending_path,forged);before=snapshot(self.root)
+        self.cli('transaction','recover','--pending',pending_path,code=2)
+        self.assertEqual(before,snapshot(self.root))
+        write(pending_path,pending);self.cli('transaction','recover','--pending',pending_path)
+        # A fresh exact plan follows reconciliation, with original history retained.
+        path,plan=self.plan('start-after-reconciliation');self.apply(path,plan)
+        receipt=self.root/'.octon/agent/transactions/receipts'/f"{plan['planned_receipt_id']}.json"
+        original=receipt.read_bytes();forged=reader.load(receipt)
+        forged['paths'][0]['path']=policy['path'];forged['paths'][0]['before']=policy;forged['paths'][0]['after']=policy
+        write(receipt,forged);before=snapshot(self.root)
+        self.cli('transaction','rollback','--receipt',receipt,code=2)
+        self.assertEqual(before,snapshot(self.root));receipt.write_bytes(original)
+        self.cli('transaction','rollback','--receipt',receipt)
+
     def test_post_receipt_finalization_and_interrupted_rollback(self):
         path,plan=self.plan();transaction=self.engine()
         pending=self.root/'.octon/agent/transactions/pending'/f"{plan['planned_receipt_id']}.json"
@@ -205,6 +235,12 @@ class DisposableRuntimeTests(unittest.TestCase):
         self.assertEqual(reader.load(receipt)['status'],'rollback_in_progress')
         self.cli('transaction','rollback','--receipt',receipt)
         self.assertFalse((self.root/'.octon/agent/tasks/TASK-0001.md').exists())
+
+    def test_host_mode_binding_preserves_windows_readonly_boundary(self):
+        self.assertEqual(qualifier.supported_mode(0o666,'nt'),qualifier.supported_mode(0o600,'nt'))
+        self.assertNotEqual(qualifier.supported_mode(0o666,'nt'),qualifier.supported_mode(0o444,'nt'))
+        self.assertNotEqual(qualifier.supported_mode(0o600,'posix'),qualifier.supported_mode(0o644,'posix'))
+        with self.assertRaises(ValueError):reader.confined(self.root,r'.octon\agent\policy.json')
 
     def test_profile_v2_schema_preserved_and_mixed_versions_refuse(self):
         prior=json.loads(subprocess.check_output(['git','show','8871095f51a02e12a569d9260a51d0ff55fc1eef:shared/source-contracts/profile-manifest.json'],cwd=qualifier.ROOT,text=True))
@@ -315,7 +351,7 @@ class FixtureConversionTests(unittest.TestCase):
                 path=target/'.agent/schemas/harness-record.schema.json';path.write_bytes(path.read_bytes()+b'\n')
             elif case=='known-implementation':
                 path=target/'.agent/diagnostics/diagnostic-catalog.json';path.write_bytes(path.read_bytes()+b'\n')
-            elif case=='mode':(target/'.agent/tasks/TASK-0001.md').chmod(0o600)
+            elif case=='mode':(target/'.agent/tasks/TASK-0001.md').chmod(0o444)
             elif case=='mixed':(target/'.octon-mini-origin.json').write_bytes(self.old_origin)
             elif case=='unsupported':
                 value=reader.load(target/'.octon-origin.json');value['profile']='standard';write(target/'.octon-origin.json',value)
@@ -329,6 +365,9 @@ class FixtureConversionTests(unittest.TestCase):
             before=snapshot(target)
             with self.assertRaises(ValueError):qualifier.fixture_conversion_plan(target)
             self.assertEqual(before,snapshot(target))
+            if case=='mode':
+                self.assertFalse((target/'.agent/tasks/TASK-0001.md').stat().st_mode & 0o200)
+                (target/'.agent/tasks/TASK-0001.md').chmod(0o644)
 
 if __name__=='__main__':
     unittest.main(verbosity=2)
