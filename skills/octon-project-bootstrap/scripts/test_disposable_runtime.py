@@ -122,6 +122,14 @@ class DisposableRuntimeTests(unittest.TestCase):
         reader.inspect(self.root)
         self.apply(path,plan,code=2)
         verifier.write_bytes(verifier_bytes);manifest.write_bytes(manifest_bytes)
+        schema=self.root/'.octon/agent/schemas/harness-record.schema.json'
+        schema_bytes=schema.read_bytes();schema.write_bytes(schema_bytes+b'\n')
+        changed=reader.load(manifest)
+        for binding in changed['assets']:
+            if binding['path']=='.octon/agent/schemas/harness-record.schema.json':binding['sha256']=reader.digest(schema.read_bytes())
+        write(manifest,changed);reader.inspect(self.root)
+        self.apply(path,plan,code=2)
+        schema.write_bytes(schema_bytes);manifest.write_bytes(manifest_bytes)
         transaction=self.engine()
         for effect in ['static','derived','argv','alias']:
             forged=copy.deepcopy(plan)
@@ -140,11 +148,15 @@ class DisposableRuntimeTests(unittest.TestCase):
         task=(self.root/'.octon/agent/tasks/TASK-0001.md').read_text()
         self.assertIn('"status": "in_progress"',task)
         block_path=Path(self.temp.name)/'block.json'
-        self.cli('work','block','TASK-0001','--reason','Controlled existing-task transition','--output',block_path)
-        block=reader.load(block_path);self.apply(block_path,block)
-        self.assertIn('"status": "blocked"',(self.root/'.octon/agent/tasks/TASK-0001.md').read_text())
-        block_receipt=self.root/'.octon/agent/transactions/receipts'/f"{block['planned_receipt_id']}.json"
-        self.cli('transaction','rollback','--receipt',block_receipt)
+        self.cli('work','block','TASK-0001','--reason','Unstructured cause alone cannot block','--output',block_path)
+        block=reader.load(block_path);self.apply(block_path,block,code=2)
+        handoff_path=Path(self.temp.name)/'handoff.json'
+        self.cli('work','handoff','--task-id','TASK-0001','--next-action','Continue after bounded handoff',
+                 '--summary','Actual existing-task handoff transition','--operator','fixture-operator','--output',handoff_path)
+        handoff=reader.load(handoff_path);self.apply(handoff_path,handoff)
+        self.assertIn('Continue after bounded handoff',(self.root/'.octon/agent/state/focus.json').read_text())
+        handoff_receipt=self.root/'.octon/agent/transactions/receipts'/f"{handoff['planned_receipt_id']}.json"
+        self.cli('transaction','rollback','--receipt',handoff_receipt)
         self.assertIn('"status": "in_progress"',(self.root/'.octon/agent/tasks/TASK-0001.md').read_text())
         receipt=self.root/'.octon/agent/transactions/receipts'/f"{plan['planned_receipt_id']}.json"
         self.cli('transaction','rollback','--receipt',receipt)
@@ -288,9 +300,12 @@ class FixtureConversionTests(unittest.TestCase):
         with self.assertRaises(upgrade.UpgradeError):upgrade.plan_command(args)
 
     def test_collision_mixed_unsupported_pending_and_custom_controls_refuse(self):
-        for case in ['collision','mixed','unsupported','pending','unknown-effect','git','control']:
+        for case in ['collision','case-collision','mixed','unsupported','pending','unknown-effect','git','extra-app','mode','control']:
             target=Path(self.area.name)/case;shutil.copytree(self.root,target)
             if case=='collision':(target/'.octon').mkdir()
+            elif case=='case-collision':(target/'.OCTON').mkdir()
+            elif case=='extra-app':(target/'app.py').write_text('project-owned implementation\n')
+            elif case=='mode':(target/'.agent/tasks/TASK-0001.md').chmod(0o600)
             elif case=='mixed':(target/'.octon-mini-origin.json').write_bytes(self.old_origin)
             elif case=='unsupported':
                 value=reader.load(target/'.octon-origin.json');value['profile']='standard';write(target/'.octon-origin.json',value)

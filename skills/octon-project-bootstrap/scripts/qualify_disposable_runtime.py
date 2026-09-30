@@ -116,7 +116,7 @@ def generate(target, project_name='Disposable Runtime Fixture'):
         # Refresh validates the actual paths before binding immutable runtime bytes.
         run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
         manifest['assets']=[{'path':path,'sha256':reader.digest((stage/path).read_bytes())}
-                            for path in sorted(contract['runtime_paths']+['.octon/runtime/installation_runtime.py','.octon/runtime/octon','octon'])]
+                            for path in sorted(contract['runtime_paths']+[project_path(path.as_posix()) for path in schemas]+['.octon/runtime/installation_runtime.py','.octon/runtime/octon','octon'])]
         manifest['output_inventory']=output_inventory(stage)
         (stage/'.octon/manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
         reader.inspect(stage)
@@ -163,8 +163,9 @@ def fixture_conversion_plan(target):
     history = origin.get('migration_history',[])
     if not history or history[-1].get('from_product') != 'octon-mini' or history[-1].get('from_version') != '4.2.0':
         raise ValueError('fixture requires the supported exact Mini4.2 identity conversion')
-    for marker in ['.octon','.octon-mini-origin.json','.project-blueprint-origin.json']:
-        if (target/marker).exists():
+    reserved={'.octon','.octon-mini-origin.json','.project-blueprint-origin.json'}
+    for path in target.iterdir():
+        if path.name.casefold() in reserved:
             raise ValueError('mixed or colliding fixture installation')
     if (target/'.git').exists():
         raise ValueError('Git-backed or live consumer conversion is unqualified')
@@ -193,6 +194,20 @@ def fixture_conversion_plan(target):
             raise ValueError('custom control or verifier conversion unsupported: '+value)
     with tempfile.TemporaryDirectory(prefix='octon-conversion-candidate-') as temporary:
         candidate=Path(temporary)/'target'
+        generated=set(inventory) | {'.octon-origin.json'}
+        record_prefixes=('.agent/tasks/TASK-','.agent/plans/PLAN-','.agent/evidence/EVD-',
+                         '.agent/handoffs/','.agent/decisions/DEC-','.agent/transactions/')
+        for path in target.rglob('*'):
+            if path.is_symlink():
+                raise ValueError('symlink fixture input is unsupported')
+            if path.is_file():
+                relative=path.relative_to(target).as_posix()
+                if relative not in generated and not relative.startswith(record_prefixes):
+                    raise ValueError('unclassified project content requires separate qualification: '+relative)
+                expected=inventory.get(relative)
+                expected_mode=expected.get('mode') if expected else (0o600 if relative.startswith('.agent/transactions/') else 0o644)
+                if expected_mode is not None and path.stat().st_mode & 0o777 != expected_mode:
+                    raise ValueError('fixture mode drift requires separate qualification: '+relative)
         generate(candidate,origin['project_name'])
         if json.loads(project_text(json.dumps(project))) != reader.load(candidate/'.octon/agent/project.json'):
             raise ValueError('custom project configuration conversion unsupported')
@@ -205,6 +220,7 @@ def fixture_conversion_plan(target):
                 destination=candidate/project_path(value)
                 destination.parent.mkdir(parents=True,exist_ok=True)
                 destination.write_bytes(path.read_bytes())
+                shutil.copymode(path,destination)
                 preserved.append(value)
         # The existing origin/history is retained byte-exact. The new installation
         # manifest owns target bindings; no historical origin is reinterpreted.
@@ -225,6 +241,7 @@ def fixture_conversion_plan(target):
             archived=candidate/'.octon/archive/predecessor'/value
             archived.parent.mkdir(parents=True,exist_ok=True)
             archived.write_bytes(path.read_bytes())
+            shutil.copymode(path,archived)
         manifest=reader.load(candidate/'.octon/manifest.json')
         manifest['output_inventory']=output_inventory(candidate)
         (candidate/'.octon/manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')

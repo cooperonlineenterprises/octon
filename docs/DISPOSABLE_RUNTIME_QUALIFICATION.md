@@ -36,7 +36,7 @@ The versioned `.octon/manifest.json` records the actual source revision, copied
 source inputs/digests, initial output inventory, canonical inventory digest,
 required dependencies and immutable runtime digest bindings. Inspection validates
 versions, closed fields, portable confined paths, selected dependencies through
-reviewed canonical rules, Python 3.11+, and every required runtime module.
+reviewed canonical rules, Python 3.11+, and every required runtime module and copied schema/catalog dependency.
 Initial authored-output hashes are provenance, not continuously asserted state.
 Derived outputs and the manifest itself explicitly carry null hashes in that
 inventory to avoid claiming a self-referential immutable digest; the canonical
@@ -55,7 +55,8 @@ validation command refuses. Direct invocation supplies disposable fixture
 operation authority; shadow coverage supplies none. These checks do not activate
 standing delivery or prove host/provider enforcement.
 
-The focused suite performs an actual task start and receipt-bound rollback,
+The focused suite performs an actual task start, existing-task handoff and
+receipt-bound rollback, and refuses block without a structured cause. It
 interrupts after a durable pending journal and partial write, refuses divergent
 unknown local state, reconciles before retry, finalizes an already receipted apply,
 and resumes interrupted rollback. IDs, preimages, receipts and recovery journals
@@ -79,6 +80,8 @@ The project-owned artifact registry maps only declared representation paths;
 all IDs, owners, facts and non-path fields are preserved. Original bytes remain
 in the archive for both transformations.
 Only the declared pristine controls receive canonical target path bindings.
+Unclassified project files, case-folded reserved collisions and mode drift refuse
+before mutation; no application content is silently archived away.
 Historical plans and receipts retain their original path meanings and are never
 replayed through the target dispatcher. The conversion receipt remains in
 `.agent/transactions` as a predecessor recovery capsule, containing no live task

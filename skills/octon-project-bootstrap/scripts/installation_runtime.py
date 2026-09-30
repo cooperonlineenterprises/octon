@@ -71,6 +71,14 @@ def inspect(root):
     if digest(inventory_path.read_bytes()) != manifest['inventory_sha256']:
         raise ValueError('canonical inventory binding mismatch')
     inventory = load(inventory_path)
+    inventory_fields = {'schema_version','document_role','permission_grant','profiles','layouts',
+                        'installation_bindings','project_paths','packages','acceptance_criteria',
+                        'documentation_projections','default_disposition','inventory_hash_algorithm',
+                        'rules','forbidden_outputs','limitations','disposable_runtime'}
+    if not isinstance(inventory,dict) or set(inventory) != inventory_fields or inventory.get('permission_grant') is not False or inventory.get('default_disposition') != 'source_only':
+        raise ValueError('invalid closed canonical inventory')
+    if inventory['installation_bindings']['target']['generation_status'] != 'design_only_not_selectable':
+        raise ValueError('ordinary target generation must remain inactive')
     contract = inventory.get('disposable_runtime')
     if not isinstance(contract, dict) or contract.get('schema_version') != CONTRACT:
         raise ValueError('unsupported qualification inventory')
@@ -92,7 +100,20 @@ def inspect(root):
     if sys.version_info < (3,11):
         raise ValueError('Python 3.11 or newer required')
     assets = manifest['assets']
-    expected = contract['runtime_paths'] + ['.octon/runtime/installation_runtime.py','.octon/runtime/octon','octon']
+    schema_rules = [rule for rule in inventory['rules'] if rule.get('id') == 'shared-kernel-schemas'
+                    and rule.get('disposition') == 'generated' and 'minimal' in rule.get('profiles',[])]
+    if len(schema_rules) != 1 or schema_rules[0]['output'] != {'root':'.agent/schemas','strip_suffix':None}:
+        raise ValueError('canonical schema dependency rule differs')
+    schema_paths = ['.octon/agent/schemas/'+path for path in schema_rules[0]['inventory_paths']]
+    if not {'.octon/agent/schemas/harness-kernel.schema.json','.octon/agent/schemas/harness-record.schema.json'}.issubset(schema_paths):
+        raise ValueError('required verifier schema dependency is absent')
+    copied_paths = []
+    for rule in inventory['rules']:
+        if rule.get('disposition') == 'generated' and 'minimal' in rule.get('profiles',[]) and rule['output']['strip_suffix'] is None:
+            for path in rule['inventory_paths']:
+                value = rule['output']['root']+'/'+path
+                copied_paths.append(value.replace('.agent/', '.octon/agent/',1))
+    expected = contract['runtime_paths'] + copied_paths + ['.octon/runtime/installation_runtime.py','.octon/runtime/octon','octon']
     if not isinstance(assets, list) or [item.get('path') for item in assets] != sorted(expected):
         raise ValueError('runtime asset inventory mismatch')
     for item in assets:
@@ -123,7 +144,10 @@ def protected_paths(root):
     return sorted([str(path.relative_to(root)).replace('\\','/') for directory in
                    (root/'.octon/runtime', root/'.octon/agent') for path in directory.glob('*.json')]
                   + [str(path.relative_to(root)).replace('\\','/') for path in (root/'.octon/runtime/scripts').glob('*.py')]
-                  + ['.octon/manifest.json','.octon/runtime/installation_runtime.py'])
+                  + [str(path.relative_to(root)).replace('\\','/') for directory in
+                     (root/'.octon/agent/schemas',root/'.octon/agent/diagnostics',root/'.octon/agent/decisions')
+                     for path in directory.rglob('*.json')]
+                  + ['.octon/manifest.json','.octon/runtime/installation_runtime.py','.octon-origin.json'])
 
 
 def admit_work_plan(root, plan):
