@@ -25,7 +25,7 @@ if _SPEC is None or _SPEC.loader is None:
 CONTRACTS = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(CONTRACTS)
 ROOT = CONTRACTS.ROOT
-SCHEMA_PATH = "shared/source-contracts/governance-foundation.schema.json"
+SCHEMA_PATH = "shared/source-contracts/governance-foundation-v2.schema.json"
 MAX_BYTES = 1024 * 1024
 SCOPE_SETS = (
     "resources", "operations", "decision_classes", "environments",
@@ -237,15 +237,40 @@ def evaluate(value: dict[str, Any], *, root: Path = ROOT) -> dict[str, Any]:
     budgets = controls["budget_snapshots"]
     if len({item["delegation_ref"]["id"] for item in budgets}) != len(budgets):
         refused.add("duplicate_budget_snapshot")
+    coherent_accounting = controls["accounting_observation"] == "coherent_at_observed_at"
+    if not coherent_accounting:
+        unknown.add("accounting_observation_unknown")
+    exact_budgets: list[dict[str, Any] | None] = []
+    comparable_periods: list[tuple[datetime, datetime] | None] = []
     for grant in grants:
         matches = [item for item in budgets if item["delegation_ref"] == delegation_reference(grant)]
         if len(matches) != 1:
             unknown.add("missing_exact_delegation_budget")
+            exact_budgets.append(None)
+            comparable_periods.append(None)
             continue
         budget = matches[0]
         if budget["run_ref"] != action["run_ref"]:
             unknown.add("run_budget_binding_mismatch")
+            exact_budgets.append(None)
+            comparable_periods.append(None)
             continue
+        exact_budgets.append(budget)
+        period = budget["period_accounting"]
+        period_interval = None
+        if period["start"] is None or period["end"] is None or period["includes_descendants"] is not True:
+            unknown.add("period_accounting_unknown_or_excludes_descendants")
+        else:
+            start, end = aware(period["start"]), aware(period["end"])
+            if start >= end:
+                refused.add("invalid_period_accounting_interval")
+            elif not start <= aware(controls["observed_at"]) <= at < end:
+                unknown.add("period_accounting_observation_not_current")
+            else:
+                period_interval = (start, end)
+        comparable_periods.append(period_interval)
+        if budget["run_accounting"] != "cumulative_including_descendants":
+            unknown.add("run_accounting_unknown")
         for unit in BUDGET_UNITS:
             cost = action["proposed_usage"][unit]
             committed, outstanding = budget["committed"][unit], budget["reserved"][unit]
@@ -264,10 +289,48 @@ def evaluate(value: dict[str, Any], *, root: Path = ROOT) -> dict[str, Any]:
                     (run_reserved is not None and outstanding is not None and run_reserved > outstanding)):
                 refused.add("inconsistent_run_and_period_usage")
         active = budget["active_runs"]
+        membership = budget["run_admission_state"]
+        if membership == "unknown":
+            unknown.add("run_membership_unknown")
+        elif membership == "ended":
+            refused.add("run_identity_ended")
+        elif membership == "active":
+            if action["starts_run"]:
+                refused.add("run_already_admitted")
+            if active is not None and active < 1:
+                refused.add("active_run_membership_contradiction")
+        else:  # Explicitly not_admitted; a continuing action cannot reserve retroactively.
+            if not action["starts_run"]:
+                refused.add("continuation_run_not_active")
+            for unit in BUDGET_UNITS:
+                if any(budget[field][unit] not in (None, 0) for field in ("run_committed", "run_reserved")):
+                    refused.add("unadmitted_run_has_usage")
         if active is None:
             unknown.add("active_run_count_unknown")
-        elif active + int(action["starts_run"]) > grant["concurrency_limit"]:
+        elif active + int(action["starts_run"] and membership == "not_admitted") > grant["concurrency_limit"]:
             refused.add("concurrency_limit_exceeded")
+
+    # These are comparisons of the same observations, not additional charges.
+    # Never sum chain levels: an ancestor may include the descendant's action.
+    if coherent_accounting:
+        for index in range(1, len(grants)):
+            parent, child = exact_budgets[index - 1], exact_budgets[index]
+            if parent is None or child is None:
+                continue
+            fields = []
+            if parent["run_accounting"] == child["run_accounting"] == "cumulative_including_descendants":
+                fields.extend(("run_committed", "run_reserved"))
+            if comparable_periods[index - 1] is not None and comparable_periods[index - 1] == comparable_periods[index]:
+                fields.extend(("committed", "reserved"))
+            else:
+                unknown.add("period_accounting_not_comparable")
+            for field in fields:
+                for unit in BUDGET_UNITS:
+                    ancestor, descendant = parent[field][unit], child[field][unit]
+                    if ancestor is None or descendant is None:
+                        unknown.add("ancestor_" + field + "_usage_unknown")
+                    elif ancestor < descendant:
+                        refused.add("ancestor_" + field + "_underaccounted")
 
     observations = controls["obligation_results"]
     if len({item["id"] for item in observations}) != len(observations):
@@ -294,7 +357,7 @@ def evaluate(value: dict[str, Any], *, root: Path = ROOT) -> dict[str, Any]:
             refused.add("qualified_human_obligation_not_satisfied")
 
     result = {
-        "schema_version": "octon.governance-shadow-result.v1",
+        "schema_version": "octon.governance-shadow-result.v2",
         "information_role": "derived_non_authorizing_coverage",
         "coverage": "uncovered" if refused else "indeterminate" if unknown else "covered",
         "permission_grant": False, "execution_authorized": False, "authority_effect": "none",
@@ -328,9 +391,9 @@ def validate_contract_source(root: Path = ROOT) -> list[str]:
         governance = metadata.get("source_governance") if isinstance(metadata, dict) else None
         if not isinstance(governance, dict) or governance.get("intent_delegation_foundation") != expected:
             return ["governance foundation registration or non-authority boundary differs"]
-        fixture = root / "skills/octon-project-bootstrap/fixtures/governance-shadow/covered.json"
+        fixture = root / "skills/octon-project-bootstrap/fixtures/governance-shadow/covered-v2.json"
         if not fixture.is_file():
-            fixture = SCRIPT_DIR.parent / "fixtures/governance-shadow/covered.json"
+            fixture = SCRIPT_DIR.parent / "fixtures/governance-shadow/covered-v2.json"
         value = load_input(fixture)
         result = evaluate(value, root=root)
         if result["coverage"] != "covered" or result["execution_authorized"] is not False:

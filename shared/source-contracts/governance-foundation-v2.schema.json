@@ -1,0 +1,1027 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://octon.local/source-contracts/governance-foundation.v2.schema.json",
+  "title": "Source-only intent, delegation and shadow-coverage contracts v2",
+  "description": "Versioned successor design contracts. These are not generated, installed as active project policy, authenticated by record shape, or accepted by legacy delivery activation. IDs are opaque within their typed project scope; this file allocates no live record IDs.",
+  "type": "object",
+  "$ref": "#/$defs/input",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "known_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "intent_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "delegation_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resources",
+        "operations",
+        "decision_classes",
+        "environments",
+        "data_classes",
+        "destinations",
+        "credential_classes"
+      ],
+      "properties": {
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "decision_classes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "environments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "data_classes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "destinations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "credential_classes": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions",
+        "compute_units"
+      ],
+      "properties": {
+        "actions": {
+          "$ref": "#/$defs/count"
+        },
+        "compute_units": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions",
+        "compute_units"
+      ],
+      "properties": {
+        "actions": {
+          "$ref": "#/$defs/known_count"
+        },
+        "compute_units": {
+          "$ref": "#/$defs/known_count"
+        }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "project_id",
+        "revision",
+        "principal_ref",
+        "authority_source_ref",
+        "original_expression",
+        "interpretation",
+        "assumptions",
+        "acceptance_criteria",
+        "supersedes",
+        "digest",
+        "permission_grant"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "harness.intent-revision.v1"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "principal_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "authority_source_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "original_expression": {
+          "$ref": "#/$defs/text"
+        },
+        "interpretation": {
+          "$ref": "#/$defs/text"
+        },
+        "assumptions": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "supersedes": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "revision",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "permission_grant": {
+          "const": false
+        }
+      }
+    },
+    "delegation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "project_id",
+        "issuer_ref",
+        "subject_ref",
+        "authority_source_ref",
+        "intent_ref",
+        "parent_ref",
+        "scope",
+        "valid_from",
+        "valid_until",
+        "period_limits",
+        "per_run_limits",
+        "concurrency_limit",
+        "remaining_delegation_depth",
+        "required_obligations",
+        "reserved_decision_classes",
+        "policy_ref",
+        "digest",
+        "compute_unit_ref",
+        "permission_grant",
+        "authority_controls_ref"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "harness.project-delegation.v1"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "issuer_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "subject_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "authority_source_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "intent_ref": {
+          "$ref": "#/$defs/intent_ref"
+        },
+        "parent_ref": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "digest"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "valid_from": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "valid_until": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "period_limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "per_run_limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "concurrency_limit": {
+          "$ref": "#/$defs/count"
+        },
+        "remaining_delegation_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "required_obligations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "reserved_decision_classes": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "compute_unit_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "authority_controls_ref": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "work_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_ref",
+        "contract_digest",
+        "intent_ref",
+        "resources",
+        "required_obligations",
+        "permission_grant"
+      ],
+      "properties": {
+        "record_ref": {
+          "$ref": "#/$defs/work_ref"
+        },
+        "contract_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "intent_ref": {
+          "$ref": "#/$defs/intent_ref"
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "required_obligations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "permission_grant": {
+          "const": false
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "project_id",
+        "actor_ref",
+        "intent_ref",
+        "work_ref",
+        "work_contract_digest",
+        "operation",
+        "decision_class",
+        "resources",
+        "environment",
+        "data_class",
+        "destinations",
+        "credential_classes",
+        "plan_digest",
+        "expected_state_digest",
+        "policy_digest",
+        "proposed_usage",
+        "starts_run",
+        "changes_sovereign_boundary",
+        "required_obligations",
+        "digest",
+        "compute_unit_ref",
+        "run_ref",
+        "permission_grant",
+        "expected_authority_epoch"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "harness.action-coverage-request.v1"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "actor_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "intent_ref": {
+          "$ref": "#/$defs/intent_ref"
+        },
+        "work_ref": {
+          "$ref": "#/$defs/work_ref"
+        },
+        "work_contract_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "operation": {
+          "$ref": "#/$defs/id"
+        },
+        "decision_class": {
+          "$ref": "#/$defs/id"
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "environment": {
+          "$ref": "#/$defs/id"
+        },
+        "data_class": {
+          "$ref": "#/$defs/id"
+        },
+        "destinations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "credential_classes": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "plan_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "expected_state_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "proposed_usage": {
+          "$ref": "#/$defs/proposed_usage"
+        },
+        "starts_run": {
+          "type": "boolean"
+        },
+        "changes_sovereign_boundary": {
+          "type": "boolean"
+        },
+        "required_obligations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "compute_unit_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "run_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "expected_authority_epoch": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "budget_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delegation_ref",
+        "committed",
+        "reserved",
+        "active_runs",
+        "run_ref",
+        "run_committed",
+        "run_reserved",
+        "run_admission_state",
+        "run_accounting",
+        "period_accounting"
+      ],
+      "properties": {
+        "delegation_ref": {
+          "$ref": "#/$defs/delegation_ref"
+        },
+        "committed": {
+          "$ref": "#/$defs/usage"
+        },
+        "reserved": {
+          "$ref": "#/$defs/usage"
+        },
+        "active_runs": {
+          "$ref": "#/$defs/known_count"
+        },
+        "run_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "run_committed": {
+          "$ref": "#/$defs/usage"
+        },
+        "run_reserved": {
+          "$ref": "#/$defs/usage"
+        },
+        "run_admission_state": {
+          "enum": [
+            "not_admitted",
+            "active",
+            "ended",
+            "unknown"
+          ]
+        },
+        "run_accounting": {
+          "enum": [
+            "cumulative_including_descendants",
+            "unknown"
+          ]
+        },
+        "period_accounting": {
+          "$ref": "#/$defs/period_accounting"
+        }
+      }
+    },
+    "obligation_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "outcome",
+        "actor_kind",
+        "evidence_ref",
+        "action_digest",
+        "observed_at",
+        "fresh_until"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "outcome": {
+          "enum": [
+            "satisfied",
+            "failed",
+            "unknown"
+          ]
+        },
+        "actor_kind": {
+          "enum": [
+            "qualified_human",
+            "agent",
+            "system",
+            "unknown"
+          ]
+        },
+        "evidence_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$"
+        },
+        "action_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "fresh_until": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    },
+    "control_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "observed_at",
+        "fresh_until",
+        "policy_ref",
+        "policy_digest",
+        "state_digest",
+        "policy_scope",
+        "required_obligations",
+        "qualified_human_obligations",
+        "reserved_decision_classes",
+        "revoked_delegation_ids",
+        "emergency_stop",
+        "budget_snapshots",
+        "obligation_results",
+        "digest",
+        "permission_grant",
+        "authority_controls_ref",
+        "authority_epoch",
+        "accounting_observation"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "harness.shadow-control-snapshot.v2"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "fresh_until": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "state_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "policy_scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "required_obligations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "qualified_human_obligations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "reserved_decision_classes": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "revoked_delegation_ids": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "emergency_stop": {
+          "type": "boolean"
+        },
+        "budget_snapshots": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/budget_snapshot"
+          }
+        },
+        "obligation_results": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/obligation_result"
+          }
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "authority_controls_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "authority_epoch": {
+          "$ref": "#/$defs/count"
+        },
+        "accounting_observation": {
+          "enum": [
+            "coherent_at_observed_at",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "information_role",
+        "evaluation_time",
+        "intent",
+        "work_binding",
+        "delegations",
+        "action",
+        "controls"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.governance-shadow-input.v2"
+        },
+        "information_role": {
+          "const": "hypothetical_non_authorizing_input"
+        },
+        "evaluation_time": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
+        "work_binding": {
+          "$ref": "#/$defs/work_binding"
+        },
+        "delegations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/delegation"
+          }
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "controls": {
+          "$ref": "#/$defs/control_snapshot"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "information_role",
+        "coverage",
+        "permission_grant",
+        "execution_authorized",
+        "authority_effect",
+        "authority_authentication",
+        "reservations_created",
+        "evaluation_time",
+        "input_digest",
+        "action_digest",
+        "intent_ref",
+        "delegation_refs",
+        "policy_digest",
+        "control_snapshot_digest",
+        "reasons",
+        "limitations",
+        "result_digest",
+        "authority_controls_ref",
+        "authority_epoch"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.governance-shadow-result.v2"
+        },
+        "information_role": {
+          "const": "derived_non_authorizing_coverage"
+        },
+        "coverage": {
+          "enum": [
+            "covered",
+            "uncovered",
+            "indeterminate"
+          ]
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "execution_authorized": {
+          "const": false
+        },
+        "authority_effect": {
+          "const": "none"
+        },
+        "authority_authentication": {
+          "const": "not_performed"
+        },
+        "reservations_created": {
+          "const": false
+        },
+        "evaluation_time": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "input_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "action_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "intent_ref": {
+          "$ref": "#/$defs/intent_ref"
+        },
+        "delegation_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/delegation_ref"
+          }
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "control_snapshot_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "result_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority_controls_ref": {
+          "$ref": "#/$defs/id"
+        },
+        "authority_epoch": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "proposed_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions",
+        "compute_units"
+      ],
+      "properties": {
+        "actions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "compute_units": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "work_ref": {
+      "type": "string",
+      "pattern": "^(?:TASK-[0-9]{4}|external:codex-task:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$"
+    },
+    "period_accounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end",
+        "includes_descendants"
+      ],
+      "properties": {
+        "start": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "end": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "includes_descendants": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

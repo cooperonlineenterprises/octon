@@ -6,11 +6,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import tarfile
 import types
 import unittest
 from pathlib import Path
@@ -22,7 +24,7 @@ SPEC = importlib.util.spec_from_file_location("governance_shadow_tests_subject",
 assert SPEC and SPEC.loader
 G = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(G)
-FIXTURE = SCRIPTS.parent / "fixtures/governance-shadow/covered.json"
+FIXTURE = SCRIPTS.parent / "fixtures/governance-shadow/covered-v2.json"
 
 
 def reseal(value: dict, *, parents: bool = True, budgets: bool = True) -> dict:
@@ -194,6 +196,7 @@ class GovernanceShadowTests(unittest.TestCase):
             budget["reserved"]["actions"] = 1
             budget["run_reserved"]["actions"] = 1
             budget["active_runs"] = 1
+            budget["run_admission_state"] = "active"
         self.assert_reason("per_run_limit_exceeded")
 
     def test_unknown_usage_is_not_zero(self) -> None:
@@ -213,6 +216,195 @@ class GovernanceShadowTests(unittest.TestCase):
         self.assert_reason("concurrency_limit_exceeded")
         self.setUp(); self.value["controls"]["budget_snapshots"][0]["active_runs"] = None
         self.assert_reason("active_run_count_unknown", status="indeterminate")
+
+    def bound_result(self) -> dict:
+        """Bind observations to a deliberately changed action, without authority."""
+        reseal(self.value)
+        for observation in self.value["controls"]["obligation_results"]:
+            observation["action_digest"] = self.value["action"]["digest"]
+        self.value["controls"]["digest"] = G.record_digest(self.value["controls"])
+        result = G.evaluate(self.value)
+        for flag in ("permission_grant", "execution_authorized", "reservations_created"):
+            self.assertIs(result[flag], False)
+        self.assertEqual(result["authority_effect"], "none")
+        self.assertEqual(result["authority_authentication"], "not_performed")
+        self.assertEqual(result["schema_version"], "octon.governance-shadow-result.v2")
+        return result
+
+    def continuing_run(self) -> None:
+        self.value["action"]["starts_run"] = False
+        for budget in self.value["controls"]["budget_snapshots"]:
+            budget["active_runs"] = 1
+            budget["run_admission_state"] = "active"
+
+    def test_nonexistent_continuation_cannot_bypass_zero_concurrency(self) -> None:
+        self.value["action"]["starts_run"] = False
+        for grant in self.value["delegations"]:
+            grant["concurrency_limit"] = 0
+        result = self.bound_result()
+        self.assertEqual(result["coverage"], "uncovered")
+        self.assertIn("continuation_run_not_active", result["reasons"])
+
+    def test_continuation_requires_active_membership_at_every_ancestor(self) -> None:
+        for index in range(2):
+            for state, coverage, reason in (
+                ("not_admitted", "uncovered", "continuation_run_not_active"),
+                ("ended", "uncovered", "run_identity_ended"),
+                ("unknown", "indeterminate", "run_membership_unknown"),
+            ):
+                with self.subTest(ancestor=index, state=state):
+                    self.setUp(); self.continuing_run()
+                    self.value["controls"]["budget_snapshots"][index]["run_admission_state"] = state
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], coverage)
+                    self.assertIn(reason, result["reasons"])
+
+    def test_active_membership_cannot_claim_zero_occupancy_or_another_run(self) -> None:
+        self.continuing_run()
+        self.value["controls"]["budget_snapshots"][0]["active_runs"] = 0
+        result = self.bound_result()
+        self.assertEqual(result["coverage"], "uncovered")
+        self.assertIn("active_run_membership_contradiction", result["reasons"])
+        self.setUp(); self.continuing_run()
+        self.value["controls"]["budget_snapshots"][0]["run_ref"] = "run:another"
+        result = self.bound_result()
+        self.assertEqual(result["coverage"], "indeterminate")
+        self.assertIn("run_budget_binding_mismatch", result["reasons"])
+
+    def test_existing_run_continues_at_ceiling_but_new_run_cannot(self) -> None:
+        self.continuing_run()
+        for budget, grant in zip(self.value["controls"]["budget_snapshots"], self.value["delegations"]):
+            budget["active_runs"] = grant["concurrency_limit"]
+        self.assertEqual(self.bound_result()["coverage"], "covered")
+        self.setUp()
+        for budget, grant in zip(self.value["controls"]["budget_snapshots"], self.value["delegations"]):
+            budget["active_runs"] = grant["concurrency_limit"]
+        result = self.bound_result()
+        self.assertEqual(result["coverage"], "uncovered")
+        self.assertIn("concurrency_limit_exceeded", result["reasons"])
+
+    def test_new_run_cannot_reuse_active_or_ended_identity(self) -> None:
+        for state, reason in (("active", "run_already_admitted"), ("ended", "run_identity_ended")):
+            with self.subTest(state=state):
+                self.setUp()
+                self.value["controls"]["budget_snapshots"][0]["run_admission_state"] = state
+                self.value["controls"]["budget_snapshots"][0]["active_runs"] = 1
+                result = self.bound_result()
+                self.assertEqual(result["coverage"], "uncovered")
+                self.assertIn(reason, result["reasons"])
+
+    def test_same_run_components_cannot_be_underaccounted_by_an_ancestor(self) -> None:
+        for field, period_field in (("run_committed", "committed"), ("run_reserved", "reserved")):
+            for unit in G.BUDGET_UNITS:
+                with self.subTest(field=field, unit=unit):
+                    self.setUp(); self.continuing_run()
+                    for budget in self.value["controls"]["budget_snapshots"]:
+                        budget[period_field][unit] = 1
+                    self.value["controls"]["budget_snapshots"][1][field][unit] = 1
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], "uncovered")
+                    self.assertIn("ancestor_" + field + "_underaccounted", result["reasons"])
+
+    def test_equal_and_larger_ancestor_usage_is_not_double_charged(self) -> None:
+        for field, period_field in (("run_committed", "committed"), ("run_reserved", "reserved")):
+            for unit in G.BUDGET_UNITS:
+                for parent_amount in (1, 2):
+                    with self.subTest(field=field, unit=unit, ancestor=parent_amount):
+                        self.setUp(); self.continuing_run()
+                        parent, child = self.value["controls"]["budget_snapshots"]
+                        for budget, amount in ((parent, parent_amount), (child, 1)):
+                            budget[field][unit] = amount
+                            budget[period_field][unit] = amount
+                        self.assertEqual(self.bound_result()["coverage"], "covered")
+
+    def test_unknown_counter_or_comparability_never_becomes_coverage(self) -> None:
+        for field in ("run_committed", "run_reserved", "committed", "reserved"):
+            for unit in G.BUDGET_UNITS:
+                with self.subTest(field=field, unit=unit):
+                    self.setUp(); self.continuing_run()
+                    self.value["controls"]["budget_snapshots"][0][field][unit] = None
+                    self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+        for index in range(2):
+            self.setUp(); self.continuing_run()
+            self.value["controls"]["budget_snapshots"][index]["run_accounting"] = "unknown"
+            self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+        self.setUp(); self.value["controls"]["accounting_observation"] = "unknown"
+        self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+
+    def test_period_comparison_requires_exact_explicit_windows_and_inclusion(self) -> None:
+        for field in ("committed", "reserved"):
+            for unit in G.BUDGET_UNITS:
+                with self.subTest(field=field, unit=unit):
+                    self.setUp()
+                    self.value["controls"]["budget_snapshots"][1][field][unit] = 1
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], "uncovered")
+                    self.assertIn("ancestor_" + field + "_underaccounted", result["reasons"])
+        self.setUp()
+        self.value["controls"]["budget_snapshots"][0]["period_accounting"]["start"] = "2030-01-01T00:00:00Z"
+        self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+        for key, value in (("start", None), ("end", None), ("includes_descendants", None), ("includes_descendants", False)):
+            with self.subTest(field=key, value=value):
+                self.setUp()
+                self.value["controls"]["budget_snapshots"][0]["period_accounting"][key] = value
+                self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+
+    def test_invalid_or_expired_accounting_interval_never_covers(self) -> None:
+        self.value["controls"]["budget_snapshots"][0]["period_accounting"]["end"] = "2030-01-01T00:00:00Z"
+        self.assertEqual(self.bound_result()["coverage"], "uncovered")
+        self.setUp()
+        self.value["controls"]["budget_snapshots"][0]["period_accounting"]["end"] = self.value["evaluation_time"]
+        self.assertEqual(self.bound_result()["coverage"], "indeterminate")
+
+    def test_v1_and_mixed_inputs_cannot_satisfy_v2_qualification(self) -> None:
+        old = G.load_input(SCRIPTS.parent / "fixtures/governance-shadow/covered.json")
+        with self.assertRaises(G.GovernanceError): G.evaluate(old)
+        for outer, control in (("octon.governance-shadow-input.v1", "harness.shadow-control-snapshot.v2"),
+                               ("octon.governance-shadow-input.v2", "harness.shadow-control-snapshot.v1")):
+            with self.subTest(outer=outer, control=control):
+                self.setUp(); self.value["schema_version"] = outer
+                self.value["controls"]["schema_version"] = control
+                with self.assertRaises(G.GovernanceError): G.evaluate(reseal(self.value))
+        old_result = G.load_input(SCRIPTS.parent / "fixtures/governance-shadow/covered-v1-result.json")
+        with self.assertRaises(G.GovernanceError): G.validate_shape(old_result, "result", G.schema())
+        result = subprocess.run([sys.executable, "-I", "-B", str(SCRIPTS / "governance_shadow.py"),
+                                 "--input", str(SCRIPTS.parent / "fixtures/governance-shadow/covered.json")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["schema_version"], "octon.governance-shadow-error.v1")
+
+    def test_v1_bytes_and_unchanged_record_definitions_are_preserved(self) -> None:
+        expected = {
+            "shared/source-contracts/governance-foundation.schema.json": "627b59aed7c2a5d381a692f84ba937ecba20a4682cf2d59134a34a681f856fd0",
+            "skills/octon-project-bootstrap/fixtures/governance-shadow/covered.json": "5fd579cba0f519dc7737ff6ba167ac83adc3617cf77c952a62bd040f69d57d7b",
+            "skills/octon-project-bootstrap/fixtures/governance-shadow/covered-v1-result.json": "9e81d7f0330718b9898d698702c088f7c245f3ef96e8806a52aa89250992ee53",
+        }
+        for path, sha in expected.items():
+            self.assertEqual(hashlib.sha256((G.ROOT / path).read_bytes()).hexdigest(), sha)
+        prior = G.CONTRACTS.load_json(G.ROOT / "shared/source-contracts/governance-foundation.schema.json")
+        current = G.schema()
+        for name in ("intent", "delegation", "action"):
+            self.assertEqual(current["$defs"][name], prior["$defs"][name])
+
+    def test_pinned_old_reader_reproduces_the_exact_preserved_v1_result(self) -> None:
+        revision = "360a8dbcd0d7e0f2524a321f3b38dce6ba3e4078"
+        archive = subprocess.check_output(["git", "archive", "--format=tar", revision], cwd=G.ROOT)
+        with tempfile.TemporaryDirectory() as area:
+            target = Path(area)
+            with tarfile.open(fileobj=io.BytesIO(archive)) as source:
+                for member in source.getmembers():
+                    path = Path(member.name)
+                    self.assertFalse(path.is_absolute() or ".." in path.parts or member.issym() or member.islnk())
+                    self.assertTrue(member.isfile() or member.isdir())
+                if hasattr(tarfile, "data_filter"):
+                    source.extractall(target, filter="data")
+                else:  # Python 3.11 before the filter backport; members checked above.
+                    source.extractall(target)
+            program = "import sys; sys.dont_write_bytecode=True; sys.path.insert(0,sys.argv[1]); import governance_shadow as g; sys.stdout.buffer.write(g.canonical_bytes(g.evaluate(g.load_input(__import__('pathlib').Path(sys.argv[2])))))"
+            result = subprocess.run([sys.executable, "-I", "-B", "-c", program,
+                                     str(target / "skills/octon-project-bootstrap/scripts"),
+                                     str(target / "skills/octon-project-bootstrap/fixtures/governance-shadow/covered.json")], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, (SCRIPTS.parent / "fixtures/governance-shadow/covered-v1-result.json").read_bytes())
 
     def test_missing_failed_or_duplicate_obligations_never_pass(self) -> None:
         self.value["controls"]["obligation_results"] = []

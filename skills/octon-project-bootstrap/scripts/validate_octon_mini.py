@@ -718,7 +718,7 @@ def validate_config_and_schemas(issues: list[str], scaffolder: Any) -> None:
         "architecture_proof_generated": False,
         "intent_delegation_foundation": {
             "status": "source_only_shadow",
-            "schema": "shared/source-contracts/governance-foundation.schema.json",
+            "schema": "shared/source-contracts/governance-foundation-v2.schema.json",
             "implementation": "skills/octon-project-bootstrap/scripts/governance_shadow.py",
             "qualification": "skills/octon-project-bootstrap/scripts/test_governance_shadow.py",
             "generated": False,

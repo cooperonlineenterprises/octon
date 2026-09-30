@@ -53,17 +53,29 @@ their immutable intent/work/action bindings without creating a second DEC store.
 ## Source contracts and identity
 
 `octon.json` registers the foundation at
-`shared/source-contracts/governance-foundation.schema.json`. The source schema is
-the one definition of these closed documents:
+`shared/source-contracts/governance-foundation-v2.schema.json`. This is the single
+current source registration for these closed documents. The original v1 container
+and fixture bytes remain retained, as required by SRC-DEC-0043; their historical
+registration is not rewritten.
 
 | Version | Meaning |
 |---|---|
 | `harness.intent-revision.v1` | Immutable intent identity/revision and explicit interpretation. |
 | `harness.project-delegation.v1` | Declared principal-to-subject scope, exact intent/parent binding, validity, budgets, decision reservations and non-weakenable obligations. |
 | `harness.action-coverage-request.v1` | Exact actor, work/intent, plan, expected state, policy, scope and proposed usage for one material action. |
-| `harness.shadow-control-snapshot.v1` | Supplied current-policy, revocation, stop, obligation and per-grant/per-run usage observations. |
-| `octon.governance-shadow-input.v1` | A bounded hypothetical bundle; no implicit lookup of referenced project or authority state. |
-| `octon.governance-shadow-result.v1` | Content-bound coverage evidence that always refuses to claim execution authority. |
+| `harness.shadow-control-snapshot.v2` | Supplied policy, revocation, stop, obligation and explicitly coherent occupancy/accounting observations. |
+| `octon.governance-shadow-input.v2` | A bounded hypothetical bundle; no implicit lookup of referenced project or authority state. |
+| `octon.governance-shadow-result.v2` | Content-bound coverage evidence that always refuses to claim execution authority. |
+
+The intent, delegation and action v1 definitions are unchanged. The control,
+input and result versions change explicitly because the required observation
+shape and coverage meaning change. Default evaluation rejects v1 and mixed
+input/control versions with the existing non-authorizing error envelope and
+exit 2. A v1 result cannot satisfy v2 qualification. The exact old reader, schema,
+dependencies and fixture at `360a8dbcd0d7e0f2524a321f3b38dce6ba3e4078`
+reproduce `covered-v1-result.json`; the old container and `covered.json` remain
+byte-identical. No automatic converter is supplied and no active consumer
+contract, record ID, grant meaning or kernel version is changed.
 
 IDs are opaque within their typed project scope. Fixtures allocate no live
 project IDs and do not add a new prefix to kernel 4.2. Existing TASK/DEC and
@@ -81,7 +93,7 @@ policy changes require new bound input and a new evaluation.
 Run from the source checkout, with an explicit input file:
 
 ```text
-python3 -B skills/octon-project-bootstrap/scripts/governance_shadow.py --input skills/octon-project-bootstrap/fixtures/governance-shadow/covered.json
+python3 -B skills/octon-project-bootstrap/scripts/governance_shadow.py --input skills/octon-project-bootstrap/fixtures/governance-shadow/covered-v2.json
 ```
 
 It reads that bounded regular JSON file and its own source schema, then emits a
@@ -118,11 +130,65 @@ Evaluation enforces:
    proposed request, across every ancestor. Unknown usage is not zero. Grant,
    run and declared compute-unit bindings must match; limits cannot change units
    silently. A material request consumes at least one action count.
-7. Concurrency ceilings and exact-action-bound, individually fresh obligation
+7. Exact-run membership and concurrency ceilings under every ancestor, and
+   exact-action-bound, individually fresh obligation
    observations. Mandatory failures
    refuse coverage; missing/unknown evidence is indeterminate. A qualified-human
    obligation is not satisfied by an agent result. Human headcount/model
    confidence never replaces an obligation.
+
+### Occupancy and accounting observations in control v2
+
+These fields belong only to the source-only control projection. They do not
+extend or reinterpret `harness.project-delegation.v1`, authenticate a run,
+create a ledger or implement admission/reservation effects. The existing
+coordinator remains the eventual owner of the supplied observations.
+
+Each exact grant/run-bound budget snapshot declares `run_admission_state`:
+
+| Observation | Starting the run | Continuing the run |
+|---|---|---|
+| `not_admitted` | Run usage must be zero; include one new slot in the ceiling check. | Uncovered. |
+| `active` | Uncovered; the immutable run identity is already admitted. | Active count must be at least one; check the ceiling without adding a slot. |
+| `ended` | Uncovered; the immutable identity cannot be reused. | Uncovered. |
+| `unknown` | Indeterminate. | Indeterminate. |
+
+The run reference must match the requested run under every ancestor. A zero
+active count contradicts declared active membership. Unknown membership or
+active counts cannot become zero or coverage, even when limits are zero.
+
+`accounting_observation: coherent_at_observed_at` explicitly declares that all
+usage and occupancy observations describe the control snapshot's `observed_at`.
+`unknown` is indeterminate. Existing control freshness still applies. This
+declaration is hypothetical; it does not prove a coherent capture or prevent
+an in-flight change.
+
+Each `period_accounting` supplies its own half-open `start`/`end` interval and
+whether its committed/reserved observations include descendants. Both the
+observation and evaluation must fall inside the declared interval. The interval
+is not derived from grant validity, and this projection does not redefine which
+accounting period a v1 grant's limits govern. A protected live reader must prove
+that association through the existing policy/accounting owner. Missing interval
+facts or descendant inclusion, and unequal ancestor/child intervals, are
+indeterminate; the prototype never assumes that different periods are comparable.
+
+`run_accounting: cumulative_including_descendants` declares cumulative
+committed/reserved usage for the exact immutable `run_ref` through the common
+observation, including descendant usage. `unknown` is indeterminate. For known,
+coherent same-run observations, each ancestor committed **and** reserved
+component must individually dominate its descendant for actions and declared
+compute units. The same component rule applies to explicitly comparable period
+observations. Equal or larger legitimate ancestor values pass; unknown counters
+cannot cover. Components are compared separately because the hypothetical
+snapshot declares a coherent commitment/reservation phase, not independently
+timed transfers. The evaluator does not sum chain levels, which may describe the
+same action, and retains the existing per-run-versus-period consistency checks.
+
+The v1 period-only probe lacked explicit interval/inclusion facts and remains
+historical ambiguity. The v2 clarification does not relabel it as an additional
+confirmed v1 defect. Continuing nonexistent runs and same-run ancestor
+under-accounting are the two corrected shadow consistency defects. All outcomes
+continue to withhold permission, authentication, reservations and execution.
 
 `work_binding` is a non-authoritative projection of an existing task contract,
 not a task database. The source evaluator does not authenticate the supplied
