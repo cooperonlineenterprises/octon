@@ -265,7 +265,8 @@
           "start": "2030-01-02T00:00:00Z",
           "end": "2030-01-03T00:00:00Z",
           "includes_descendants": true
-        }
+        },
+        "run_period_relation": "whole_run_within_period"
       },
       {
         "delegation_ref": {
@@ -296,7 +297,8 @@
           "start": "2030-01-02T00:00:00Z",
           "end": "2030-01-03T00:00:00Z",
           "includes_descendants": true
-        }
+        },
+        "run_period_relation": "whole_run_within_period"
       }
     ],
     "obligation_results": [
@@ -319,7 +321,7 @@
         "fresh_until": "2030-01-02T00:05:00Z"
       }
     ],
-    "digest": "a2487c799c0127af43c9044d35a03d839547ecfaf1c686ca8cc49a17008fd841",
+    "digest": "926f3d6ce6556d804c8fc5e9de22231833a0144df017611e5a736debf41922ef",
     "permission_grant": false,
     "authority_controls_ref": "control:fixture-project",
     "authority_epoch": 1,

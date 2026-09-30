@@ -182,7 +182,17 @@ observations. Equal or larger legitimate ancestor values pass; unknown counters
 cannot cover. Components are compared separately because the hypothetical
 snapshot declares a coherent commitment/reservation phase, not independently
 timed transfers. The evaluator does not sum chain levels, which may describe the
-same action, and retains the existing per-run-versus-period consistency checks.
+same action.
+
+`run_period_relation` separately declares whether the entire cumulative run is
+within the supplied period or spans a period boundary. For
+`whole_run_within_period`, the existing run-versus-period component inequalities
+remain mandatory. For known `cross_period` observations, lifetime run usage may
+legitimately exceed the current period's usage: the evaluator checks whole-run
+and current-period limits independently without falsely equating their counters
+or resetting lifetime usage. `unknown` is indeterminate. These are control-side
+comparability facts, not a new meaning for the unchanged v1 grant limits; a live
+reader must establish them through the existing accounting owner.
 
 The v1 period-only probe lacked explicit interval/inclusion facts and remains
 historical ambiguity. The v2 clarification does not relabel it as an additional

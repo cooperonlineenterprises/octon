@@ -271,6 +271,9 @@ def evaluate(value: dict[str, Any], *, root: Path = ROOT) -> dict[str, Any]:
         comparable_periods.append(period_interval)
         if budget["run_accounting"] != "cumulative_including_descendants":
             unknown.add("run_accounting_unknown")
+        run_period_relation = budget["run_period_relation"]
+        if run_period_relation == "unknown":
+            unknown.add("run_and_period_accounting_relation_unknown")
         for unit in BUDGET_UNITS:
             cost = action["proposed_usage"][unit]
             committed, outstanding = budget["committed"][unit], budget["reserved"][unit]
@@ -285,7 +288,10 @@ def evaluate(value: dict[str, Any], *, root: Path = ROOT) -> dict[str, Any]:
                 unknown.add("budget_usage_unknown")
             elif committed + outstanding + cost > grant["period_limits"][unit]:
                 refused.add("shared_period_limit_exceeded")
-            if ((run_committed is not None and committed is not None and run_committed > committed) or
+            if (coherent_accounting and period_interval is not None
+                    and budget["run_accounting"] == "cumulative_including_descendants"
+                    and run_period_relation == "whole_run_within_period") and (
+                    (run_committed is not None and committed is not None and run_committed > committed) or
                     (run_reserved is not None and outstanding is not None and run_reserved > outstanding)):
                 refused.add("inconsistent_run_and_period_usage")
         active = budget["active_runs"]

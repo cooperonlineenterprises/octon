@@ -14,7 +14,9 @@ The v1 schema/input/result bytes remain unchanged and cannot qualify v2. Default
 evaluation rejects v1 and mixed versions; no automatic converter is provided.
 Intent/delegation/action definitions remain v1. The source-only v2 control
 observations explicitly declare occupancy, coherent same-run accounting and
-period interval/inclusion facts; they do not change active grant contracts.
+period interval/inclusion facts and run/period comparability. Known period-spanning
+runs retain lifetime usage and independent limits; unknown relations cannot
+cover. These observations do not change active grant contracts.
 
 `scripts/test_governance_shadow.py` derives adverse cases without changing the
 fixture bytes. Tests include binding/lineage errors, narrowing in every

@@ -595,7 +595,8 @@
         "run_reserved",
         "run_admission_state",
         "run_accounting",
-        "period_accounting"
+        "period_accounting",
+        "run_period_relation"
       ],
       "properties": {
         "delegation_ref": {
@@ -635,6 +636,13 @@
         },
         "period_accounting": {
           "$ref": "#/$defs/period_accounting"
+        },
+        "run_period_relation": {
+          "enum": [
+            "whole_run_within_period",
+            "cross_period",
+            "unknown"
+          ]
         }
       }
     },

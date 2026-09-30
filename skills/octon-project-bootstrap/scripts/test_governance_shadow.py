@@ -356,6 +356,64 @@ class GovernanceShadowTests(unittest.TestCase):
         self.value["controls"]["budget_snapshots"][0]["period_accounting"]["end"] = self.value["evaluation_time"]
         self.assertEqual(self.bound_result()["coverage"], "indeterminate")
 
+    def test_cross_period_lifetime_usage_is_checked_without_false_subset_claim(self) -> None:
+        for field in ("run_committed", "run_reserved"):
+            for unit in G.BUDGET_UNITS:
+                with self.subTest(field=field, unit=unit):
+                    self.setUp(); self.continuing_run()
+                    for budget in self.value["controls"]["budget_snapshots"]:
+                        budget[field][unit] = 1
+                        budget["run_period_relation"] = "cross_period"
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], "covered")
+                    self.assertNotIn("inconsistent_run_and_period_usage", result["reasons"])
+
+    def test_known_whole_run_subset_still_requires_component_consistency(self) -> None:
+        for field in ("run_committed", "run_reserved"):
+            for unit in G.BUDGET_UNITS:
+                with self.subTest(field=field, unit=unit):
+                    self.setUp(); self.continuing_run()
+                    for budget in self.value["controls"]["budget_snapshots"]:
+                        budget[field][unit] = 1
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], "uncovered")
+                    self.assertIn("inconsistent_run_and_period_usage", result["reasons"])
+
+    def test_unknown_run_period_relation_or_comparability_is_indeterminate(self) -> None:
+        for mutation in (
+            lambda v: v["controls"]["budget_snapshots"][0].update(run_period_relation="unknown"),
+            lambda v: v["controls"].update(accounting_observation="unknown"),
+            lambda v: v["controls"]["budget_snapshots"][0].update(run_accounting="unknown"),
+            lambda v: v["controls"]["budget_snapshots"][0]["period_accounting"].update(includes_descendants=None),
+        ):
+            self.setUp(); self.continuing_run()
+            parent = self.value["controls"]["budget_snapshots"][0]
+            parent["run_committed"]["actions"] = 1
+            # The child's equal lifetime counter needs no subset comparison:
+            # it explicitly spans the period. Only the parent fact is varied.
+            child = self.value["controls"]["budget_snapshots"][1]
+            child["run_committed"]["actions"] = 1
+            child["run_period_relation"] = "cross_period"
+            mutation(self.value)
+            result = self.bound_result()
+            self.assertEqual(result["coverage"], "indeterminate")
+            self.assertNotIn("inconsistent_run_and_period_usage", result["reasons"])
+
+    def test_cross_period_keeps_independent_run_and_current_period_limits(self) -> None:
+        for unit in G.BUDGET_UNITS:
+            for field, limit, reason in (
+                ("run_committed", "per_run_limits", "per_run_limit_exceeded"),
+                ("committed", "period_limits", "shared_period_limit_exceeded"),
+            ):
+                with self.subTest(unit=unit, field=field):
+                    self.setUp(); self.continuing_run()
+                    for budget in self.value["controls"]["budget_snapshots"]:
+                        budget["run_period_relation"] = "cross_period"
+                    self.value["controls"]["budget_snapshots"][0][field][unit] = self.value["delegations"][0][limit][unit]
+                    result = self.bound_result()
+                    self.assertEqual(result["coverage"], "uncovered")
+                    self.assertIn(reason, result["reasons"])
+
     def test_v1_and_mixed_inputs_cannot_satisfy_v2_qualification(self) -> None:
         old = G.load_input(SCRIPTS.parent / "fixtures/governance-shadow/covered.json")
         with self.assertRaises(G.GovernanceError): G.evaluate(old)
