@@ -145,7 +145,7 @@
     {
       "id": "LEGACY-0018",
       "path": "shared/GENERATION_CONTRACT.md",
-      "file_sha256": "ecf3edc39e10e8d8cc6a7de7361c1c1572f2d002e077b5f063f50e335c7bfb73",
+      "file_sha256": "f3aa112bd1b37a83943385398cbdedcc700aab50463d5eed41a6f185818a6642",
       "classification": "breaking_transition_explanation",
       "occurrence_count": 7
     },
@@ -404,7 +404,7 @@
     {
       "id": "LEGACY-0055",
       "path": "skills/octon-project-bootstrap/scripts/upgrade_project.py",
-      "file_sha256": "d59c0a2c0b2130a5aec86aec6f8c493e00f211955df9e51d1c0892eeb4f5ce09",
+      "file_sha256": "4790e2d9fe83ae9d0c53847177ebe32e867d1978b0ed567970dcf03e4f9708a6",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 25
     },
@@ -470,6 +470,20 @@
       "file_sha256": "c764cd6cc5684f6e93d5bfd9e9db31b60c50bd6d7027fcc6d1f86010e31928c2",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 3
+    },
+    {
+      "id": "LEGACY-0066",
+      "path": "docs/DISPOSABLE_RUNTIME_QUALIFICATION.md",
+      "file_sha256": "25048cfa9c11d413898e5c9e3d85493022dd5f8c5ef1e1f926b5e579e3e3f5ac",
+      "classification": "breaking_transition_explanation",
+      "occurrence_count": 1
+    },
+    {
+      "id": "LEGACY-0067",
+      "path": "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
+      "file_sha256": "62955e3bdd834e5b28400f45d25b25cda3f817d0b563e74eaa1f7b9cd391dd22",
+      "classification": "explicit_legacy_migration_input",
+      "occurrence_count": 1
     }
   ],
   "limitations": [

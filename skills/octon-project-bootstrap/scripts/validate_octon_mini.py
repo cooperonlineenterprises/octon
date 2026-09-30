@@ -129,7 +129,12 @@ REQUIRED_PATHS = (
     "shared/source-contracts/legacy-reference-allowlist.schema.json",
     "shared/source-contracts/validation-benchmark-report.schema.json",
     "shared/source-contracts/profile-manifest.json",
+    "shared/source-contracts/profile-manifest-v3.schema.json",
     "shared/source-contracts/profile-manifest.schema.json",
+    "docs/DISPOSABLE_RUNTIME_QUALIFICATION.md",
+    "skills/octon-project-bootstrap/scripts/installation_runtime.py",
+    "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
+    "skills/octon-project-bootstrap/scripts/test_disposable_runtime.py",
     "shared/schemas/artifact-catalog.schema.json",
     "shared/schemas/dossier-artifact-registry.schema.json",
     "shared/schemas/dossier-path-authority.schema.json",
@@ -731,7 +736,7 @@ def validate_config_and_schemas(issues: list[str], scaffolder: Any) -> None:
             "octon.json must not duplicate profile or optional-package inventory"
         )
 
-    profile_schema_path = ROOT / "shared/source-contracts/profile-manifest.schema.json"
+    profile_schema_path = ROOT / "shared/source-contracts/profile-manifest-v3.schema.json"
     try:
         profile_schema = load_json(profile_schema_path)
     except (ValueError, json.JSONDecodeError) as error:
@@ -1596,6 +1601,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             ],
             ROOT,
             "cross-platform source, installed, and generated launcher fixtures",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_disposable_runtime.py")],
+            ROOT,
+            "disposable target runtime, dependencies, work/recovery and supported fixture conversion",
         ),
         (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],

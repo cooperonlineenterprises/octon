@@ -1,5 +1,5 @@
 {
-  "schema_version": "octon-mini.source.profile-manifest.v2",
+  "schema_version": "octon.source.profile-manifest.v3",
   "document_role": "authoritative_profile_inventory_acceptance_and_generation_manifest",
   "permission_grant": false,
   "profiles": [
@@ -1210,5 +1210,28 @@
     "A project may deliberately adopt a source-only artifact through its own authority and migration process.",
     "Runtime generation ignores unreviewed additions; repository validation remains strict and requires explicit review.",
     "Inventory hashes bind reviewed source paths, not substantive correctness or project readiness."
-  ]
+  ],
+  "disposable_runtime": {
+    "schema_version": "octon.source.disposable-runtime.v1",
+    "status": "qualification_only_not_selectable",
+    "permission_grant": false,
+    "profile": "minimal",
+    "layout": "compact",
+    "projection_version": "target-path-projection.v1",
+    "required_dependencies": [
+      "python>=3.11",
+      "canonical-minimal-core"
+    ],
+    "runtime_paths": [
+      ".octon/runtime/scripts/octon.py",
+      ".octon/runtime/scripts/octon_autonomous_delivery.py",
+      ".octon/runtime/scripts/octon_continuation.py",
+      ".octon/runtime/scripts/octon_doctor.py",
+      ".octon/runtime/scripts/octon_transaction.py",
+      ".octon/runtime/scripts/octon_work_completion.py",
+      ".octon/runtime/scripts/refresh.py",
+      ".octon/runtime/scripts/run_project_checks.py",
+      ".octon/runtime/scripts/validate.py"
+    ]
+  }
 }

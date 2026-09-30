@@ -702,3 +702,13 @@ and undeclared filesystem effects, and never claim that a deployment, monitor,
 scanner, review, signing service, or external platform exists or ran. Enabling
 either package before its project-level adoption is complete fails closed; a
 `not_applicable` trigger installs nothing.
+
+## Disposable target qualification exception
+
+The source profile v3 retains the exact v2 generation rules and inactive target
+design, and adds a closed nonselecting disposable-runtime dependency contract.
+The original profile v2 schema/reader remain supported with their original closed
+shape. Only `qualify_disposable_runtime.py --disposable-qualification` projects
+fresh canonical minimal/compact staging assets into actual target paths. It
+neither enables ordinary target generation nor upgrades a live consumer.
+See [qualified scope and recovery boundaries](../docs/DISPOSABLE_RUNTIME_QUALIFICATION.md).

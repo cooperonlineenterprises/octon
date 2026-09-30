@@ -1131,6 +1131,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         root / "patterns/schemas/pattern-record.schema.json",
         root / "patterns/architecture-proof/schema.json",
         root / "shared/source-contracts/information-state-semantics.schema.json",
+        root / "shared/source-contracts/profile-manifest-v3.schema.json",
         root / "shared/source-contracts/profile-manifest.schema.json",
         root / "shared/source-contracts/long-running-work-benchmark-report.schema.json",
         root / "shared/source-contracts/commands.schema.json",
@@ -1169,7 +1170,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
             root / "shared/source-contracts/profile-manifest.json"
         )
         generation_policy_schema = load_json(
-            root / "shared/source-contracts/profile-manifest.schema.json"
+            root / "shared/source-contracts/profile-manifest-v3.schema.json"
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         errors.append(f"generation policy cannot be loaded: {error}")
@@ -1289,7 +1290,7 @@ def main() -> int:
         f"- decision governance: valid baseline plus {mutation_count} fail-closed mutations"
     )
     print(
-        "- profile manifest: v2 source contract with retained explicit allowlists, derived profile projections, "
+        "- profile manifest: v3 source contract with retained explicit allowlists, derived profile projections, "
         "capability-scoped degradation, and strict repository drift validation"
     )
     guided_mutation_count = len(
