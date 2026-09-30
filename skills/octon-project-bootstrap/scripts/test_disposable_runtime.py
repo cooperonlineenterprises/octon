@@ -5,7 +5,7 @@ import copy
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import shutil
 import subprocess
 import sys
@@ -241,6 +241,8 @@ class DisposableRuntimeTests(unittest.TestCase):
         self.assertNotEqual(qualifier.supported_mode(0o666,'nt'),qualifier.supported_mode(0o444,'nt'))
         self.assertNotEqual(qualifier.supported_mode(0o600,'posix'),qualifier.supported_mode(0o644,'posix'))
         with self.assertRaises(ValueError):reader.confined(self.root,r'.octon\agent\policy.json')
+        self.assertEqual(qualifier.project_path(PureWindowsPath(r'.agent\decisions\DEC-0042-long-running-work.md').as_posix()),
+                         '.octon/agent/decisions/DEC-0042-long-running-work.md')
 
     def test_profile_v2_schema_preserved_and_mixed_versions_refuse(self):
         prior=json.loads(subprocess.check_output(['git','show','8871095f51a02e12a569d9260a51d0ff55fc1eef:shared/source-contracts/profile-manifest.json'],cwd=qualifier.ROOT,text=True))
@@ -264,7 +266,7 @@ class FixtureConversionTests(unittest.TestCase):
         cls.root=Path(cls.area.name)/'predecessor'
         case=identity.IdentityTransitionTests('test_published_schemas_unchanged')
         case.generate(cls.root,old=True)
-        cls.records=case.project_records(cls.root)
+        cls.records={Path(path).as_posix():data for path,data in case.project_records(cls.root).items()}
         cls.old_origin=(cls.root/'.octon-mini-origin.json').read_bytes()
         cls.old_only=Path(cls.area.name)/'old-only'
         shutil.copytree(cls.root,cls.old_only)
