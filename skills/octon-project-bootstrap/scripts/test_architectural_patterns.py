@@ -196,7 +196,7 @@ class ArchitecturalPatternContractTests(unittest.TestCase):
         policy = self.scaffolder.load_generation_policy()
         self.assertEqual(
             policy["schema_version"],
-            "octon-mini.source.profile-manifest.v2",
+            "octon.source.profile-manifest.v3",
         )
         self.assertEqual(policy["default_disposition"], "source_only")
         self.assertTrue(

@@ -184,7 +184,7 @@ def candidate_state(candidate: Path, path: str) -> dict[str, Any] | None:
     }
 
 
-def run_scaffold(target: Path, origin: dict[str, Any], generation_identifier: str) -> None:
+def run_scaffold(target: Path, origin: dict[str, Any], generation_identifier: str, render_date: str) -> None:
     result = subprocess.run(
         [
             sys.executable,
@@ -201,6 +201,8 @@ def run_scaffold(target: Path, origin: dict[str, Any], generation_identifier: st
             origin["layout"],
             "--generation-id",
             generation_identifier,
+            "--generation-date",
+            render_date,
         ],
         cwd=SCRIPT_ROOT,
         capture_output=True,
@@ -369,6 +371,7 @@ def build_proposal(
     authority_source: str,
     evidence_refs: list[str],
     cross_brand_seed_digest: str | None = None,
+    created_at: str | None = None,
 ) -> dict[str, Any]:
     from_product = origin_product(origin)
     from_version = origin_version(origin)
@@ -376,7 +379,7 @@ def build_proposal(
         "schema_version": "octon.bootstrap.upgrade-proposal.v1",
         "artifact_kind": "upgrade_proposal",
         "permission_grant": False,
-        "created_at": TRANSACTION.utc_timestamp(),
+        "created_at": created_at or TRANSACTION.utc_timestamp(),
         "target": str(target),
         "migration_kind": (
             "octon_mini_to_octon"
@@ -874,7 +877,15 @@ def plan_command(args: argparse.Namespace) -> int:
                 }
             )
         ).hexdigest()[:32]
-        run_scaffold(candidate, origin, generation_identifier)
+        proposal_created_at = TRANSACTION.utc_timestamp()
+        if args.proposal:
+            supplied_proposal = load_json(args.proposal)
+            validate_stored_proposal(supplied_proposal, target)
+            proposal_created_at = supplied_proposal["created_at"]
+        render_date = proposal_created_at[:10]
+        if date.fromisoformat(render_date).isoformat() != render_date:
+            raise UpgradeError("proposal rendering date is invalid")
+        run_scaffold(candidate, origin, generation_identifier, render_date)
         if args.proposal:
             proposal = load_json(args.proposal)
             validate_stored_proposal(proposal, target)
@@ -913,6 +924,7 @@ def plan_command(args: argparse.Namespace) -> int:
             rows,
             args.authority_source,
             args.evidence_ref,
+            created_at=proposal_created_at,
             cross_brand_seed_digest=(
                 cross_brand_seed.get("canonical_seed_digest")
                 if cross_brand_seed

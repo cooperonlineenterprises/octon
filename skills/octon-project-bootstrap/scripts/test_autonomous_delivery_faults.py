@@ -173,6 +173,26 @@ class AutonomousDeliveryFaultTests(unittest.TestCase):
                 self.runtime.resume_effect(resume_args, self.root)
         self.assertFalse(replayed)
 
+    def test_known_failed_effect_has_attempt_and_decisive_no_effect_receipt(self) -> None:
+        calls = []
+        def invoke(_root, argv, check=True):
+            if argv == self.plan["operation_argv"]:
+                calls.append(argv)
+                return self.completed_process(returncode=1)
+            return subprocess.CompletedProcess(argv, 0, b".git\n", b"")
+        with (
+            mock.patch.object(self.runtime, "validate_runtime_authority", return_value=(object(), self.projection)),
+            mock.patch.object(self.runtime, "require_clean_main"),
+            mock.patch.object(self.runtime, "observe", return_value={"observation": "known", "refs": {}}),
+            mock.patch.object(self.runtime, "run", side_effect=invoke),
+        ):
+            with self.assertRaisesRegex(self.runtime.RuntimeBlocked, "known no effect"):
+                self.runtime.apply_effect(self.base_args, self.root)
+        self.assertEqual(len(calls), 1)
+        history = self.runtime.receipt_sequence(self.root, self.receipt_id())
+        self.assertEqual([value["state"] for value in history], ["requested", "attempted", "failed_known_no_effect"])
+        self.assertEqual(history[-1]["outcome"], "known_no_effect")
+
     def test_corrupt_or_noncontiguous_receipt_history_is_rejected(self) -> None:
         # Path arithmetic is kept explicit because a malformed receipt identity
         # must never be interpreted as a filesystem operation.

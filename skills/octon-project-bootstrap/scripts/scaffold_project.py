@@ -1065,10 +1065,11 @@ def load_generation_policy() -> dict[str, object]:
     """Load the authoritative profile manifest and its generation boundary."""
     path = octon_mini_source_root() / PROFILE_MANIFEST_RELATIVE
     value = load_json(path)
-    if not isinstance(value, dict) or set(value) != GENERATION_POLICY_KEYS:
+    expected_keys = GENERATION_POLICY_KEYS | ({"disposable_runtime"} if isinstance(value, dict) and value.get("schema_version") == "octon.source.profile-manifest.v3" else set())
+    if not isinstance(value, dict) or set(value) != expected_keys:
         raise ValueError("profile manifest has an invalid top-level contract")
     if (
-        value.get("schema_version") != "octon-mini.source.profile-manifest.v2"
+        value.get("schema_version") not in {"octon-mini.source.profile-manifest.v2", "octon.source.profile-manifest.v3"}
         or value.get("document_role")
         != "authoritative_profile_inventory_acceptance_and_generation_manifest"
         or value.get("permission_grant") is not False
@@ -2225,6 +2226,7 @@ def parse_args() -> argparse.Namespace:
         help="optional exact 32-hex generation identity supplied by a digest-bound planner",
     )
     parser.add_argument("--profile")
+    parser.add_argument("--generation-date", help="exact ISO date for reproducible rendering; never execution freshness")
     parser.add_argument(
         "--layout",
         choices=("compact", "separated"),
@@ -2335,7 +2337,9 @@ def main() -> int:
             raise ValueError(
                 f"safety_invariant_degradation: {error}"
             ) from error
-        created = date.today().isoformat()
+        created = args.generation_date or date.today().isoformat()
+        if date.fromisoformat(created).isoformat() != created:
+            raise ValueError("--generation-date must be an exact ISO calendar date")
         if args.generation_id is not None and re.fullmatch(r"[a-f0-9]{32}", args.generation_id) is None:
             raise ValueError("--generation-id must be exactly 32 lowercase hexadecimal characters")
         identifier = args.generation_id or generation_id()
