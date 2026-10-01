@@ -83,6 +83,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python }}
+      - name: Probe native fixture authentication and portable paths
+        run: python -B skills/octon-project-bootstrap/scripts/test_fixture_admission.py AdmissionTests.test_01_native_dependency_and_portable_paths_early
       - name: Validate skill package metadata
         run: python -B skills/octon-project-bootstrap/scripts/validate_skill_package.py
       - name: Validate reference-evidence registry and citations

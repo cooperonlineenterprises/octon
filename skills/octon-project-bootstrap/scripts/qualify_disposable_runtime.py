@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import installation_runtime as reader
+import installation_runtime_v2 as admission_reader
 import scaffold_project as scaffold
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -44,7 +45,7 @@ def run(argv,cwd):
     return result
 
 
-def generate(target, project_name='Disposable Runtime Fixture'):
+def generate(target, project_name='Disposable Runtime Fixture', *, admission=False):
     if not target.is_absolute():
         raise ValueError('target must be absolute')
     scaffold.validate_target(target)
@@ -59,6 +60,13 @@ def generate(target, project_name='Disposable Runtime Fixture'):
         ROOT/'dossier/artifact-types.json',ROOT/'octon.json',ROOT/'VERSION'}
     inputs = [{'path':path.relative_to(ROOT).as_posix(), 'sha256':reader.digest(path.read_bytes())}
               for path in sorted(source_inputs)]
+    facet = admission_reader.validate_admission_inventory(reader.load(ROOT/'shared/source-contracts/admission-fixture-inventory.json')) if admission else None
+    if admission:
+        for item in facet['assets']:
+            path=ROOT/item['source']; inputs.append({'path':item['source'],'sha256':reader.digest(path.read_bytes())})
+        path=ROOT/'shared/source-contracts/admission-fixture-inventory.json'
+        inputs.append({'path':path.relative_to(ROOT).as_posix(),'sha256':reader.digest(path.read_bytes())})
+        inputs=sorted(inputs,key=lambda row:row['path'])
     revision = subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     with tempfile.TemporaryDirectory(prefix='octon-disposable-stage-',dir=target.parent) as temporary:
         area = Path(temporary)
@@ -97,7 +105,7 @@ def generate(target, project_name='Disposable Runtime Fixture'):
                         text = text.replace('value.update(relative_path.encode("utf-8"))', 'value.update(relative_path.replace(".octon/agent/", ".agent/", 1).encode("utf-8"))')
                     if relative == '.agent/scripts/octon_transaction.py':
                         text = text.replace('ROOT = Path(__file__).resolve().parents[3]', 'import sys\nsys.path.insert(0, str(Path(__file__).resolve().parents[1]))\nfrom installation_runtime import protected_paths, admit_work_plan, admit_recovery_record, load as qualification_json_load\nROOT = Path(__file__).resolve().parents[3]')
-                        admission = """def qualification_work_admission(root, plan):
+                        admission_helpers = """def qualification_work_admission(root, plan):
     try:
         admit_work_plan(root, plan)
     except (ValueError, KeyError, TypeError, OSError) as error:
@@ -112,7 +120,7 @@ def qualification_recovery_admission(root, record):
 
 
 """
-                        text = text.replace('def apply_plan(', admission+'def apply_plan(')
+                        text = text.replace('def apply_plan(', admission_helpers+'def apply_plan(')
                         text = text.replace('json.loads(receipt_path.read_text(encoding="utf-8"))', 'qualification_json_load(receipt_path)')
                         text = text.replace('json.loads(pending_path.read_text(encoding="utf-8"))', 'qualification_json_load(pending_path)')
                         text = text.replace('    if receipt["status"] == "applied":', '    qualification_recovery_admission(root, receipt)\n    if receipt["status"] == "applied":')
@@ -121,12 +129,32 @@ def qualification_recovery_admission(root, record):
                         text = text.replace('root = root.resolve()\n    if not operations:', 'root = root.resolve()\n    if operation_name.startswith("work."):\n        evidence_paths = list(dict.fromkeys([*(evidence_paths or []), *protected_paths(root)]))\n    if not operations:')
                     if relative == '.agent/scripts/octon.py':
                         text = text.replace('_CURRENT_DISPATCHER_PARENT_INDEX = "2"','_CURRENT_DISPATCHER_PARENT_INDEX = "3"')
+                if admission and relative == '.agent/scripts/octon_transaction.py':
+                    text = admission_transaction_projection(text)
+                if admission and relative == '.agent/scripts/refresh.py':
+                    text = text.replace('generated_at = datetime.now(timezone.utc).isoformat()', 'generated_at = qualification_refresh()[0]').replace('identifier = secrets.token_hex(16)', 'identifier = qualification_refresh()[1]')
+                    text = text.replace('def main(', '''def qualification_refresh():
+    import os
+    path=os.environ.get('OCTON_FIXTURE_ADMISSION_CONTEXT')
+    if path:
+        value=json.loads(Path(path).read_text())['refresh']
+        return value['time'],value['id']
+    return datetime.now(timezone.utc).isoformat(),secrets.token_hex(16)
+
+
+def main(''')
                 destination.write_text(text,encoding='utf-8')
                 shutil.copymode(path,destination)
         runtime=stage/'.octon/runtime'
         shutil.copy2(SCRIPTS/'installation_runtime.py',runtime/'installation_runtime.py')
+        if admission:
+            for item in facet['assets']:
+                destination=stage/item['target']; destination.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copy2(ROOT/item['source'],destination)
+            shutil.copy2(ROOT/'shared/source-contracts/admission-fixture-inventory.json',runtime/'admission-inventory.json')
         (runtime/'profile-inventory.json').write_bytes((ROOT/'shared/source-contracts/profile-manifest.json').read_bytes())
         entry='#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\nsys.dont_write_bytecode=True\nsys.path.insert(0,str(Path(__file__).resolve().parent))\nfrom installation_runtime import main\nraise SystemExit(main())\n'
+        if admission: entry=entry.replace('from installation_runtime import main','from installation_runtime_v2 import main')
         (runtime/'octon').write_text(entry)
         (stage/'octon').write_text('#!/usr/bin/env python3\nimport runpy\nfrom pathlib import Path\nimport sys\nsys.dont_write_bytecode=True\nrunpy.run_path(str(Path(__file__).resolve().parent/".octon/runtime/octon"),run_name="__main__")\n')
         (stage/'WORKSPACE.md').write_text('Disposable Octon runtime qualification. Read AGENTS.md and .octon/agent/START_HERE.md.\n')
@@ -134,13 +162,19 @@ def qualification_recovery_admission(root, record):
                   'profile':'minimal','layout':'compact','source_revision':revision,'projection_version':'target-path-projection.v1',
                   'inventory_sha256':reader.digest((runtime/'profile-inventory.json').read_bytes()),
                   'required_dependencies':contract['required_dependencies'],'inputs':inputs,'assets':[], 'output_inventory':[]}
+        if admission:
+            manifest.update(schema_version=admission_reader.ADMISSION_SCHEMA,projection_version='target-path-projection.v2',required_dependencies=facet['required_dependencies'],admission_inventory_sha256=reader.digest((runtime/'admission-inventory.json').read_bytes()))
         # Refresh validates the actual paths before binding immutable runtime bytes.
         run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
         manifest['assets']=[{'path':path,'sha256':reader.digest((stage/path).read_bytes())}
                             for path in sorted(contract['runtime_paths']+[project_path(path.as_posix()) for path in schemas]+['.octon/runtime/installation_runtime.py','.octon/runtime/octon','octon'])]
+        if admission:
+            extra=[row['target'] for row in facet['assets']]+['.octon/runtime/admission-inventory.json']
+            manifest['assets'] += [{'path':path,'sha256':reader.digest((stage/path).read_bytes())} for path in extra]
+            manifest['assets'].sort(key=lambda row:row['path'])
         manifest['output_inventory']=output_inventory(stage)
         (stage/'.octon/manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
-        reader.inspect(stage)
+        (admission_reader if admission else reader).inspect(stage)
         run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
         run([sys.executable,'-B',stage/'octon','check'],stage)
         if target.exists():
@@ -160,13 +194,103 @@ def output_inventory(stage):
             for value,path in sorted(paths.items())]
 
 
+
+def admission_transaction_projection(text):
+    support = r"""import fixture_admission as qualification_authority
+_qualification_subject = None
+_qualification_phase = 'effect'
+_qualification_decisions = []
+_qualification_evidence_write = None
+
+
+def qualification_current(root, subject, phase):
+    global _qualification_subject, _qualification_phase
+    try:
+        context=qualification_json_load(Path(os.environ['OCTON_FIXTURE_ADMISSION_CONTEXT']))
+        if instruction_fingerprint(root)!=context['plan']['governing_instruction_fingerprint']:
+            raise ValueError('governing instructions changed before effect/recovery')
+        decision = qualification_authority.guarded(root, subject, phase)
+        _qualification_decisions.append(decision)
+    except Exception as error:
+        refused = TransactionError('current fixture authority refused: '+str(error))
+        pending_root=root/'.octon/agent/transactions/pending'
+        if pending_root.is_dir() and any(pending_root.iterdir()):
+            refused.report['mutation']={'occurred':True,'repository_paths':[], 'external_effects':[], 'statement':'A write-ahead journal remains. Local effects require exact current-authority reconciliation; no replay or non-effect claim.'}
+        raise refused from error
+    _qualification_subject = subject
+    _qualification_phase = phase
+    qualification_persist_observation(root, decision, phase)
+
+
+def qualification_persist_observation(root, decision, phase):
+    global _qualification_evidence_write
+    context=qualification_json_load(Path(os.environ['OCTON_FIXTURE_ADMISSION_CONTEXT']))
+    event={'schema_version':'octon.fixture-transaction-authority-observation.v1','permission_grant':False,
+           'receipt_ref':context['record']['receipt_id'],'lineage_digest':qualification_authority.digest(qualification_authority.lineage(context['record'])),
+           'phase':phase,'admission_evidence':decision}
+    qualification_authority.validate_observation(event, context['record']['receipt_id'])
+    qualification_authority.validate_evidence(context,decision,context['binding'])
+    path=confined_path(root,'.octon/agent/transactions/evidence/'+event['receipt_ref']+'/'+qualification_authority.digest(event)+'.json')
+    data=(json.dumps(event,indent=2,sort_keys=True)+'\n').encode('utf-8')
+    if path.exists():
+        if path.read_bytes()!=data:raise TransactionError('authority observation collision')
+        return
+    # A narrowly scoped metadata writer receives only these just-authenticated
+    # bytes/path. It cannot exempt any other mutation or reconstruct authority.
+    _qualification_evidence_write=(path.resolve(),data)
+    try:
+        write_new_json(path,event)
+    finally:
+        _qualification_evidence_write=None
+
+
+def qualification_boundary(root, phase=None):
+    context_path=os.environ.get('OCTON_FIXTURE_ADMISSION_CONTEXT')
+    if not context_path:
+        raise TransactionError('explicit fixture authority required')
+    context=qualification_json_load(Path(context_path))
+    if str(root.resolve()) != context['root']:
+        return  # staging is isolated; the live operation owner guards its invocation
+    qualification_current(root, _qualification_subject or context['plan'], phase or _qualification_phase)
+
+
+"""
+    text=text.replace('from installation_runtime import protected_paths, admit_work_plan, admit_recovery_record, load as qualification_json_load','from installation_runtime_v2 import protected_paths, admit_work_plan, admit_recovery_record, load as qualification_json_load')
+    text=text.replace('def qualification_work_admission(',support+'def qualification_work_admission(')
+    text=text.replace('        admit_work_plan(root, plan)', "        admit_work_plan(root, plan)\n        qualification_current(root, plan, 'prepare')")
+    text=text.replace('        admit_recovery_record(root, record)', "        admit_recovery_record(root, record)\n        qualification_current(root, record, 'rollback' if record.get('status') in {'applied','rollback_in_progress'} else 'recover')")
+    text=text.replace('    for item in plan["operations"]:\n        target = confined_path(root, item["path"])', '    for item in plan["operations"]:\n        qualification_boundary(root, "effect")\n        target = confined_path(root, item["path"])')
+    text=text.replace('    for item in reversed(receipt_paths):', '    qualification_boundary(root, "recover")\n    for item in reversed(receipt_paths):\n        qualification_boundary(root, "recover")')
+    text=text.replace('    path.parent.mkdir(parents=True, exist_ok=True)\n    temporary:', '    context_path=os.environ.get("OCTON_FIXTURE_ADMISSION_CONTEXT")\n    if context_path:\n        context=qualification_json_load(Path(context_path))\n        live=Path(context["root"])\n        if path.resolve().is_relative_to(live.resolve()) and _qualification_evidence_write != (path.resolve(),data):\n            relative=path.resolve().relative_to(live.resolve()).as_posix()\n            metadata={".octon/agent/transactions/{}/{}.json".format(kind,context["record"]["receipt_id"]) for kind in ["pending","receipts","recovered"]}\n            if relative not in {item["path"] for item in context["record"]["paths"]} and relative not in metadata:\n                raise TransactionError("write outside admitted transaction")\n            if relative in metadata:\n                candidate=qualification_authority.strict(data)\n                if candidate.get("permission_grant") is not False or qualification_authority.lineage(candidate)!=qualification_authority.lineage(context["record"]):\n                    raise TransactionError("metadata outside admitted transaction lineage")\n                if "/pending/" in relative and not path.exists() and any((live/".octon/agent/transactions"/kind/(context["record"]["receipt_id"]+".json")).exists() for kind in ["receipts","recovered"]):\n                    raise TransactionError("transaction identity already has terminal history")\n            for item in context["record"]["paths"]:\n                if item["path"]==relative and (sha256(data),bool(mode & 0o200) if os.name=="nt" else mode) not in {(item[key]["sha256"],bool(item[key]["mode"] & 0o200) if os.name=="nt" and item[key]["mode"] is not None else item[key]["mode"]) for key in ["before","after"]}:\n                    raise TransactionError("write content outside admitted pre/postimage")\n            qualification_boundary(live)\n    path.parent.mkdir(parents=True, exist_ok=True)\n    temporary:')
+    text=text.replace('        for relative in plan["validation"]["declared_write_paths"]:', '        for relative in plan["validation"]["declared_write_paths"]:\n            qualification_boundary(root, "effect")')
+    text=text.replace('    staged_outcomes, staged_results, stage_timings = _staged_result', '    qualification_boundary(root, "validate")\n    staged_outcomes, staged_results, stage_timings = _staged_result')
+    text=text.replace('        validation_results.extend(\n            _run_post_apply_isolated(', '        qualification_boundary(root, "validate")\n        validation_results.extend(\n            _run_post_apply_isolated(')
+    text=text.replace('    path = confined_path(\n        root, f".octon/agent/transactions/pending/{receipt_id}.json"', '    qualification_current(root, value, "effect")\n    path = confined_path(\n        root, f".octon/agent/transactions/pending/{receipt_id}.json"')
+    text=text.replace('    pending, pending_path = _write_pending(', '    qualification_boundary(root, "effect")\n    pending, pending_path = _write_pending(')
+    text=text.replace('        receipt_persist_started = time.perf_counter()', '        qualification_boundary(root, "finalize")\n        receipt_persist_started = time.perf_counter()')
+    text=text.replace('    qualification_work_admission(root, plan)\n    LAST_PHASE_TIMINGS.clear()\n    LAST_PHASE_TIMINGS.update(', '    qualification_boundary(root, "finalize")\n    LAST_PHASE_TIMINGS.clear()\n    LAST_PHASE_TIMINGS.update(')
+    text=text.replace('    qualification_work_admission(root, plan)\n    LAST_PHASE_TIMINGS.clear()\n    total_started', '    _qualification_decisions.clear()\n    qualification_work_admission(root, plan)\n    LAST_PHASE_TIMINGS.clear()\n    total_started')
+    text=text.replace('\"validation\": validation_results,', '\"validation\": validation_results + [{\"schema_version\": \"octon.fixture-admission-evidence.v1\", \"fixture_only\": True, \"decisions\": list(_qualification_decisions)}],')
+    lines=[]
+    owner=''
+    for line in text.splitlines(keepends=True):
+        if line.startswith('def '): owner=line.split('def ',1)[1].split('(',1)[0]
+        if line.lstrip().startswith('pending_path.unlink('):
+            indent=line[:len(line)-len(line.lstrip())]
+            phase='finalize' if owner=='apply_plan' else 'recover'
+            lines.append(indent+f'qualification_boundary(root, {phase!r})\n')
+        lines.append(line)
+    text=''.join(lines)
+    return text
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target',type=Path,required=True)
     parser.add_argument('--disposable-qualification',action='store_true',required=True)
+    parser.add_argument('--admission-qualification',action='store_true')
     args=parser.parse_args()
     try:
-        result=generate(args.target)
+        result=generate(args.target,admission=args.admission_qualification)
         print(json.dumps({'status':result['status'],'source_revision':result['source_revision'],'assets':len(result['assets'])}))
         return 0
     except (ValueError,OSError,KeyError) as error:

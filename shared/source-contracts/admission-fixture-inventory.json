@@ -1,0 +1,33 @@
+{
+  "schema_version": "octon.source.admission-fixture-inventory.v1",
+  "status": "source_only_disposable_qualification",
+  "permission_grant": false,
+  "installation_schema": "octon.disposable-installation.v2",
+  "required_dependencies": [
+    "python>=3.11",
+    "canonical-minimal-core",
+    "openssl-ed25519"
+  ],
+  "assets": [
+    {
+      "source": "skills/octon-project-bootstrap/scripts/fixture_admission.py",
+      "target": ".octon/runtime/fixture_admission.py"
+    },
+    {
+      "source": "skills/octon-project-bootstrap/scripts/governance_shadow.py",
+      "target": ".octon/runtime/authority/scripts/governance_shadow.py"
+    },
+    {
+      "source": "skills/octon-project-bootstrap/scripts/validate_source_contracts.py",
+      "target": ".octon/runtime/authority/scripts/validate_source_contracts.py"
+    },
+    {
+      "source": "shared/source-contracts/governance-foundation-v2.schema.json",
+      "target": ".octon/runtime/authority/shared/source-contracts/governance-foundation-v2.schema.json"
+    },
+    {
+      "source": "skills/octon-project-bootstrap/scripts/installation_runtime_v2.py",
+      "target": ".octon/runtime/installation_runtime_v2.py"
+    }
+  ]
+}
