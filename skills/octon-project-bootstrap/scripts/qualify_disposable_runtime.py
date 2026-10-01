@@ -183,6 +183,8 @@ def main(''')
             if sys.platform != 'linux':raise ValueError('protected fixture execution profile is Linux-only')
             from protected_fixture import install
             install(stage)
+            run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
+            run([sys.executable,'-B',stage/'octon','check'],stage)
         if target.exists():
             target.rmdir()
         stage.rename(target)

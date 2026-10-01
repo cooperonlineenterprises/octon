@@ -3,6 +3,15 @@
   "$id": "octon.protected-fixture.v1",
   "title": "Source-only protected Linux disposable fixture successor",
   "$defs": {
+    "owner": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "permission_grant", "canonical_root", "authority_area", "profile_digest", "pid_namespace"],
+      "properties": {
+        "schema_version": {"const": "octon.protected-fixture-owner.v1"}, "permission_grant": {"const": false},
+        "canonical_root": {"type": "string"}, "authority_area": {"type": "string"},
+        "profile_digest": {"$ref": "#/$defs/hash"}, "pid_namespace": {"type": "string"}
+      }
+    },
     "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "asset": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/hash"}}},
     "profile": {

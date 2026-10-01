@@ -33,6 +33,8 @@ PROFILE = 'octon.protected-fixture-profile.v1'
 REQUEST = 'octon.protected-fixture-request.v2'
 EVENT = 'octon.protected-fixture-effect.v2'
 WORKER_UID = 65534
+OWNER = 'octon.protected-fixture-owner.v1'
+_enrolled_roots = set()  # refusal cache of existing owner bindings, no authority data
 
 
 def install(root):
@@ -40,7 +42,7 @@ def install(root):
     root=Path(root)
     manifest=V.inspect(root)
     source_root=Path(__file__).resolve().parents[3]
-    inventory_path=source_root/'shared/source-contracts/protected-fixture-inventory.json'
+    inventory_path=V.confined(source_root,'shared/source-contracts/protected-fixture-inventory.json')
     inventory=V.load(inventory_path)
     expected={'schema_version':'octon.source.protected-fixture-inventory.v1','status':'source_only_disposable_qualification',
               'permission_grant':False,'profile_schema':PROFILE,'parent_installation_schema':V.ADMISSION_SCHEMA,
@@ -49,10 +51,12 @@ def install(root):
               'assets':[{'source':'skills/octon-project-bootstrap/scripts/protected_fixture.py','target':'.octon/runtime/protected_fixture.py'},
                         {'source':'shared/source-contracts/protected-fixture-v1.schema.json','target':'.octon/runtime/protected-fixture-v1.schema.json'}]}
     if inventory!=expected:raise ValueError('unsupported canonical protected fixture inventory')
-    destination=root/'.octon/runtime/protected_fixture.py'
-    if destination.exists() or (root/'.octon/protected-profile.json').exists():
-        raise ValueError('protected profile already exists; no in-place upgrade')
-    for row in inventory['assets']:(root/row['target']).write_bytes((source_root/row['source']).read_bytes())
+    destination=V.confined(root,'.octon/runtime/protected_fixture.py')
+    outputs=[V.confined(root,row['target']) for row in inventory['assets']]+[V.confined(root,'.octon/protected-profile.json')]
+    inputs=[V.confined(source_root,row['source']) for row in inventory['assets']]
+    if any(path.exists() for path in outputs):raise ValueError('protected profile already exists; no in-place upgrade')
+    if any(not path.is_file() for path in inputs):raise ValueError('protected source dependency missing')
+    for source,target in zip(inputs,outputs):target.write_bytes(source.read_bytes())
     value={'schema_version':PROFILE,'permission_grant':False,'status':'disposable_qualification_only',
            'host_profile':'linux-disposable-container-distinct-uid-v1',
            'parent_installation_schema':V.ADMISSION_SCHEMA,
@@ -218,14 +222,27 @@ class Authority:
         kernel_custody(area)
         kernel_custody(context['root'],private=True)
         if area.exists(): raise ValueError('trusted enrollment requires a fresh fixture area')
+        root=Path(context['root']);profile=V.load(root/'.octon/protected-profile.json')
+        inspect_profile(root,profile)
+        owner_path=V.confined(root,'.octon/agent/transactions/protected/authority-owner.json')
+        canonical_root=str(root.resolve())
+        if canonical_root in _enrolled_roots or owner_path.exists():
+            raise ValueError('canonical fixture already has an authority owner; no fresh-key reset')
+        owner={'schema_version':OWNER,'permission_grant':False,'canonical_root':canonical_root,
+               'authority_area':str(area.resolve()),'profile_digest':A.digest(profile),
+               'pid_namespace':os.readlink('/proc/self/ns/pid')}
         area.mkdir(mode=0o700)
+        # Claim the sole canonical owner before creating any usable issuer.
+        # Incomplete bootstrap leaves the claim and uncertainty; no auto-reenroll.
+        put(owner_path,owner,exclusive=True)
+        _enrolled_roots.add(canonical_root)
         put(area/'fence.lock',{},exclusive=True)
         lock_state=(area/'fence.lock').stat()
         private, public=A.keypair(area, 'issuer-1')
         state={'schema_version':PROFILE, 'permission_grant':False,
                'fixture_only':True, 'context':copy.deepcopy(context),
                'bundle':copy.deepcopy(bundle), 'control_digest':A.digest(bundle),
-               'profile':V.load(Path(context['root'])/'.octon/protected-profile.json'),
+               'profile':profile,'owner_binding':owner,
                'generation':1, 'control_generation':1,
                'allowed_commands':list(allowed_commands),
                'lock_identity':[lock_state.st_dev,lock_state.st_ino],
@@ -257,7 +274,7 @@ class Authority:
 
     def load(self):
         state=V.load(self.anchor)
-        fields={'schema_version','permission_grant','fixture_only','context','bundle','control_digest','profile','generation','control_generation','allowed_commands','lock_identity','transaction_history','terminal_records','issuers','boot_id','pid_namespace','time_floor','clock_origin_wall','clock_origin_monotonic'}
+        fields={'schema_version','permission_grant','fixture_only','context','bundle','control_digest','profile','owner_binding','generation','control_generation','allowed_commands','lock_identity','transaction_history','terminal_records','issuers','boot_id','pid_namespace','time_floor','clock_origin_wall','clock_origin_monotonic'}
         if set(state)!=fields or type(state['generation']) is not int or state['generation']<1 or type(state['control_generation']) is not int or state['control_generation']<1 or not isinstance(state['allowed_commands'],list) or len(set(state['allowed_commands']))!=len(state['allowed_commands']) or not set(state['allowed_commands']).issubset({'apply','recover','rollback','reconcile'}):
             raise ValueError('unsupported closed retained authority state')
         if state.get('schema_version')!=PROFILE or state.get('permission_grant') is not False or state.get('fixture_only') is not True:
@@ -273,6 +290,14 @@ class Authority:
             raise ValueError('host restart/power-loss anchor continuity unqualified')
         if os.readlink('/proc/self/ns/pid')!=state['pid_namespace']:
             raise ValueError('fixture PID namespace ownership changed')
+        root=kernel_custody(state['context']['root'],private=True)
+        expected={'schema_version':OWNER,'permission_grant':False,'canonical_root':str(root.resolve()),
+                  'authority_area':str(self.area.resolve()),'profile_digest':A.digest(state['profile']),
+                  'pid_namespace':state['pid_namespace']}
+        try:retained=V.load(V.confined(root,'.octon/agent/transactions/protected/authority-owner.json'))
+        except (OSError,ValueError) as error:raise ValueError('retained canonical authority owner missing; no bootstrap recovery') from error
+        if state['owner_binding']!=expected or retained!=expected:
+            raise ValueError('canonical authority owner mismatch')
         return state
 
     def save(self,state):

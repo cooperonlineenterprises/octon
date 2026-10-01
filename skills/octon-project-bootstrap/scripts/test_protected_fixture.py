@@ -414,6 +414,7 @@ class ProtectedTests(unittest.TestCase):
         self.results.append({'case':self._testMethodName,'clock':'real kernel wall/monotonic','result':'first canonical write ordered before expiry; next gate and recovery refused; journal retained'})
 
     def test_protected_narrowing_accounting_and_enrollment_matrix(self):
+        original=self.authority.load()
         cases=[lambda v:v['delegations'][1]['scope']['resources'].append('resource:extra'),
                lambda v:v['controls'].update(accounting_observation='unknown'),
                lambda v:v['controls']['obligation_results'][0].update(outcome='unknown'),
@@ -422,10 +423,51 @@ class ProtectedTests(unittest.TestCase):
                lambda v:v['controls'].update(authority_epoch=2)]
         for index,mutate in enumerate(cases):
             bundle=copy.deepcopy(self.fixture.bundle);mutate(bundle);seal(bundle)
-            owner=P.Authority.enroll(self.fixture.area_path/('denied-'+str(index)),self.fixture.context,bundle)
-            with self.assertRaises(ValueError):P.Executor(owner,1).execute()
-        owner=P.Authority.enroll(self.fixture.area_path/'apply-only',self.fixture.context,self.fixture.bundle,allowed_commands=['apply'])
-        with self.assertRaisesRegex(ValueError,'enrollment'):P.Executor(owner,1).execute('recover')
+            state=copy.deepcopy(original);state.update(bundle=bundle,control_digest=A.digest(bundle));self.authority.save(state)
+            # Trusted adversarial fixture replacement exercises each actual
+            # coverage/binding refusal, rather than duplicate-owner bootstrap.
+            with self.assertRaises(ValueError):self.execute()
+        state=copy.deepcopy(original);state['allowed_commands']=['apply'];self.authority.save(state)
+        with self.assertRaisesRegex(ValueError,'enrollment'):self.execute('recover')
+
+    def test_fresh_packaging_selector_is_immediately_valid_and_keyless(self):
+        target=self.fixture.area_path/'fresh-packaged'
+        result=subprocess.run([sys.executable,'-B',Path(__file__).resolve().parent/'qualify_disposable_runtime.py',
+                               '--target',target,'--disposable-qualification','--admission-qualification','--protected-fixture-qualification'],
+                              cwd='/source',capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr or result.stdout)
+        profile=V.load(target/'.octon/protected-profile.json');P.inspect_profile(target,profile)
+        checked=subprocess.run([sys.executable,'-I','-B',target/'octon','check'],cwd=target,capture_output=True,text=True)
+        self.assertEqual(checked.returncode,0,checked.stderr or checked.stdout)
+        self.assertEqual(V.inspect(target)['schema_version'],V.ADMISSION_SCHEMA)
+        self.assertFalse(list(target.rglob('*.private.pem')))
+        self.assertFalse((target/'.octon/agent/transactions/protected/authority-owner.json').exists())
+
+    def test_fresh_overlay_symlink_refuses_before_any_copy(self):
+        target=self.fixture.area_path/'unsafe-overlay';shutil.copytree(AdmissionTests.base,target)
+        outside=self.fixture.area_path/'outside-schema';outside.write_text('protected fixture sentinel')
+        link=target/'.octon/runtime/protected-fixture-v1.schema.json';link.symlink_to(outside)
+        with self.assertRaises(ValueError):P.install(target)
+        self.assertEqual(outside.read_text(),'protected fixture sentinel')
+        self.assertFalse((target/'.octon/runtime/protected_fixture.py').exists())
+        self.assertFalse((target/'.octon/protected-profile.json').exists())
+
+    def test_fresh_key_area_cannot_reset_stopped_canonical_owner(self):
+        marker=self.root/'.octon/agent/transactions/protected/authority-owner.json';original=marker.read_bytes()
+        self.control(lambda value:value['controls'].update(emergency_stop=True))
+        for area in ['fresh-reset-before-loss','fresh-reset-after-loss']:
+            if area.endswith('after-loss'):self.authority.anchor.unlink()
+            with self.assertRaisesRegex(ValueError,'already has an authority owner'):
+                P.Authority.enroll(self.fixture.area_path/area,self.fixture.context,self.fixture.bundle)
+            self.assertFalse((self.fixture.area_path/area).exists())
+            self.assertEqual(marker.read_bytes(),original)
+
+    def test_incomplete_bootstrap_owner_claim_never_reenrolls(self):
+        marker=self.root/'.octon/agent/transactions/protected/authority-owner.json'
+        marker.unlink()
+        with self.assertRaisesRegex(ValueError,'owner missing'):self.authority.load()
+        with self.assertRaisesRegex(ValueError,'already has an authority owner'):
+            P.Authority.enroll(self.fixture.area_path/'reset-after-marker-loss',self.fixture.context,self.fixture.bundle)
 
     def test_independent_copied_executor_without_source_imports(self):
         result=subprocess.run([sys.executable,'-I','-B',self.root/'.octon/runtime/protected_fixture.py',

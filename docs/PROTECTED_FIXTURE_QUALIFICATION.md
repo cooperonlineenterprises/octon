@@ -18,6 +18,9 @@ facet and schema. The parent manifest remains disposable-installation **v2**.
 The additional `octon.protected-fixture-profile.v1` binds that entire parent
 manifest, every extra asset and source input. This is an explicit additive
 fixture successor, rather than a v3 installation or a legacy grant conversion.
+The selector refreshes and checks the complete staged overlay before placement;
+its immediate copied `octon check` must pass. Existing or symlinked facet inputs
+and outputs refuse before copying.
 
 `protected_fixture.py` is a facet of the existing admission and transaction
 owners. It delegates staging, plan checks, exact local paths, rollback and
@@ -139,6 +142,13 @@ issuer. It CAS-checks the current control digest and generations, increments the
 ownership generation, retains all prior issuer public keys for historical
 verification, and preserves current revocation/stop/grant bytes. Generating a
 new key itself supplies no authority. A still-present old controller is rejected.
+Bootstrap first claims an exclusive canonical authority-owner binding under the
+existing protected transaction concern. It binds the root, retained authority
+area, profile and PID namespace, and stays outside every transaction rollback
+footprint. A fresh area/key cannot re-enroll a stopped root, even if its anchor
+is missing. Incomplete bootstrap and a missing owner binding preserve uncertainty;
+the supervisor's refusal cache prevents recreating a lost claim within this
+qualification lifetime. Full supervisor/storage restoration remains unsupported.
 
 The retained authority store includes the lock identity, boot/time continuity,
 current enrollment and transaction history hashes. An independently retained
