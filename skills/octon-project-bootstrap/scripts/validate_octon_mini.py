@@ -135,6 +135,11 @@ REQUIRED_PATHS = (
     "skills/octon-project-bootstrap/scripts/installation_runtime.py",
     "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
     "skills/octon-project-bootstrap/scripts/test_disposable_runtime.py",
+    "skills/octon-project-bootstrap/scripts/fixture_admission.py",
+    "skills/octon-project-bootstrap/scripts/installation_runtime_v2.py",
+    "skills/octon-project-bootstrap/scripts/test_fixture_admission.py",
+    "shared/source-contracts/admission-fixture-inventory.json",
+    "docs/AUTHORIZATION_ADMISSION_QUALIFICATION.md",
     "shared/schemas/artifact-catalog.schema.json",
     "shared/schemas/dossier-artifact-registry.schema.json",
     "shared/schemas/dossier-path-authority.schema.json",
@@ -1606,6 +1611,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_disposable_runtime.py")],
             ROOT,
             "disposable target runtime, dependencies, work/recovery and supported fixture conversion",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_fixture_admission.py")],
+            ROOT,
+            "source-only authenticated fixture admission, current effect guards and recovery",
         ),
         (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],
