@@ -47,6 +47,7 @@ def portable_refusal():
 
 if portable_refusal() is None:
     import fcntl
+    import resource
     import protected_fixture as P
     import fixture_admission as A
     import installation_runtime_v2 as V
@@ -188,16 +189,27 @@ class ProtectedTests(unittest.TestCase):
         controller=self.process(lambda:P.serve(self.authority,1,self.socket,self.actor_public,ready=send))
         self.assertTrue(ready.poll(15));ready.recv()
         output=self.worker/'proof.json';owner_pid=os.getpid()
+        soft_before,hard=resource.getrlimit(resource.RLIMIT_NOFILE)
+        desired=70001 if hard==resource.RLIM_INFINITY else min(70001,hard)
+        if soft_before<desired:resource.setrlimit(resource.RLIMIT_NOFILE,(desired,hard))
+        soft_after,hard_after=resource.getrlimit(resource.RLIMIT_NOFILE)
+        probe_fd=min(70000,soft_after-1)
+        if probe_fd<3:raise ValueError('host cannot provide an inherited credential descriptor')
+        descriptor_proof={'soft_before':soft_before,'hard':hard,'soft_after':soft_after,
+                          'hard_after':hard_after,'inherited_descriptor':probe_fd,
+                          'above_65535':probe_fd>65535,'scope':'this disposable supervisor process only'}
         inherited=os.open(self.authority.area/'issuer-1.private.pem',os.O_RDONLY)
-        os.dup2(inherited,70000);os.close(inherited)
-        self.addCleanup(lambda:os.close(70000))
+        if inherited==probe_fd:raise ValueError('credential descriptor target collision')
+        os.dup2(inherited,probe_fd);os.close(inherited)
+        self.assertTrue(os.fstat(probe_fd))
+        self.addCleanup(lambda:os.close(probe_fd))
         targets=[self.authority.anchor,self.authority.area/'issuer-1.private.pem',self.root/'.octon/runtime/fixture_admission.py',self.root/'.octon/agent/policy.json',self.root/'.octon/agent/state/focus.json',self.output_probe]
         self.assertTrue(all(path.is_file() for path in targets))
         def worker():
             P.drop_worker()
             denied={}
             denied['stdio disconnected']=all(os.readlink('/proc/self/fd/'+str(descriptor))=='/dev/null' for descriptor in [0,1,2])
-            try:os.fstat(70000);denied['inherited issuer descriptor']=False
+            try:os.fstat(probe_fd);denied['inherited issuer descriptor']=False
             except OSError as error:denied['inherited issuer descriptor']=error.errno==errno.EBADF
             for path in targets+[Path(f'/proc/{owner_pid}/{suffix}') for suffix in ['mem','environ','fd/0','root','cwd']]:
                 for mode in ['read','write']:
@@ -237,7 +249,7 @@ class ProtectedTests(unittest.TestCase):
         self.assertIn('error',proof['replay']);self.assertIn('error',proof['wrong_actor'])
         for key in ['unenrolled_issuer_actor','expanded_scope','forged_response','boolean_generation']:self.assertIn('error',proof[key])
         self.assertEqual((self.root/'.octon/agent/tasks/TASK-0001.md').read_bytes(),self.saved)
-        self.results.append({'case':self._testMethodName,'worker_uid':65534,'privilege_proof':{key:proof['status'][key] for key in ['Groups','CapInh','CapPrm','CapEff','CapBnd','CapAmb','NoNewPrivs','Seccomp']},'denials':proof['denied'],'effect_status':proof['first']['status']})
+        self.results.append({'case':self._testMethodName,'worker_uid':65534,'descriptor_proof':descriptor_proof,'privilege_proof':{key:proof['status'][key] for key in ['Groups','CapInh','CapPrm','CapEff','CapBnd','CapAmb','NoNewPrivs','Seccomp']},'denials':proof['denied'],'effect_status':proof['first']['status']})
 
     def test_stop_before_admission_and_stale_snapshot_refuse(self):
         snapshot=self.authority.snapshot();old=copy.deepcopy(self.authority.load()['bundle'])
