@@ -17,10 +17,15 @@ permissions:
 jobs:
   pull-request-gate:
     name: required
-    if: github.event_name == 'pull_request'
+    needs: protected-linux-fixture
+    if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Require successful protected fixture prerequisite
+        env:
+          OCTON_PROTECTED_RESULT: ${{ needs.protected-linux-fixture.result }}
+        run: test "$OCTON_PROTECTED_RESULT" = success
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-tags: true
@@ -40,6 +45,31 @@ jobs:
         run: python -B skills/octon-project-bootstrap/scripts/validate_octon_mini.py
       - name: Run end-to-end and adversarial acceptance
         run: python -B skills/octon-project-bootstrap/scripts/test_acceptance.py
+
+  protected-linux-fixture:
+    name: protected Linux fixture
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Qualify protected disposable Linux fixture
+        run: |
+          docker run --rm --network none --cap-drop ALL \
+            --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add SETPCAP --cap-add KILL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,exec,size=512m \
+            --tmpfs /evidence:rw,nosuid,nodev,size=64m \
+            -e OCTON_OWNED_EPHEMERAL_CONTAINER=protected-fixture-v1 \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/source \
+            -v "$GITHUB_WORKSPACE:/source:ro" -w /source \
+            python@sha256:4d1caded1f729ae443eb803f26ffde7b61e696aeaef62f099abb6dd6b14257c7 \
+            python -B skills/octon-project-bootstrap/scripts/test_protected_fixture.py \
+            --qualify-linux-container --output /evidence/qualification.json --emit-evidence
 
   main-smoke:
     name: main-smoke

@@ -140,6 +140,11 @@ REQUIRED_PATHS = (
     "skills/octon-project-bootstrap/scripts/test_fixture_admission.py",
     "shared/source-contracts/admission-fixture-inventory.json",
     "docs/AUTHORIZATION_ADMISSION_QUALIFICATION.md",
+    "skills/octon-project-bootstrap/scripts/protected_fixture.py",
+    "skills/octon-project-bootstrap/scripts/test_protected_fixture.py",
+    "shared/source-contracts/protected-fixture-inventory.json",
+    "shared/source-contracts/protected-fixture-v1.schema.json",
+    "docs/PROTECTED_FIXTURE_QUALIFICATION.md",
     "shared/schemas/artifact-catalog.schema.json",
     "shared/schemas/dossier-artifact-registry.schema.json",
     "shared/schemas/dossier-path-authority.schema.json",
@@ -1616,6 +1621,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_fixture_admission.py")],
             ROOT,
             "source-only authenticated fixture admission, current effect guards and recovery",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_protected_fixture.py")],
+            ROOT,
+            "protected fixture remains disabled without explicit owned Linux container qualification",
         ),
         (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],

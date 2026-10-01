@@ -1,5 +1,11 @@
 # Disposable authorization-admission qualification
 
+The later [protected Linux fixture successor](PROTECTED_FIXTURE_QUALIFICATION.md)
+adds an explicitly qualified host boundary, serialized effect dispatch and
+controller replacement/recovery. The protocol and limits below remain the
+historical cooperative v1/v2 facet; its signed responses do not acquire those
+successor properties by themselves.
+
 This source-only facet evolves the existing standing-delivery authorization
 concern, reusing the unchanged intent/delegation shadow evaluator. The current
 invocation explicitly permits bounded disposable operations. Synthetic issuer,
