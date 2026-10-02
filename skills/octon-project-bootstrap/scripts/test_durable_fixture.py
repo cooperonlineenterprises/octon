@@ -753,7 +753,48 @@ print(json.dumps(result))'''
         self.life.creation_observed('container',readonly,value.returncode);results['portable traversal']=json.loads(value.stdout)
         self.assertTrue(results['portable traversal']['refused']);self.assertTrue(results['portable traversal']['target_absent'])
         self.assertEqual(results['portable traversal']['reason'],'fresh exact seed destination required')
-        self.evidence.append({'case':self._testMethodName,'noncurrent_seed_only':True,'actual_denials':results})
+        selector=self.life.prefix+'-public-durable-selector';self.life.creation_intent('container',selector)
+        code=r'''import hashlib,json,subprocess,sys
+from pathlib import Path
+source=Path('/source');target=Path('/tmp/public-durable-selector');expected=json.loads(sys.stdin.read())
+assert not target.exists()
+commands=[]
+def command(argv,cwd):
+ value=subprocess.run(argv,cwd=cwd,capture_output=True,text=True,check=False)
+ row={'argv':argv,'exit':value.returncode,'stdout':value.stdout,'stderr':value.stderr};commands.append(row)
+ assert value.returncode==0,row
+ return value
+generation=command([sys.executable,'-B',str(source/'skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py'),'--target',str(target),'--disposable-qualification','--admission-qualification','--protected-fixture-qualification','--durable-fixture-qualification'],source)
+command([sys.executable,'-I','-B',str(target/'octon'),'check'],target)
+inspection=command([sys.executable,'-I','-B',str(target/'.octon/runtime/durable_fixture.py'),'--inspect-root',str(target)],target)
+load=lambda path:json.loads(path.read_text())
+manifest=load(target/'.octon/manifest.json');protected=load(target/'.octon/protected-profile.json');durable=load(target/'.octon/durable-profile.json');inspected=json.loads(inspection.stdout)
+assert json.loads(generation.stdout)['source_revision']==expected['revision']
+assert manifest['source_revision']==protected['source_revision']==durable['source_revision']==expected['revision']
+assert manifest['schema_version']=='octon.disposable-installation.v2'
+assert protected['schema_version']=='octon.protected-fixture-profile.v1' and durable['schema_version']=='octon.durable-fixture-profile.v2'
+assert all(row['permission_grant'] is False for row in [manifest,protected,durable,inspected])
+assert inspected['execution_authorized'] is False and inspected['profile']==durable and durable['parent_profile']==protected
+digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+assert protected['installation_digest']==digest(target/'.octon/manifest.json')
+assets=manifest['assets']+protected['assets']+durable['assets']
+inputs=manifest['inputs']+protected['source_inputs']+durable['source_inputs']
+assert len(durable['assets'])==3 and len(durable['source_inputs'])==4
+assert all(digest(target/row['path'])==row['sha256'] for row in assets)
+assert all(digest(source/row['path'])==row['sha256']==expected['inputs'][row['path']] for row in inputs)
+unexpected=[]
+for path in target.rglob('*'):
+ if not path.is_file():continue
+ relative=path.relative_to(target).as_posix()
+ if path.suffix=='.pem' or path.name in {'bootstrap.json','anchor.json','index.json','authority-owner.json','authority.json'} or relative.startswith('.octon/agent/transactions/') or path.name.startswith(('TASK-','DEC-','EVD-','RCPT-','WCR-')) and '/tests/fixtures/' not in '/'+relative:unexpected.append(relative)
+assert not unexpected,unexpected
+print(json.dumps({'public_selector_commands':commands,'source_revision':expected['revision'],'manifest':manifest,'protected_profile':protected,'durable_profile':durable,'asset_bindings_verified':len(assets),'source_bindings_verified':len(inputs),'fresh_tmpfs_target':str(target),'no_key_enrollment_currentness_consumption_records':not unexpected,'execution_authorized':False,'permission_grant':False},sort_keys=True))'''
+        value=run(self.life.args(selector)+['-i',IMAGE,'python','-B','-c',code],input=json.dumps(SEED.binding['source']))
+        self.life.creation_observed('container',selector,value.returncode);packaging=json.loads(value.stdout)
+        self.assertEqual(packaging['source_revision'],SEED.binding['source']['revision'])
+        self.assertTrue(packaging['no_key_enrollment_currentness_consumption_records']);self.assertFalse(packaging['execution_authorized'])
+        self.assertTrue(all(row['exit']==0 for row in packaging['public_selector_commands']))
+        self.evidence.append({'case':self._testMethodName,'noncurrent_seed_only':True,'actual_denials':results,'fresh_public_durable_selector':packaging})
 
     def test_internal_deadline_exports_partial_and_cleans_owned_keys(self):
         with tempfile.TemporaryDirectory(prefix='octon-owned-soft-deadline-') as temporary:
