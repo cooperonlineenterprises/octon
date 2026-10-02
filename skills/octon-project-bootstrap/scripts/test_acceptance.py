@@ -34,6 +34,7 @@ MIGRATION_TESTS = (
 )
 PACKAGE_SCRIPT = SKILL_ROOT / "scripts/package_project.py"
 ARCHITECTURAL_CONTRACT_TESTS = (
+    SKILL_ROOT / "scripts/test_ci_contract.py",
     SKILL_ROOT / "scripts/validate_source_contracts.py",
     SKILL_ROOT / "scripts/test_architectural_patterns.py",
 )
@@ -509,7 +510,8 @@ def main() -> int:
         "workflow_dispatch:" in ci_workflow
         and (
             "pull-request-gate:\n    name: required\n"
-            "    if: github.event_name == 'pull_request'"
+            "    needs: protected-linux-fixture\n"
+            "    if: always() && github.event_name == 'pull_request'"
         ) in ci_workflow
         and (
             "main-smoke:\n    name: main-smoke\n"
@@ -551,6 +553,10 @@ def main() -> int:
         "source CI weakened read-only permissions or pinned action revisions",
         failures,
     )
+    ci_contract=runpy.run_path(str(SKILL_ROOT/'scripts/validate_octon_mini.py'))
+    ci_issues=[]
+    ci_contract['validate_ci_contract'](ci_issues,ci_workflow)
+    require(not ci_issues,'source CI protected admission contract failed: '+ '; '.join(ci_issues),failures)
     with tempfile.TemporaryDirectory(prefix="octon-mini-acceptance-") as temp:
         temp_root = Path(temp)
         omitted_profile_target = temp_root / "omitted-profile"

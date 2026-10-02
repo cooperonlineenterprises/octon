@@ -45,7 +45,9 @@ def run(argv,cwd):
     return result
 
 
-def generate(target, project_name='Disposable Runtime Fixture', *, admission=False):
+def generate(target, project_name='Disposable Runtime Fixture', *, admission=False, protected=False):
+    if protected and not admission:
+        raise ValueError('protected successor requires explicit admission fixture dependency')
     if not target.is_absolute():
         raise ValueError('target must be absolute')
     scaffold.validate_target(target)
@@ -177,6 +179,12 @@ def main(''')
         (admission_reader if admission else reader).inspect(stage)
         run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
         run([sys.executable,'-B',stage/'octon','check'],stage)
+        if protected:
+            if sys.platform != 'linux':raise ValueError('protected fixture execution profile is Linux-only')
+            from protected_fixture import install
+            install(stage)
+            run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
+            run([sys.executable,'-B',stage/'octon','check'],stage)
         if target.exists():
             target.rmdir()
         stage.rename(target)
@@ -288,9 +296,10 @@ def main():
     parser.add_argument('--target',type=Path,required=True)
     parser.add_argument('--disposable-qualification',action='store_true',required=True)
     parser.add_argument('--admission-qualification',action='store_true')
+    parser.add_argument('--protected-fixture-qualification',action='store_true')
     args=parser.parse_args()
     try:
-        result=generate(args.target,admission=args.admission_qualification)
+        result=generate(args.target,admission=args.admission_qualification,protected=args.protected_fixture_qualification)
         print(json.dumps({'status':result['status'],'source_revision':result['source_revision'],'assets':len(result['assets'])}))
         return 0
     except (ValueError,OSError,KeyError) as error:

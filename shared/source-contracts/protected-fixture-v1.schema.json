@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octon.protected-fixture.v1",
+  "title": "Source-only protected Linux disposable fixture successor",
+  "$defs": {
+    "owner": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "permission_grant", "canonical_root", "authority_area", "profile_digest", "pid_namespace"],
+      "properties": {
+        "schema_version": {"const": "octon.protected-fixture-owner.v1"}, "permission_grant": {"const": false},
+        "canonical_root": {"type": "string"}, "authority_area": {"type": "string"},
+        "profile_digest": {"$ref": "#/$defs/hash"}, "pid_namespace": {"type": "string"}
+      }
+    },
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"$ref": "#/$defs/hash"}}},
+    "profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "permission_grant", "status", "host_profile", "parent_installation_schema", "source_revision", "installation_digest", "asset", "asset_digest", "inventory_digest", "source_inputs", "assets"],
+      "properties": {
+        "schema_version": {"const": "octon.protected-fixture-profile.v1"},
+        "permission_grant": {"const": false}, "status": {"const": "disposable_qualification_only"},
+        "host_profile": {"const": "linux-disposable-container-distinct-uid-v1"},
+        "parent_installation_schema": {"const": "octon.disposable-installation.v2"},
+        "source_revision": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+        "installation_digest": {"$ref": "#/$defs/hash"},
+        "asset": {"const": ".octon/runtime/protected_fixture.py"},
+        "asset_digest": {"$ref": "#/$defs/hash"},
+        "inventory_digest": {"$ref": "#/$defs/hash"},
+        "source_inputs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/asset"}},
+        "assets": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/asset"}}
+      }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "actor_ref", "binding", "generation", "command", "nonce"],
+      "properties": {
+        "schema_version": {"const": "octon.protected-fixture-request.v2"},
+        "actor_ref": {"type": "string"}, "binding": {"type": "object"},
+        "generation": {"type": "integer", "minimum": 1},
+        "command": {"enum": ["apply", "recover", "rollback", "reconcile"]},
+        "nonce": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "event_envelope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "permission_grant", "event", "issuer_key_digest", "signature"],
+      "properties": {
+        "schema_version": {"const": "octon.protected-fixture-effect.v2"}, "permission_grant": {"const": false},
+        "event": {"type": "object"}, "issuer_key_digest": {"$ref": "#/$defs/hash"}, "signature": {"type": "string"}
+      }
+    }
+  }
+}

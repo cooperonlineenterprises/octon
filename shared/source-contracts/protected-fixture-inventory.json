@@ -1,0 +1,15 @@
+{
+  "schema_version": "octon.source.protected-fixture-inventory.v1",
+  "status": "source_only_disposable_qualification",
+  "permission_grant": false,
+  "profile_schema": "octon.protected-fixture-profile.v1",
+  "parent_installation_schema": "octon.disposable-installation.v2",
+  "host_profile": "linux-disposable-container-distinct-uid-v1",
+  "request_schema": "octon.protected-fixture-request.v2",
+  "effect_schema": "octon.protected-fixture-effect.v2",
+  "required_dependencies": ["python>=3.11", "canonical-minimal-core", "openssl-ed25519", "linux-flock-renameat2-distinct-uid"],
+  "assets": [
+    {"source": "skills/octon-project-bootstrap/scripts/protected_fixture.py", "target": ".octon/runtime/protected_fixture.py"},
+    {"source": "shared/source-contracts/protected-fixture-v1.schema.json", "target": ".octon/runtime/protected-fixture-v1.schema.json"}
+  ]
+}

@@ -140,6 +140,12 @@ REQUIRED_PATHS = (
     "skills/octon-project-bootstrap/scripts/test_fixture_admission.py",
     "shared/source-contracts/admission-fixture-inventory.json",
     "docs/AUTHORIZATION_ADMISSION_QUALIFICATION.md",
+    "skills/octon-project-bootstrap/scripts/protected_fixture.py",
+    "skills/octon-project-bootstrap/scripts/test_protected_fixture.py",
+    "skills/octon-project-bootstrap/scripts/test_ci_contract.py",
+    "shared/source-contracts/protected-fixture-inventory.json",
+    "shared/source-contracts/protected-fixture-v1.schema.json",
+    "docs/PROTECTED_FIXTURE_QUALIFICATION.md",
     "shared/schemas/artifact-catalog.schema.json",
     "shared/schemas/dossier-artifact-registry.schema.json",
     "shared/schemas/dossier-path-authority.schema.json",
@@ -1420,13 +1426,14 @@ def validate_skill_and_release(issues: list[str]) -> None:
             )
 
 
-def validate_ci_contract(issues: list[str]) -> None:
-    workflow_path = ROOT / ".github/workflows/validate.yml"
-    try:
-        workflow = workflow_path.read_text(encoding="utf-8")
-    except OSError as error:
-        issues.append(f"cannot read CI workflow: {error}")
-        return
+def validate_ci_contract(issues: list[str], workflow: str | None = None) -> None:
+    if workflow is None:
+        workflow_path = ROOT / ".github/workflows/validate.yml"
+        try:
+            workflow = workflow_path.read_text(encoding="utf-8")
+        except OSError as error:
+            issues.append(f"cannot read CI workflow: {error}")
+            return
     push_block = re.search(
         r"(?ms)^  push:\n(?P<body>.*?)(?=^  [A-Za-z_][^:\n]*:|\Z)",
         workflow,
@@ -1454,7 +1461,8 @@ def validate_ci_contract(issues: list[str]) -> None:
         "manual full-matrix trigger": "workflow_dispatch:",
         "stable pull-request gate": (
             "pull-request-gate:\n    name: required\n"
-            "    if: github.event_name == 'pull_request'"
+            "    needs: protected-linux-fixture\n"
+            "    if: always() && github.event_name == 'pull_request'"
         ),
         "minimum-runtime pull-request gate": 'python-version: "3.11"',
         "main smoke gate": (
@@ -1518,10 +1526,60 @@ def validate_ci_contract(issues: list[str]) -> None:
         "          fetch-tags: true\n"
         "          fetch-depth: 0"
     )
-    if workflow.count(tag_aware_checkout) != 4:
+    if workflow.count(tag_aware_checkout) != 5:
         issues.append(
             "every CI checkout must fetch tags and full history for the exact pinned preparation-baseline fixture"
         )
+    jobs=dict(re.findall(r"(?ms)^  ([a-z][a-z0-9-]*):\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)",workflow.split('\njobs:\n',1)[-1]))
+    expected_jobs={'pull-request-gate','protected-linux-fixture','main-smoke','full-source-matrix','full-acceptance-matrix'}
+    if set(jobs)!=expected_jobs:
+        issues.append('CI must retain the exact five routine/protected/manual jobs')
+    for name in expected_jobs:
+        if jobs.get(name,'').count(tag_aware_checkout)!=1:
+            issues.append(f'CI {name} must have one exact pinned full-history checkout')
+    required=jobs.get('pull-request-gate','')
+    protected=jobs.get('protected-linux-fixture','')
+    success_gate=(
+        '    steps:\n'
+        '      - name: Require successful protected fixture prerequisite\n'
+        '        env:\n'
+        '          OCTON_PROTECTED_RESULT: ${{ needs.protected-linux-fixture.result }}\n'
+        '        run: test "$OCTON_PROTECTED_RESULT" = success\n'
+        '      - uses: actions/checkout@'
+    )
+    if success_gate not in required:
+        issues.append('CI required must run its explicit protected-success assertion first; failed/skipped/cancelled prerequisite cannot be admitted')
+    if re.search(r'(?m)^\s*continue-on-error\s*:',required+protected):
+        issues.append('CI required/protected jobs cannot continue on error')
+    protected_header=(
+        "    name: protected Linux fixture\n"
+        "    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'\n"
+        "    runs-on: ubuntu-latest\n"
+        "    timeout-minutes: 30\n"
+    )
+    protected_execution=(
+        '          docker run --rm --network none --cap-drop ALL \\\n'
+        '            --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add SETPCAP --cap-add KILL \\\n'
+        '            --security-opt no-new-privileges --read-only \\\n'
+        '            --tmpfs /tmp:rw,nosuid,nodev,exec,size=512m \\\n'
+        '            --tmpfs /evidence:rw,nosuid,nodev,size=64m \\\n'
+        '            -e OCTON_OWNED_EPHEMERAL_CONTAINER=protected-fixture-v1 \\\n'
+        '            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/source \\\n'
+        '            -v "$GITHUB_WORKSPACE:/source:ro" -w /source \\\n'
+        '            python@sha256:4d1caded1f729ae443eb803f26ffde7b61e696aeaef62f099abb6dd6b14257c7 \\\n'
+        '            python -B skills/octon-project-bootstrap/scripts/test_protected_fixture.py \\\n'
+        '            --qualify-linux-container --output /evidence/qualification.json --emit-evidence\n'
+    )
+    if protected_header not in protected or protected_execution not in protected:
+        issues.append('CI protected job must retain exact PR/manual events and qualified immutable-image/kernel-tmpfs/private-PID execution')
+    exact_protected=(protected_header+'    steps:\n'+tag_aware_checkout+'\n          persist-credentials: false\n'
+                     +'      - name: Qualify protected disposable Linux fixture\n        run: |\n'+protected_execution)
+    if protected.strip()!=exact_protected.strip():
+        issues.append('CI protected job must have the exact qualified step block; failure masking or additional commands are not admitted')
+    if tag_aware_checkout+'\n          persist-credentials: false\n' not in protected:
+        issues.append('CI protected worker checkout must remove persisted credentials')
+    if re.search(r'--privileged|--pid(?:[= ]+)host|--(?:volume|mount)\b',protected):
+        issues.append('CI protected job cannot broaden privilege/PID namespace or add host custody mounts')
     matrix_os = "os: [ubuntu-latest, macos-latest, windows-latest]"
     if workflow.count(matrix_os) != 2:
         issues.append(
@@ -1556,6 +1614,11 @@ def validate_ci_contract(issues: list[str]) -> None:
 
 def validate_executable_contracts(issues: list[str]) -> None:
     commands = (
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_ci_contract.py")],
+            ROOT,
+            "source CI prerequisite, full-history and protected host-profile mutation checks",
+        ),
         (
             [
                 sys.executable,
@@ -1616,6 +1679,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_fixture_admission.py")],
             ROOT,
             "source-only authenticated fixture admission, current effect guards and recovery",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_protected_fixture.py")],
+            ROOT,
+            "protected fixture remains disabled without explicit owned Linux container qualification",
         ),
         (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],

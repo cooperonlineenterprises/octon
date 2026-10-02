@@ -1,5 +1,10 @@
 # Octon implementation plan for OEP-1 and the ecosystem target
 
+The source-only [protected fixture qualification](PROTECTED_FIXTURE_QUALIFICATION.md)
+advances one bounded Linux execution, fencing and controller-recovery route.
+It is neither consumer activation nor completion of IMP-1/IMP-2; existing
+accepted decisions and live adoption gates remain applicable.
+
 - **Plan revision:** 1.0.0
 - **Recorded:** 24 September 2026
 - **Status:** Planned; implementation has not started under this document
