@@ -54,6 +54,35 @@ def engine_id():
     return value.stdout.strip()
 
 
+def pinned_image(engine):
+    """Reconcile this immutable image only; unavailable is never absence."""
+    def observe():
+        value=run(['docker','image','inspect',IMAGE],check=False)
+        if value.returncode:
+            if value.stderr.strip()=='Error response from daemon: No such image: '+IMAGE:return None
+            raise ValueError('pinned image observation unavailable; no acquisition inferred: '+value.stderr)
+        rows=json.loads(value.stdout)
+        if not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict):raise ValueError('ambiguous pinned image observation')
+        identity=rows[0].get('Id');digests=rows[0].get('RepoDigests')
+        if not isinstance(identity,str) or not identity.startswith('sha256:') or len(identity)!=71 or any(c not in '0123456789abcdef' for c in identity[7:]) or not isinstance(digests,list) or IMAGE not in digests:
+            raise ValueError('pinned image identity/digest observation malformed')
+        return identity
+    if engine_id()!=engine:raise ValueError('engine continuity unavailable before pinned image observation')
+    identity=observe()
+    if identity is None:
+        event={'image':IMAGE,'engine_observed':engine,'image_acquisition_intent':True}
+        RESOURCE_EVENTS.append(event);checkpoint('pinned_image_acquisition_intent',**event)
+        value=run(['docker','pull',IMAGE],check=False)
+        if engine_id()!=engine:raise ValueError('engine continuity unavailable after pinned image acquisition')
+        identity=observe()
+        outcome={'image':IMAGE,'engine_observed':engine,'pull_exit':value.returncode,'confirmed_image_id':identity}
+        RESOURCE_EVENTS.append(outcome);checkpoint('pinned_image_acquisition_observed',**outcome)
+        if identity is None:raise ValueError('exact pinned image acquisition not confirmed')
+    else:
+        checkpoint('pinned_image_observed',image=IMAGE,image_id=identity,engine_observed=engine)
+    return identity
+
+
 def inspect_owned(kind,name,prefix):
     value=run(['docker']+(['volume','inspect'] if kind=='volume' else ['inspect'])+[name],check=False)
     if value.returncode:
@@ -87,13 +116,27 @@ class Lifetime:
             for role in ['state','authority','continuity','ipc']:
                 name=self.prefix+'-'+role
                 if inspect_owned('volume',name,self.prefix) is not None:raise ValueError('fresh owned volume name required')
-                self.volumes.append(name)  # register mutation intent before creating
+                self.creation_intent('volume',name)
                 value=run(['docker','volume','create','--label','octon.owned-qualification='+self.prefix,name],check=False)
-                observed=inspect_owned('volume',name,self.prefix)
-                RESOURCE_EVENTS.append({'prefix':self.prefix,'create_intent':name,'exit':value.returncode,'confirmed_owned':observed is not None})
+                observed=self.creation_observed('volume',name,value.returncode)
                 if value.returncode or observed is None:raise ValueError('owned volume creation not confirmed')
         except BaseException:
             self.cleanup();raise
+
+    def creation_intent(self,kind,name):
+        resources=self.volumes if kind=='volume' else self.containers
+        if kind not in {'volume','container'} or not name.startswith(self.prefix+'-') or name in resources:
+            raise ValueError('fresh exact owned resource intent required')
+        resources.append(name)
+        event={'prefix':self.prefix,'resource_kind':kind,'create_intent':name,'engine_observed':self.engine}
+        RESOURCE_EVENTS.append(event);checkpoint('owned_creation_intent',**event)
+
+    def creation_observed(self,kind,name,exit=None):
+        observed=inspect_owned(kind,name,self.prefix)
+        event={'prefix':self.prefix,'resource_kind':kind,'create_intent':name,'exit':exit,'confirmed_owned':observed is not None,
+               'owned_id':observed['Id'] if kind=='container' and observed else None}
+        RESOURCE_EVENTS.append(event);checkpoint('owned_creation_observed',**event)
+        return observed
 
     def args(self,name,*,keeper=False,source=True,seed=False):
         values=['docker','run','--name',name,'--label','octon.owned-qualification='+self.prefix,
@@ -113,15 +156,16 @@ class Lifetime:
         return values
 
     def prepare(self):
-        name=self.prefix+'-prepare';self.containers.append(name)
+        name=self.prefix+'-prepare';self.creation_intent('container',name)
         value=run(self.args(name,keeper=True,seed=SEED is not None)+['-i',IMAGE,'python','-B',
                     'skills/octon-project-bootstrap/scripts/durable_fixture.py','--prepare-fixture'],input=json.dumps({'ticket':self.ticket,'seed_binding':SEED.binding if SEED else None,'image_binding':SEED.image if SEED else None})+'\n')
+        self.creation_observed('container',name,value.returncode)
         self.prepared=json.loads(value.stdout.splitlines()[-1]);run(['docker','rm',name]);return self.prepared
 
     def start_keeper(self):
         if self.started or self.retired:raise ValueError('existing fixture lifetime cannot bootstrap fresh currentness')
         self.started=True
-        name=self.prefix+'-keeper';self.containers.append(name);self.keeper=name
+        name=self.prefix+'-keeper';self.creation_intent('container',name);self.keeper=name
         self.keeper_process=subprocess.Popen(self.args(name,keeper=True)+['-i',IMAGE,'python','-B','skills/octon-project-bootstrap/scripts/durable_fixture.py','--keeper','/authority/bootstrap.json'],
                                              stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,text=True)
         self.keeper_process.stdin.write(self.ticket+'\n');self.keeper_process.stdin.close();self.ticket=None
@@ -129,6 +173,7 @@ class Lifetime:
         while time.monotonic()<deadline:
             value=run(['docker','logs',name],check=False)
             if value.stdout.strip():
+                self.creation_observed('container',name)
                 self.pin=json.loads(value.stdout.splitlines()[0]);return self.pin
             status=run(['docker','inspect','--format','{{.State.Status}}',name],check=False).stdout.strip()
             if status in {'exited','dead'} or self.keeper_process.poll() is not None:raise ValueError('keeper failed: '+run(['docker','logs',name],check=False).stderr)
@@ -168,10 +213,11 @@ class Lifetime:
         return {'container':container,'exit':int(value.stdout.strip()),'stdout':logs.stdout,'stderr':logs.stderr}
 
     def enroll(self,expected=0,*,independent=False):
-        name=self.prefix+'-controller-'+secrets.token_hex(3);self.containers.append(name)
+        name=self.prefix+'-controller-'+secrets.token_hex(3);self.creation_intent('container',name)
         path='/state/launch-'+secrets.token_hex(8)+'.json'
         script='.octon/runtime/durable_fixture.py' if independent else 'skills/octon-project-bootstrap/scripts/durable_fixture.py'
         run(self.args(name,source=not independent)+['-d',IMAGE,'python','-I','-B',script,'--await-launch',path])
+        self.creation_observed('container',name,0)
         self.wait_file(name,'/tmp/launch-ready.json')
         proof=json.loads(self.code('from pathlib import Path;print(Path("/tmp/launch-ready.json").read_text())',container=name).stdout)
         snapshot=self.admin('inspect')['authority']
@@ -205,13 +251,15 @@ class Lifetime:
             self.code('from pathlib import Path;import sys;Path("/tmp/launch-command.json").write_text(sys.stdin.read())',container=name,input=json.dumps({'command':command,'fault':fault,'peer':peer}))
             if detached:return name
             ended=self.terminal(name);output=ended['stdout'].strip();ended['result']=json.loads(output.splitlines()[-1]) if output else None;return ended
-        name=self.prefix+'-controller-'+secrets.token_hex(3);self.containers.append(name)
+        name=self.prefix+'-controller-'+secrets.token_hex(3);self.creation_intent('container',name)
         argv=self.args(name)+(['-d'] if detached else [])+[IMAGE,'python','-B',
               'skills/octon-project-bootstrap/scripts/durable_fixture.py','--execute',path,'--command',command]
         if fault:argv+=['--fault-at',fault]
         value=run(argv,check=False)
+        observed=self.creation_observed('container',name,value.returncode)
         if detached:return name
-        output=value.stdout.strip();observed=inspect_owned('container',name,self.prefix)
+        output=value.stdout.strip()
+        if observed is None:raise ValueError('owned unenrolled container creation not confirmed')
         proof=[json.loads(line)['actual_namespace'] for line in output.splitlines() if line.startswith('{') and 'actual_namespace' in json.loads(line)]
         RESOURCE_EVENTS.append({'prefix':self.prefix,'unenrolled_container_id':observed['Id'],'actual_namespace':proof,'copied_configuration':path,'exit':value.returncode})
         return {'container':name,'container_id':observed['Id'],'namespace':proof,'exit':value.returncode,'stdout':output,'stderr':value.stderr,
@@ -225,8 +273,9 @@ class Lifetime:
         run(['docker','rm','-f',observed['Id']],check=False);return result
 
     def worker_probe(self):
-        name=self.prefix+'-worker-probe-'+secrets.token_hex(3);self.containers.append(name)
+        name=self.prefix+'-worker-probe-'+secrets.token_hex(3);self.creation_intent('container',name)
         value=run(self.args(name,keeper=True)+[IMAGE,'python','-B','skills/octon-project-bootstrap/scripts/durable_fixture.py','--worker-probe'])
+        self.creation_observed('container',name,value.returncode)
         result=json.loads(value.stdout.splitlines()[-1]);run(['docker','rm',name]);return result
 
     def cleanup(self):
@@ -256,14 +305,17 @@ class KeylessSeed(Lifetime):
     def __init__(self):
         self.prefix='octon-keyless-'+secrets.token_hex(8);self.containers=[];self.volumes=[];self.cleanup_record=None;self.keeper_process=None
         self.engine=engine_id();ACTIVE_LIFETIMES.append(self)
-        self.image=json.loads(run(['docker','image','inspect',IMAGE]).stdout)[0]['Id']
+        self.image=pinned_image(self.engine)
         import qualify_disposable_runtime as Q
-        independent=Q.seed_source_binding();name=self.prefix+'-seed';self.volumes.append(name)
+        independent=Q.seed_source_binding();name=self.prefix+'-seed'
         if inspect_owned('volume',name,self.prefix) is not None:raise ValueError('fresh keyless seed volume required')
-        run(['docker','volume','create','--label','octon.owned-qualification='+self.prefix,name])
-        container=self.prefix+'-compile';self.containers.append(container);started=time.monotonic()
+        self.creation_intent('volume',name)
+        value=run(['docker','volume','create','--label','octon.owned-qualification='+self.prefix,name],check=False)
+        if self.creation_observed('volume',name,value.returncode) is None or value.returncode:raise ValueError('owned keyless volume creation not confirmed')
+        container=self.prefix+'-compile';self.creation_intent('container',container);started=time.monotonic()
         argv=['docker','run','--name',container,'--label','octon.owned-qualification='+self.prefix,'--network','none','--cap-drop','ALL','--security-opt','no-new-privileges','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,exec,size=512m','-e','GIT_CONFIG_COUNT=1','-e','GIT_CONFIG_KEY_0=safe.directory','-e','GIT_CONFIG_VALUE_0=/source','-v',str(SOURCE)+':/source:ro','-v',name+':/seed:rw','-w','/source','-i',IMAGE,'python','-B','skills/octon-project-bootstrap/scripts/durable_fixture.py','--create-keyless-seed']
-        result=run(argv,input=json.dumps({'image_binding':self.image})+'\n');self.binding=json.loads(result.stdout.splitlines()[-1])
+        result=run(argv,input=json.dumps({'image_binding':self.image})+'\n');self.creation_observed('container',container,result.returncode)
+        self.binding=json.loads(result.stdout.splitlines()[-1])
         if self.binding['source']!=independent or self.binding['image']!=self.image:raise ValueError('compiled seed differs from independent source/image subject')
         self.seconds=round(time.monotonic()-started,6)
         checkpoint('keyless_seed',source_revision=independent['revision'],image=self.image,files=len(self.binding['files']),compile_seconds=self.seconds)
@@ -441,13 +493,15 @@ class DurableTests(unittest.TestCase):
         self.controls({'emergency_stop':True});self.assertEqual(self.life.destroy(self.life.keeper),'137')
         with self.assertRaises(ValueError):self.life.admin('inspect')
         self.assertTrue(self.life.retired)
-        name=self.life.prefix+'-marker-loss';self.life.containers.append(name)
+        name=self.life.prefix+'-marker-loss';self.life.creation_intent('container',name)
         value=run(self.life.args(name,keeper=True)+[IMAGE,'python','-B','-c','from pathlib import Path;import shutil;Path("/state/target/.octon/agent/transactions/durable/authority-owner.json").unlink();shutil.rmtree("/continuity");'],check=False)
+        self.life.creation_observed('container',name,value.returncode)
         # Mount roots cannot be removed; their lost marker/key files are the
         # intended fault. The retained consumed launch handle remains decisive.
         with self.assertRaisesRegex(ValueError,'lifetime cannot bootstrap'):self.life.start_keeper()
-        fresh=self.life.prefix+'-fresh-keeper';self.life.containers.append(fresh)
+        fresh=self.life.prefix+'-fresh-keeper';self.life.creation_intent('container',fresh)
         result=run(self.life.args(fresh,keeper=True)+['-i',IMAGE,'python','-B','skills/octon-project-bootstrap/scripts/durable_fixture.py','--keeper','/authority/bootstrap.json'],input=secrets.token_hex(32)+'\n',check=False)
+        self.life.creation_observed('container',fresh,result.returncode)
         self.assertNotEqual(result.returncode,0);self.assertIn('saved records/new key are not trusted initial launch',result.stderr)
         self.evidence.append({'case':self._testMethodName,'actual_keeper_sigkill':137,'retained_launch_refused':True,'fresh_key_bootstrap_refused':True,'marker_fault_exit':value.returncode})
 
@@ -666,7 +720,7 @@ finally:os.close(fd)'''
         self.evidence.append({'case':self._testMethodName,'actual_retained_fd_closed':True,'saved_identity_not_used_to_reopen':True,'result':result})
 
     def test_keyless_seed_binding_corruption_records_and_confinement_refuse(self):
-        name=self.life.prefix+'-seed-negative';self.life.containers.append(name)
+        name=self.life.prefix+'-seed-negative';self.life.creation_intent('container',name)
         argv=self.life.args(name,keeper=True)+['-v',SEED.volumes[0]+':/seed:rw','-i',IMAGE,'python','-B','-c']
         code=r'''import sys,json,copy,os
 from pathlib import Path
@@ -674,19 +728,31 @@ sys.path.insert(0,"/source/skills/octon-project-bootstrap/scripts")
 import qualify_disposable_runtime as Q
 v=json.loads(sys.stdin.read());expected=v['binding'];results={};seed=Path('/seed')
 def reject(label,binding=None,image=None,name='plain'):
- try:Q.materialize_keyless_seed(seed,name,Path('/tmp/rejected-'+str(len(results))),binding or expected,image or v['image']);results[label]=False
- except ValueError:results[label]=True
+ try:Q.materialize_keyless_seed(seed,name,Path('/tmp/rejected-'+str(len(results))),binding or expected,image or v['image']);results[label]={'refused':False}
+ except ValueError as error:results[label]={'refused':True,'reason':str(error)}
 wrong=copy.deepcopy(expected);wrong['source']['revision']='0'*40;reject('independent source mismatch',wrong)
 reject('image mismatch',image='sha256:'+'0'*64)
 target=seed/'plain/octon';saved=target.read_bytes();target.write_bytes(saved+b'\n# corruption\n');reject('corrupt source-owned bytes');target.write_bytes(saved)
 record=seed/'plain/.octon/agent/tasks/TASK-9999.md';record.parent.mkdir(exist_ok=True);record.write_text('project fact');reject('project record injection');record.unlink()
 link=seed/'unsafe-link';link.symlink_to('/tmp');reject('seed symlink');link.unlink()
-reject('portable traversal',name='../outside')
-try:Q.materialize_keyless_seed(seed,'plain',Path('/tmp/rw-mount'),expected,v['image']);results['writable custody']=False
-except ValueError:results['writable custody']=True
+reject('writable custody')
 print(json.dumps(results))'''
-        value=run(argv+[code],input=json.dumps({'binding':SEED.binding,'image':SEED.image}));results=json.loads(value.stdout)
-        self.assertTrue(all(results.values()),results)
+        value=run(argv+[code],input=json.dumps({'binding':SEED.binding,'image':SEED.image}));self.life.creation_observed('container',name,value.returncode);results=json.loads(value.stdout)
+        self.assertTrue(all(row['refused'] for row in results.values()),results)
+        self.assertEqual(results['writable custody']['reason'],'keyless seed requires readonly owned kernel volume')
+        readonly=self.life.prefix+'-seed-readonly-negative';self.life.creation_intent('container',readonly)
+        code=r'''import sys,json
+from pathlib import Path
+sys.path.insert(0,"/source/skills/octon-project-bootstrap/scripts")
+import qualify_disposable_runtime as Q
+v=json.loads(sys.stdin.read());target=Path('/tmp/outside')
+try:Q.materialize_keyless_seed(Path('/seed'),'../outside',target,v['binding'],v['image']);result={'refused':False}
+except ValueError as error:result={'refused':True,'reason':str(error),'target_absent':not target.exists()}
+print(json.dumps(result))'''
+        value=run(self.life.args(readonly,seed=True)+['-i',IMAGE,'python','-B','-c',code],input=json.dumps({'binding':SEED.binding,'image':SEED.image}))
+        self.life.creation_observed('container',readonly,value.returncode);results['portable traversal']=json.loads(value.stdout)
+        self.assertTrue(results['portable traversal']['refused']);self.assertTrue(results['portable traversal']['target_absent'])
+        self.assertEqual(results['portable traversal']['reason'],'fresh exact seed destination required')
         self.evidence.append({'case':self._testMethodName,'noncurrent_seed_only':True,'actual_denials':results})
 
     def test_internal_deadline_exports_partial_and_cleans_owned_keys(self):
@@ -723,7 +789,7 @@ def main():
     names=args.tests or [name for name in DurableTests.__dict__ if name.startswith('test_')];LAUNCH_BARRIER=args.launch_barrier
     class Runner(unittest.TextTestRunner):
         def _makeResult(self):self.current_result=super()._makeResult();return self.current_result
-    runner=Runner(verbosity=2);aborted=False;cleanup_unknown=[]
+    runner=Runner(verbosity=2);aborted=False;preparation_error=None;cleanup_unknown=[];result=unittest.TestResult()
     def interrupted(*_):raise QualificationDeadline
     signal.signal(signal.SIGTERM,interrupted)
     if hasattr(signal,'SIGALRM'):signal.signal(signal.SIGALRM,interrupted);signal.setitimer(signal.ITIMER_REAL,args.qualification_seconds)
@@ -731,18 +797,24 @@ def main():
         SEED=KeylessSeed()
         result=runner.run(unittest.TestSuite(DurableTests(name) for name in names))
     except KeyboardInterrupt:aborted=True;result=getattr(runner,'current_result',unittest.TestResult())
+    except Exception as error:
+        preparation_error={'type':type(error).__name__,'reason':str(error)}
+        result=getattr(runner,'current_result',result)
+        checkpoint('preparation_failed',error=preparation_error)
     finally:
         if hasattr(signal,'SIGALRM'):signal.setitimer(signal.ITIMER_REAL,0)
         CLEANUP_UNTIL=time.monotonic()+120
         for lifetime in list(reversed(ACTIVE_LIFETIMES)):
             try:RESOURCE_EVENTS.append({'interruption_cleanup':lifetime.cleanup(),'prefix':lifetime.prefix})
-            except BaseException as error:cleanup_unknown.append({'prefix':lifetime.prefix,'resources':lifetime.volumes+lifetime.containers,'reason':str(error)})
-    complete=set(names)=={name for name in DurableTests.__dict__ if name.startswith('test_')}
+            except BaseException as error:
+                unknown={'prefix':lifetime.prefix,'resources':lifetime.volumes+lifetime.containers,'reason':str(error)}
+                cleanup_unknown.append(unknown);checkpoint('owned_cleanup_unknown',**unknown)
+    complete=set(names)=={name for name in DurableTests.__dict__ if name.startswith('test_')} and result.testsRun==len(names) and not aborted and preparation_error is None
     try:unchanged=source_subject()==subject
     except (OSError,subprocess.SubprocessError):unchanged=False;cleanup_unknown.append({'reason':'final local source observation unavailable'})
-    passed=result.wasSuccessful() and not aborted and not cleanup_unknown and unchanged
-    evidence={'schema_version':'octon.durable-fixture-qualification.v1','permission_grant':False,'qualified':passed and complete,'targeted_passed':passed,'complete_suite':complete,'aborted':aborted,'cleanup_unknown':cleanup_unknown,
-              'tests_run':result.testsRun,'errors':len(result.errors),'failures':len(result.failures),'cases':DurableTests.evidence,
+    passed=result.wasSuccessful() and not aborted and preparation_error is None and not cleanup_unknown and unchanged and result.testsRun==len(names)
+    evidence={'schema_version':'octon.durable-fixture-qualification.v1','permission_grant':False,'qualified':passed and complete,'targeted_passed':passed,'complete_suite':complete,'aborted':aborted,'preparation_error':preparation_error,'cleanup_unknown':cleanup_unknown,
+              'tests_run':result.testsRun,'tests_expected':len(names),'errors':len(result.errors)+(1 if preparation_error else 0),'failures':len(result.failures),'cases':DurableTests.evidence,
               'source_revision':subject['revision'],'resource_intents_and_cleanup':RESOURCE_EVENTS,
               'source_subject':subject,'source_unchanged':unchanged,
               'elapsed_seconds':round(time.monotonic()-started,6),'qualification_deadline_seconds':args.qualification_seconds,'keyless_seed_compile_seconds':SEED.seconds if SEED else None,
@@ -750,7 +822,7 @@ def main():
               'unqualified':['keeper/all-anchor rollback','engine restart','host reboot','power loss','live grants/providers/consumers']}
     if args.output:args.output.write_text(json.dumps(evidence,indent=2,sort_keys=True)+'\n')
     if args.emit_evidence:print('OCTON_DURABLE_EVIDENCE_BEGIN\n'+json.dumps(evidence,sort_keys=True)+'\nOCTON_DURABLE_EVIDENCE_END')
-    print(json.dumps({key:evidence[key] for key in ['schema_version','qualified','targeted_passed','tests_run','errors','failures','aborted','cleanup_unknown','source_revision','supported_replacement','unqualified']}));return 130 if aborted else 0 if passed else 1
+    print(json.dumps({key:evidence[key] for key in ['schema_version','qualified','targeted_passed','tests_run','errors','failures','aborted','preparation_error','cleanup_unknown','source_revision','supported_replacement','unqualified']}));return 130 if aborted else 0 if passed else 1
 
 
 if __name__=='__main__':raise SystemExit(main())

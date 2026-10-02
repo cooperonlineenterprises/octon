@@ -138,8 +138,11 @@ tests registry/finally cleanup. Driver SIGKILL/lost engine/host cleanup are not
 claimed. Non-production keys stay protected in owned stores until exact-resource
 removal is verified; no global prune or secure-erasure claim is made.
 
-The qualifier compiles an immutable keyless seed once per suite through the
-existing packaging owner. Only rendered source runtime/templates/schemas and
+The qualifier observes the existing engine and exact immutable image. Only an
+explicit absent-image observation permits acquisition of that same digest; an
+unavailable or malformed observation refuses, and acquisition is reconciled before
+preparation. The qualifier compiles an immutable keyless seed once per suite
+through the existing packaging owner. Only rendered source runtime/templates/schemas and
 empty initial generation metadata are reused. The launch handle independently
 pins the exact source, actual image and full file/mode inventory; self-consistent
 seed metadata is insufficient. Seed custody is a read-only owned kernel volume,
@@ -151,8 +154,11 @@ Authority/evaluator/verifier/fence/postimage/recovery checks are never cached.
 An internal monotonic40-minute deadline starts before seed/case preparation,
 reserving bounded cleanup and public-export time before the unchanged45-minute
 hosted job cap. Cleanup commands have bounded waits and a120-second total margin;
-unavailable observations remain UNKNOWN. Completed case/owned-cleanup checkpoints
-are append-only public partial evidence, always incomplete/nonqualified and never
+unavailable observations remain UNKNOWN. Ordinary preparation failures also emit
+a final unqualified report with the actual completed count and cleanup uncertainty.
+Creation intents precede owned resource mutations and observed outcomes reconcile
+them. These and completed case/owned-cleanup checkpoints are append-only public
+partial evidence, always incomplete/nonqualified and never
 containing tickets, keys or signed enrollment envelopes. Only the final complete
 source-bound all-case report may qualify. A prior hard-cancelled job with no final
 cleanup proof remains a failed/unknown historical attempt even after later success.
