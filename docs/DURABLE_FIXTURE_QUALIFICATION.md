@@ -138,6 +138,25 @@ tests registry/finally cleanup. Driver SIGKILL/lost engine/host cleanup are not
 claimed. Non-production keys stay protected in owned stores until exact-resource
 removal is verified; no global prune or secure-erasure claim is made.
 
+The qualifier compiles an immutable keyless seed once per suite through the
+existing packaging owner. Only rendered source runtime/templates/schemas and
+empty initial generation metadata are reused. The launch handle independently
+pins the exact source, actual image and full file/mode inventory; self-consistent
+seed metadata is insufficient. Seed custody is a read-only owned kernel volume,
+with confinement/corruption/project-record refusals. Every case still creates
+four fresh stores, new project facts/start receipt/plan/context, trusted ticket,
+current keeper, keys, clocks, controls and actual namespace-FD enrollment.
+Authority/evaluator/verifier/fence/postimage/recovery checks are never cached.
+
+An internal monotonic40-minute deadline starts before seed/case preparation,
+reserving bounded cleanup and public-export time before the unchanged45-minute
+hosted job cap. Cleanup commands have bounded waits and a120-second total margin;
+unavailable observations remain UNKNOWN. Completed case/owned-cleanup checkpoints
+are append-only public partial evidence, always incomplete/nonqualified and never
+containing tickets, keys or signed enrollment envelopes. Only the final complete
+source-bound all-case report may qualify. A prior hard-cancelled job with no final
+cleanup proof remains a failed/unknown historical attempt even after later success.
+
 Local gates, independent review and fresh hosted evidence remain separate. The
 existing 24 cross-platform matrix jobs and retained protected fixture are mandatory.
 The durable job runs on PR/manual qualification; required PR always explicitly

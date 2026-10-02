@@ -202,7 +202,7 @@ def install(root):
     return value
 
 
-def prepare_fixture(ticket):
+def prepare_fixture(ticket,seed_binding=None,image_binding=None):
     """Trusted keyless fixture preparation through existing work/packaging owners."""
     host(True)
     import shutil
@@ -213,7 +213,10 @@ def prepare_fixture(ticket):
     from test_disposable_runtime import module
     from test_fixture_admission import seal
     if ROOT.exists() or any(AUTH.iterdir()) or any(CURRENT.iterdir()):raise ValueError('fresh owned stores required')
-    old=Path('/tmp/durable-seed');Q.generate(old)
+    prepared_at=time.monotonic()
+    old=Path('/tmp/durable-seed')
+    if seed_binding:Q.materialize_keyless_seed(Path('/seed'),'plain',old,seed_binding,image_binding)
+    else:Q.generate(old)
     def cli(root,*args):
         result=subprocess.run([sys.executable,'-B',root/'octon',*map(str,args)],cwd=root,capture_output=True,text=True)
         if result.returncode:raise ValueError(result.stderr or result.stdout)
@@ -223,13 +226,17 @@ def prepare_fixture(ticket):
         '--authority-basis','authority:current-user-disposable-fixture','--owner','fixture-owner','--operator','fixture-operator',
         '--acceptance','Preserve IDs and exact receipts','--validation','Read-only check','--next-action','Qualify replacement','--output',start)
     initial=R.load(start);cli(old,'transaction','apply','--plan',start,'--accept-digest',initial['canonical_plan_digest'])
-    Q.generate(ROOT,admission=True);ROOT.chmod(0o700)
+    if seed_binding:Q.materialize_keyless_seed(Path('/seed'),'admission',ROOT,seed_binding,image_binding)
+    else:Q.generate(ROOT,admission=True)
+    ROOT.chmod(0o700)
     for relative in ['tasks/TASK-0001.md','state/focus.json']:
         destination=ROOT/'.octon/agent'/relative;destination.parent.mkdir(parents=True,exist_ok=True)
         shutil.copy2(old/'.octon/agent'/relative,destination)
     synthetic=Path('/tmp/preservation-records')
-    seeded=subprocess.run([sys.executable,'-B',HERE/'scaffold_project.py','--target',synthetic,'--project-name','Synthetic preserved record fixture','--profile','minimal','--layout','compact'],capture_output=True,text=True)
-    if seeded.returncode:raise ValueError(seeded.stderr or seeded.stdout)
+    if seed_binding:Q.materialize_keyless_seed(Path('/seed'),'legacy',synthetic,seed_binding,image_binding)
+    else:
+        seeded=subprocess.run([sys.executable,'-B',HERE/'scaffold_project.py','--target',synthetic,'--project-name','Synthetic preserved record fixture','--profile','minimal','--layout','compact'],capture_output=True,text=True)
+        if seeded.returncode:raise ValueError(seeded.stderr or seeded.stdout)
     records.accepted_decision(synthetic,'DEC-0042');records.task_and_evidence(synthetic)
     preserved=['tasks/TASK-0001.md']
     for directory in ['decisions','evidence']:
@@ -280,6 +287,7 @@ def prepare_fixture(ticket):
     durable_json(AUTH/'bootstrap.json',{'context':context,'bundle':bundle,'bootstrap_digest':sha(ticket.encode())},exclusive=True)
     os.environ.pop('OCTON_FIXTURE_ADMISSION_CONTEXT',None)
     return {'schema_version':PROFILE,'permission_grant':False,'receipt_ref':record['receipt_id'],'binding_digest':A.digest(bound),
+            'preparation_seconds':round(time.monotonic()-prepared_at,6),'keyless_seed_used':seed_binding is not None,
             'synthetic_preservation':[{'path':'.octon/agent/'+relative,'sha256':sha((ROOT/'.octon/agent'/relative).read_bytes())} for relative in preserved]}
 
 
@@ -990,6 +998,7 @@ if __name__=='__main__':
     parser.add_argument('--keeper',type=Path)
     parser.add_argument('--inspect-root',type=Path)
     parser.add_argument('--prepare-fixture',action='store_true')
+    parser.add_argument('--create-keyless-seed',action='store_true')
     parser.add_argument('--admin',choices=['enroll','control','fault','inspect'])
     parser.add_argument('--keeper-pin',type=Path)
     parser.add_argument('--sign-enrollment',type=Path)
@@ -1003,8 +1012,11 @@ if __name__=='__main__':
     args=parser.parse_args()
     if args.inspect_root:print(json.dumps({'profile':profile(args.inspect_root),'permission_grant':False,'execution_authorized':False}))
     elif args.worker_probe:print(json.dumps(probe_worker(),sort_keys=True))
+    elif args.create_keyless_seed:
+        import qualify_disposable_runtime as Q
+        request=A.strict(sys.stdin.readline().encode());print(json.dumps(Q.create_keyless_seed(Path('/seed'),request['image_binding'])))
     elif args.prepare_fixture:
-        ticket=sys.stdin.readline().strip();print(json.dumps(prepare_fixture(ticket)))
+        request=A.strict(sys.stdin.readline().encode());print(json.dumps(prepare_fixture(request['ticket'],request.get('seed_binding'),request.get('image_binding'))))
     elif args.keeper:Keeper(V.load(args.keeper),sys.stdin.readline().strip()).serve()
     elif args.sign_enrollment:
         if args.keeper_pin is None:raise ValueError('original trusted keeper pin required')

@@ -22,10 +22,28 @@ CAPS=['CHOWN','SETUID','SETGID','SETPCAP','KILL']
 RESOURCE_EVENTS=[]
 ACTIVE_LIFETIMES=[]
 LAUNCH_BARRIER=None
+SEED=None
+DEADLINE=None
+CLEANUP_UNTIL=None
+CHECKPOINT_SEQUENCE=0
+
+
+class QualificationDeadline(KeyboardInterrupt):pass
+
+
+def checkpoint(kind,**details):
+    global CHECKPOINT_SEQUENCE
+    CHECKPOINT_SEQUENCE+=1
+    # Only deliberately selected public metadata enters this partial stream.
+    print('OCTON_DURABLE_CHECKPOINT '+json.dumps({'sequence':CHECKPOINT_SEQUENCE,'kind':kind,'complete':False,'qualified':False,**details},sort_keys=True),flush=True)
 
 
 def run(argv,*,input=None,check=True):
-    value=subprocess.run(argv,input=input,capture_output=True,text=True,check=False,timeout=180)
+    now=time.monotonic()
+    if CLEANUP_UNTIL is None and DEADLINE is not None and now>=DEADLINE:raise QualificationDeadline
+    timeout=180 if CLEANUP_UNTIL is None else min(10,max(.1,CLEANUP_UNTIL-now))
+    if CLEANUP_UNTIL is not None and now>=CLEANUP_UNTIL:raise ValueError('bounded cleanup deadline exhausted; owned resources remain unknown')
+    value=subprocess.run(argv,input=input,capture_output=True,text=True,check=False,timeout=timeout)
     if check and value.returncode:raise ValueError('owned fixture command failed: '+value.stderr+value.stdout)
     return value
 
@@ -52,7 +70,9 @@ def inspect_owned(kind,name,prefix):
 def source_subject():
     files=['durable_fixture.py','durable_fixture_worker.py','test_durable_fixture.py','qualify_disposable_runtime.py','protected_fixture.py','fixture_admission.py','installation_runtime.py','installation_runtime_v2.py']
     files=[HERE/name for name in files]+[SOURCE/'shared/source-contracts'/name for name in ['durable-fixture-inventory.json','durable-fixture-v2.schema.json']]
-    return {'revision':run(['git','rev-parse','HEAD'],check=True).stdout.strip(),'status':run(['git','status','--porcelain=v1']).stdout.splitlines(),
+    def local_git(*args):
+        return subprocess.check_output(['git','--no-optional-locks',*args],text=True,timeout=5).strip()
+    return {'revision':local_git('rev-parse','HEAD'),'status':local_git('status','--porcelain=v1').splitlines(),
             'files':{str(path.relative_to(SOURCE)):hashlib.sha256(path.read_bytes()).hexdigest() for path in files}}
 
 
@@ -75,7 +95,7 @@ class Lifetime:
         except BaseException:
             self.cleanup();raise
 
-    def args(self,name,*,keeper=False,source=True):
+    def args(self,name,*,keeper=False,source=True,seed=False):
         values=['docker','run','--name',name,'--label','octon.owned-qualification='+self.prefix,
                 '--network','none','--cap-drop','ALL']
         for capability in CAPS:values+=['--cap-add',capability]
@@ -87,12 +107,15 @@ class Lifetime:
                  '-v',self.volumes[3]+':/ipc:'+('rw' if keeper else 'ro'),'-w','/source' if source else '/state/target']
         if source:values+=['-v',str(SOURCE)+':/source:ro']
         if keeper:values+=['-v',self.volumes[1]+':/authority:rw','-v',self.volumes[2]+':/continuity:rw']
+        if seed:
+            if SEED is None:raise ValueError('independent keyless seed handle missing')
+            values+=['-v',SEED.volumes[0]+':/seed:ro']
         return values
 
     def prepare(self):
         name=self.prefix+'-prepare';self.containers.append(name)
-        value=run(self.args(name,keeper=True)+['-i',IMAGE,'python','-B',
-                    'skills/octon-project-bootstrap/scripts/durable_fixture.py','--prepare-fixture'],input=self.ticket+'\n')
+        value=run(self.args(name,keeper=True,seed=SEED is not None)+['-i',IMAGE,'python','-B',
+                    'skills/octon-project-bootstrap/scripts/durable_fixture.py','--prepare-fixture'],input=json.dumps({'ticket':self.ticket,'seed_binding':SEED.binding if SEED else None,'image_binding':SEED.image if SEED else None})+'\n')
         self.prepared=json.loads(value.stdout.splitlines()[-1]);run(['docker','rm',name]);return self.prepared
 
     def start_keeper(self):
@@ -222,21 +245,43 @@ class Lifetime:
         if self.keeper_process:self.keeper_process.wait(timeout=15)
         if engine_id()!=self.engine:raise ValueError('engine observation changed; cleanup remains unknown')
         RESOURCE_EVENTS.append({'prefix':self.prefix,'cleanup':records,'engine_observed':self.engine})
+        checkpoint('owned_cleanup',prefix=self.prefix,records=records,engine_observed=self.engine)
         if not all(row['absent'] for row in records):raise ValueError('owned disposable key/resource cleanup incomplete')
         if self in ACTIVE_LIFETIMES:ACTIVE_LIFETIMES.remove(self)
         return records
 
 
+class KeylessSeed(Lifetime):
+    """Existing qualifier's immutable compile output; never an authority store."""
+    def __init__(self):
+        self.prefix='octon-keyless-'+secrets.token_hex(8);self.containers=[];self.volumes=[];self.cleanup_record=None;self.keeper_process=None
+        self.engine=engine_id();ACTIVE_LIFETIMES.append(self)
+        self.image=json.loads(run(['docker','image','inspect',IMAGE]).stdout)[0]['Id']
+        import qualify_disposable_runtime as Q
+        independent=Q.seed_source_binding();name=self.prefix+'-seed';self.volumes.append(name)
+        if inspect_owned('volume',name,self.prefix) is not None:raise ValueError('fresh keyless seed volume required')
+        run(['docker','volume','create','--label','octon.owned-qualification='+self.prefix,name])
+        container=self.prefix+'-compile';self.containers.append(container);started=time.monotonic()
+        argv=['docker','run','--name',container,'--label','octon.owned-qualification='+self.prefix,'--network','none','--cap-drop','ALL','--security-opt','no-new-privileges','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,exec,size=512m','-e','GIT_CONFIG_COUNT=1','-e','GIT_CONFIG_KEY_0=safe.directory','-e','GIT_CONFIG_VALUE_0=/source','-v',str(SOURCE)+':/source:ro','-v',name+':/seed:rw','-w','/source','-i',IMAGE,'python','-B','skills/octon-project-bootstrap/scripts/durable_fixture.py','--create-keyless-seed']
+        result=run(argv,input=json.dumps({'image_binding':self.image})+'\n');self.binding=json.loads(result.stdout.splitlines()[-1])
+        if self.binding['source']!=independent or self.binding['image']!=self.image:raise ValueError('compiled seed differs from independent source/image subject')
+        self.seconds=round(time.monotonic()-started,6)
+        checkpoint('keyless_seed',source_revision=independent['revision'],image=self.image,files=len(self.binding['files']),compile_seconds=self.seconds)
+        run(['docker','rm',container])
+
+
 class DurableTests(unittest.TestCase):
     evidence=[]
     def setUp(self):
-        self.life=Lifetime();self.addCleanup(self.clean);self.life.prepare();self.life.start_keeper()
+        self.case_started=time.monotonic();self.life=Lifetime();self.addCleanup(self.clean);self.life.prepare();self.life.start_keeper()
         self.lease,self.path=self.life.enroll()
         if LAUNCH_BARRIER is not None:
             LAUNCH_BARRIER.write_text(json.dumps({'prefix':self.life.prefix,'volumes':self.life.volumes,'containers':self.life.containers,'private_bytes_exported':False}))
             while True:time.sleep(.02)
     def clean(self):
-        try:self.evidence.append({'case':self._testMethodName,'cleanup':self.life.cleanup()})
+        try:
+            records=self.life.cleanup();timing={'case_seconds':round(time.monotonic()-self.case_started,6),'preparation_seconds':self.life.prepared.get('preparation_seconds') if hasattr(self.life,'prepared') else None,'keyless_seed_used':self.life.prepared.get('keyless_seed_used') if hasattr(self.life,'prepared') else None}
+            self.evidence.append({'case':self._testMethodName,'cleanup':records,'timing':timing});checkpoint('case_completed',case=self._testMethodName,timing=timing,owned_cleanup_verified=True)
         except Exception as error:self.evidence.append({'case':self._testMethodName,'cleanup_unknown':str(error),'records':self.life.cleanup_record});raise
     def relative(self,kind):
         identity=self.life.prepared['receipt_ref']
@@ -620,38 +665,87 @@ finally:os.close(fd)'''
         with self.assertRaisesRegex(ValueError,'retained actual controller namespace handle unavailable'):self.life.admin('inspect')
         self.evidence.append({'case':self._testMethodName,'actual_retained_fd_closed':True,'saved_identity_not_used_to_reopen':True,'result':result})
 
+    def test_keyless_seed_binding_corruption_records_and_confinement_refuse(self):
+        name=self.life.prefix+'-seed-negative';self.life.containers.append(name)
+        argv=self.life.args(name,keeper=True)+['-v',SEED.volumes[0]+':/seed:rw','-i',IMAGE,'python','-B','-c']
+        code=r'''import sys,json,copy,os
+from pathlib import Path
+sys.path.insert(0,"/source/skills/octon-project-bootstrap/scripts")
+import qualify_disposable_runtime as Q
+v=json.loads(sys.stdin.read());expected=v['binding'];results={};seed=Path('/seed')
+def reject(label,binding=None,image=None,name='plain'):
+ try:Q.materialize_keyless_seed(seed,name,Path('/tmp/rejected-'+str(len(results))),binding or expected,image or v['image']);results[label]=False
+ except ValueError:results[label]=True
+wrong=copy.deepcopy(expected);wrong['source']['revision']='0'*40;reject('independent source mismatch',wrong)
+reject('image mismatch',image='sha256:'+'0'*64)
+target=seed/'plain/octon';saved=target.read_bytes();target.write_bytes(saved+b'\n# corruption\n');reject('corrupt source-owned bytes');target.write_bytes(saved)
+record=seed/'plain/.octon/agent/tasks/TASK-9999.md';record.parent.mkdir(exist_ok=True);record.write_text('project fact');reject('project record injection');record.unlink()
+link=seed/'unsafe-link';link.symlink_to('/tmp');reject('seed symlink');link.unlink()
+reject('portable traversal',name='../outside')
+try:Q.materialize_keyless_seed(seed,'plain',Path('/tmp/rw-mount'),expected,v['image']);results['writable custody']=False
+except ValueError:results['writable custody']=True
+print(json.dumps(results))'''
+        value=run(argv+[code],input=json.dumps({'binding':SEED.binding,'image':SEED.image}));results=json.loads(value.stdout)
+        self.assertTrue(all(results.values()),results)
+        self.evidence.append({'case':self._testMethodName,'noncurrent_seed_only':True,'actual_denials':results})
+
+    def test_internal_deadline_exports_partial_and_cleans_owned_keys(self):
+        with tempfile.TemporaryDirectory(prefix='octon-owned-soft-deadline-') as temporary:
+            area=Path(temporary);barrier=area/'ready.json';output=area/'partial.json';log=area/'deadline.log'
+            with log.open('w') as stream:
+                process=subprocess.Popen([sys.executable,'-B',str(Path(__file__).resolve()),'--qualify-owned-durable-fixture','--qualification-seconds','180','--launch-barrier',str(barrier),'--output',str(output),'test_actual_narrow_committer_and_container_replacement'],stdout=stream,stderr=stream)
+                try:exit=process.wait(timeout=310)
+                finally:
+                    if process.poll() is None:process.send_signal(signal.SIGTERM);process.wait(timeout=130)
+            self.assertTrue(barrier.is_file(),'deadline fixture did not reach real enrolled key-bearing state')
+            owned=json.loads(barrier.read_text());record=json.loads(output.read_text())
+            self.assertEqual(exit,130);self.assertTrue(record['aborted']);self.assertFalse(record['qualified']);self.assertFalse(record['cleanup_unknown'])
+            self.assertTrue(all(inspect_owned('volume',name,owned['prefix']) is None for name in owned['volumes']))
+            self.assertIn('OCTON_DURABLE_CHECKPOINT',log.read_text())
+            self.evidence.append({'case':self._testMethodName,'internal_deadline_seconds':180,'elapsed_seconds':record['elapsed_seconds'],'actual_key_state_reached':True,'partial_unqualified':True,'owned_cleanup_verified':True})
+
 
 def main():
-    global LAUNCH_BARRIER
+    global LAUNCH_BARRIER,SEED,DEADLINE,CLEANUP_UNTIL
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--qualify-owned-durable-fixture',action='store_true')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--emit-evidence',action='store_true')
     parser.add_argument('--launch-barrier',type=Path)
+    parser.add_argument('--qualification-seconds',type=float,default=2400)
     parser.add_argument('tests',nargs='*')
     args=parser.parse_args()
     if not args.qualify_owned_durable_fixture:
         print(json.dumps({'qualified':False,'permission_grant':False,'consequential_execution':'disabled','reason':'explicit owned durable fixture qualification required'}));return 0
+    started=time.monotonic();DEADLINE=started+args.qualification_seconds
+    if args.qualification_seconds<=0 or args.qualification_seconds>2400:raise ValueError('qualification deadline must leave cleanup/export margin before45m')
     subject=source_subject()
     names=args.tests or [name for name in DurableTests.__dict__ if name.startswith('test_')];LAUNCH_BARRIER=args.launch_barrier
     class Runner(unittest.TextTestRunner):
         def _makeResult(self):self.current_result=super()._makeResult();return self.current_result
     runner=Runner(verbosity=2);aborted=False;cleanup_unknown=[]
-    def interrupted(*_):raise KeyboardInterrupt
+    def interrupted(*_):raise QualificationDeadline
     signal.signal(signal.SIGTERM,interrupted)
-    try:result=runner.run(unittest.TestSuite(DurableTests(name) for name in names))
-    except KeyboardInterrupt:aborted=True;result=runner.current_result
+    if hasattr(signal,'SIGALRM'):signal.signal(signal.SIGALRM,interrupted);signal.setitimer(signal.ITIMER_REAL,args.qualification_seconds)
+    try:
+        SEED=KeylessSeed()
+        result=runner.run(unittest.TestSuite(DurableTests(name) for name in names))
+    except KeyboardInterrupt:aborted=True;result=getattr(runner,'current_result',unittest.TestResult())
     finally:
+        if hasattr(signal,'SIGALRM'):signal.setitimer(signal.ITIMER_REAL,0)
+        CLEANUP_UNTIL=time.monotonic()+120
         for lifetime in list(reversed(ACTIVE_LIFETIMES)):
             try:RESOURCE_EVENTS.append({'interruption_cleanup':lifetime.cleanup(),'prefix':lifetime.prefix})
             except BaseException as error:cleanup_unknown.append({'prefix':lifetime.prefix,'resources':lifetime.volumes+lifetime.containers,'reason':str(error)})
     complete=set(names)=={name for name in DurableTests.__dict__ if name.startswith('test_')}
-    unchanged=source_subject()==subject
+    try:unchanged=source_subject()==subject
+    except (OSError,subprocess.SubprocessError):unchanged=False;cleanup_unknown.append({'reason':'final local source observation unavailable'})
     passed=result.wasSuccessful() and not aborted and not cleanup_unknown and unchanged
     evidence={'schema_version':'octon.durable-fixture-qualification.v1','permission_grant':False,'qualified':passed and complete,'targeted_passed':passed,'complete_suite':complete,'aborted':aborted,'cleanup_unknown':cleanup_unknown,
               'tests_run':result.testsRun,'errors':len(result.errors),'failures':len(result.failures),'cases':DurableTests.evidence,
-              'source_revision':run(['git','rev-parse','HEAD']).stdout.strip(),'resource_intents_and_cleanup':RESOURCE_EVENTS,
+              'source_revision':subject['revision'],'resource_intents_and_cleanup':RESOURCE_EVENTS,
               'source_subject':subject,'source_unchanged':unchanged,
+              'elapsed_seconds':round(time.monotonic()-started,6),'qualification_deadline_seconds':args.qualification_seconds,'keyless_seed_compile_seconds':SEED.seconds if SEED else None,
               'supported_replacement':'actual committer containers only; original independent keeper/launch handle/engine boot retained',
               'unqualified':['keeper/all-anchor rollback','engine restart','host reboot','power loss','live grants/providers/consumers']}
     if args.output:args.output.write_text(json.dumps(evidence,indent=2,sort_keys=True)+'\n')
