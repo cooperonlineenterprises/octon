@@ -637,17 +637,58 @@ print(json.dumps(results))'''
         self.evidence.append({'case':self._testMethodName,'fault':'actual SIGKILL after exact journal unlink before directory fsync','recovery':result})
 
     def test_actual_expiry_after_admission_and_mid_multiwrite_refuses_next_effect(self):
+        from datetime import datetime
+        capture_code=r'''import json,sys
+sys.path.insert(0,"/source/skills/octon-project-bootstrap/scripts")
+import durable_fixture as D
+record=D.V.load(D.AUTH/'bootstrap.json')['context']['record'];state=D.V.load(D.CURRENT/'index.json')
+print(json.dumps({'observed_at':D.effective_time(state).isoformat(),'planned_paths':[{key:row[key] for key in ['path','before','after']} for row in record['paths']],
+ 'actual_paths':[D.path_state(D.confined(D.ROOT,row['path']),row['path']) for row in record['paths']],
+ 'journal_exists':(D.ROOT/'.octon/agent/transactions/pending'/(record['receipt_id']+'.json')).is_file(),
+ 'consumption_exists':(D.ROOT/'.octon/agent/transactions/durable'/record['receipt_id']/'consumed.json').is_file()}))'''
         for position in ['.octon/agent/state/focus.json','.octon/dossier/MANIFEST.json']:
             if position!='.octon/agent/state/focus.json':
                 cleanup=self.life.cleanup();self.evidence.append({'case':self._testMethodName,'subfixture_cleanup':cleanup})
                 self.life=Lifetime();self.life.prepare();self.life.start_keeper();self.lease,self.path=self.life.enroll()
-            deadline=self.life.code('from datetime import datetime,timezone,timedelta;print((datetime.now(timezone.utc)+timedelta(seconds=20)).isoformat())').stdout.strip()
+            original=self.life.admin('inspect')['authority']['bundle']
+            deadline=self.life.code('from datetime import datetime,timezone,timedelta;print((datetime.now(timezone.utc)+timedelta(seconds=60)).isoformat())').stdout.strip()
+            chosen=datetime.fromisoformat(deadline)
+            self.assertLessEqual(chosen,datetime.fromisoformat(original['controls']['fresh_until']))
+            caps=[row['valid_until'] for row in original['delegations']]+[row['fresh_until'] for row in original['controls']['obligation_results']]+[row['period_accounting']['end'] for row in original['controls']['budget_snapshots']]
+            self.assertTrue(all(chosen<datetime.fromisoformat(value) for value in caps))
             self.controls({'fresh_until':deadline});before=self.life.admin('inspect')['authority']['bundle']
+            self.assertEqual(before['controls']['fresh_until'],deadline)
+            self.assertEqual(before['delegations'],original['delegations'])
+            self.assertEqual(before['controls']['obligation_results'],original['controls']['obligation_results'])
+            self.assertEqual(before['controls']['budget_snapshots'],original['controls']['budget_snapshots'])
+            checkpoint('expiry_deadline_armed',case=self._testMethodName,position=position,window_seconds=60,deadline=deadline,
+                       original_fresh_until=original['controls']['fresh_until'],original_bundle_digest=self.life.digest(original),
+                       narrowed_bundle_digest=self.life.digest(before),grant_digest=self.life.digest(before['delegations']))
             child=self.life.execute(self.path,fault='before-effect:'+position,detached=True);self.life.wait_file(child,'/tmp/fault-ready.json')
-            observed=self.life.code('import datetime,time;deadline=datetime.datetime.fromisoformat('+repr(deadline)+');\nwhile datetime.datetime.now(datetime.timezone.utc)<deadline:time.sleep(.01)\nprint(datetime.datetime.now(datetime.timezone.utc).isoformat())').stdout.strip()
+            ready=json.loads(self.life.code('from pathlib import Path;print(Path("/tmp/fault-ready.json").read_text())',container=child).stdout)
+            self.assertEqual(ready['fault'],'before-effect:'+position)
+            barrier=json.loads(self.life.code(capture_code).stdout)
+            self.assertLess(datetime.fromisoformat(barrier['observed_at']),chosen,'intended barrier missed the fixed freshness window; no retry')
+            planned={row['path']:row for row in barrier['planned_paths']};actual={row['path']:row for row in barrier['actual_paths']}
+            self.assertEqual(actual[position],planned[position]['before'])
+            earlier=[path for path,row in planned.items() if row['before']!=row['after'] and actual[path]==row['after']]
+            if position=='.octon/dossier/MANIFEST.json':self.assertTrue(earlier,'later barrier must prove an earlier original planned postimage')
+            else:self.assertFalse(earlier,'first barrier must precede any original canonical effect')
+            self.assertTrue(barrier['journal_exists']);self.assertTrue(barrier['consumption_exists'])
+            checkpoint('expiry_barrier_fresh',case=self._testMethodName,position=position,deadline=deadline,observed_at=barrier['observed_at'],
+                       remaining_seconds=(chosen-datetime.fromisoformat(barrier['observed_at'])).total_seconds(),earlier_planned_postimages=earlier)
+            observed=self.life.code('import sys,time;sys.path.insert(0,"/source/skills/octon-project-bootstrap/scripts");import durable_fixture as D;deadline=D.A.timestamp('+repr(deadline)+');clock=D.V.load(D.CURRENT/"index.json");\nwhile D.effective_time(clock)<deadline:time.sleep(.01)\nprint(D.effective_time(clock).isoformat())').stdout.strip()
+            self.assertGreaterEqual(datetime.fromisoformat(observed),chosen)
             self.life.release(child);result=self.life.terminal(child);self.assertEqual(result['exit'],2,result);self.assertIn('current authority',result['stdout'])
             after=self.life.admin('inspect')['authority']['bundle'];self.assertEqual(before,after)
-            self.evidence.append({'case':self._testMethodName,'explicit_barrier':position,'unchanged_grants_and_controls':True,'deadline':deadline,'actual_time_after_deadline':observed,'result':result})
+            retained=json.loads(self.life.code(capture_code).stdout)
+            self.assertEqual(retained['actual_paths'],barrier['actual_paths'])
+            self.assertTrue(retained['journal_exists']);self.assertTrue(retained['consumption_exists'])
+            self.evidence.append({'case':self._testMethodName,'explicit_barrier':position,'ready':ready,'original_bundle_digest':self.life.digest(original),
+                                  'narrowed_bundle_digest':self.life.digest(before),'unchanged_grant_digest':self.life.digest(before['delegations']),
+                                  'unchanged_grants_and_controls':True,'fixed_freshness_seconds':60,'deadline':deadline,'original_fresh_until':original['controls']['fresh_until'],
+                                  'unchanged_grant_obligation_accounting_caps':caps,'barrier':barrier,'earlier_planned_postimages':earlier,
+                                  'actual_time_after_deadline':observed,'retained':retained,'no_later_canonical_transition':True,'result':result})
 
     def test_owned_driver_sigterm_cleans_key_bearing_resources(self):
         with tempfile.TemporaryDirectory(prefix='octon-owned-driver-interrupt-') as temporary:
