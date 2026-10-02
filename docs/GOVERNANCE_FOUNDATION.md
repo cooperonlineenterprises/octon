@@ -249,6 +249,14 @@ qualification. No step imports a specialist engine or new global orchestrator.
 
 ## Remaining successor dispositions
 
+The [assessment evidence projection](AGENT_FIRST_ASSESSMENT_REGISTER.md) retains
+original report-local O/S/P labels without allocating accepted decision IDs or
+changing this table's contract ownership. The
+[durable protected fixture](DURABLE_FIXTURE_QUALIFICATION.md) extends only declared
+disposable recovery under an independently current retained authority owner.
+It is partial O2/O3/O6 and IMP-1/2 evidence, not real grants, complete rollback
+resistance or consumer activation. The existing OEP plan alone owns sequencing.
+
 | Architecture proposal area | Disposition in this slice |
 |---|---|
 | O-AUTONOMY | SRC-DEC-0041 selects intent-linked delegated technical actors for the versioned successor; current consumers remain under their adopted contracts. |
