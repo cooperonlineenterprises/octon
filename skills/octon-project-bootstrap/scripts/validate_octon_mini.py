@@ -146,6 +146,13 @@ REQUIRED_PATHS = (
     "shared/source-contracts/protected-fixture-inventory.json",
     "shared/source-contracts/protected-fixture-v1.schema.json",
     "docs/PROTECTED_FIXTURE_QUALIFICATION.md",
+    "skills/octon-project-bootstrap/scripts/durable_fixture.py",
+    "skills/octon-project-bootstrap/scripts/durable_fixture_worker.py",
+    "skills/octon-project-bootstrap/scripts/test_durable_fixture.py",
+    "shared/source-contracts/durable-fixture-inventory.json",
+    "shared/source-contracts/durable-fixture-v2.schema.json",
+    "docs/DURABLE_FIXTURE_QUALIFICATION.md",
+    "docs/AGENT_FIRST_ASSESSMENT_REGISTER.md",
     "shared/schemas/artifact-catalog.schema.json",
     "shared/schemas/dossier-artifact-registry.schema.json",
     "shared/schemas/dossier-path-authority.schema.json",
@@ -1461,7 +1468,7 @@ def validate_ci_contract(issues: list[str], workflow: str | None = None) -> None
         "manual full-matrix trigger": "workflow_dispatch:",
         "stable pull-request gate": (
             "pull-request-gate:\n    name: required\n"
-            "    needs: protected-linux-fixture\n"
+            "    needs: [protected-linux-fixture, durable-linux-fixture]\n"
             "    if: always() && github.event_name == 'pull_request'"
         ),
         "minimum-runtime pull-request gate": 'python-version: "3.11"',
@@ -1526,31 +1533,33 @@ def validate_ci_contract(issues: list[str], workflow: str | None = None) -> None
         "          fetch-tags: true\n"
         "          fetch-depth: 0"
     )
-    if workflow.count(tag_aware_checkout) != 5:
+    if workflow.count(tag_aware_checkout) != 6:
         issues.append(
             "every CI checkout must fetch tags and full history for the exact pinned preparation-baseline fixture"
         )
     jobs=dict(re.findall(r"(?ms)^  ([a-z][a-z0-9-]*):\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)",workflow.split('\njobs:\n',1)[-1]))
-    expected_jobs={'pull-request-gate','protected-linux-fixture','main-smoke','full-source-matrix','full-acceptance-matrix'}
+    expected_jobs={'pull-request-gate','protected-linux-fixture','durable-linux-fixture','main-smoke','full-source-matrix','full-acceptance-matrix'}
     if set(jobs)!=expected_jobs:
-        issues.append('CI must retain the exact five routine/protected/manual jobs')
+        issues.append('CI must retain the exact six routine/protected/durable/manual jobs')
     for name in expected_jobs:
         if jobs.get(name,'').count(tag_aware_checkout)!=1:
             issues.append(f'CI {name} must have one exact pinned full-history checkout')
     required=jobs.get('pull-request-gate','')
     protected=jobs.get('protected-linux-fixture','')
+    durable=jobs.get('durable-linux-fixture','')
     success_gate=(
         '    steps:\n'
-        '      - name: Require successful protected fixture prerequisite\n'
+        '      - name: Require successful protected fixture prerequisites\n'
         '        env:\n'
         '          OCTON_PROTECTED_RESULT: ${{ needs.protected-linux-fixture.result }}\n'
-        '        run: test "$OCTON_PROTECTED_RESULT" = success\n'
+        '          OCTON_DURABLE_RESULT: ${{ needs.durable-linux-fixture.result }}\n'
+        '        run: test "$OCTON_PROTECTED_RESULT" = success && test "$OCTON_DURABLE_RESULT" = success\n'
         '      - uses: actions/checkout@'
     )
     if success_gate not in required:
         issues.append('CI required must run its explicit protected-success assertion first; failed/skipped/cancelled prerequisite cannot be admitted')
-    if re.search(r'(?m)^\s*continue-on-error\s*:',required+protected):
-        issues.append('CI required/protected jobs cannot continue on error')
+    if re.search(r'(?m)^\s*continue-on-error\s*:',required+protected+durable):
+        issues.append('CI required/protected/durable jobs cannot continue on error')
     protected_header=(
         "    name: protected Linux fixture\n"
         "    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'\n"
@@ -1580,6 +1589,9 @@ def validate_ci_contract(issues: list[str], workflow: str | None = None) -> None
         issues.append('CI protected worker checkout must remove persisted credentials')
     if re.search(r'--privileged|--pid(?:[= ]+)host|--(?:volume|mount)\b',protected):
         issues.append('CI protected job cannot broaden privilege/PID namespace or add host custody mounts')
+    exact_durable='    name: durable protected Linux fixture\n    if: github.event_name == \'pull_request\' || github.event_name == \'workflow_dispatch\'\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:\n      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0\n        with:\n          fetch-tags: true\n          fetch-depth: 0\n          persist-credentials: false\n      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0\n        with:\n          python-version: "3.11"\n      - name: Qualify durable protected controller-container replacement\n        run: python -B skills/octon-project-bootstrap/scripts/test_durable_fixture.py --qualify-owned-durable-fixture --output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence\n'
+    if durable.strip()!=exact_durable.strip():
+        issues.append('CI durable job must retain its exact complete-suite/cleanup/evidence command and events, pinned credential-free checkout and host driver; failure masking/subsets are not admitted')
     matrix_os = "os: [ubuntu-latest, macos-latest, windows-latest]"
     if workflow.count(matrix_os) != 2:
         issues.append(
@@ -1684,6 +1696,11 @@ def validate_executable_contracts(issues: list[str]) -> None:
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_protected_fixture.py")],
             ROOT,
             "protected fixture remains disabled without explicit owned Linux container qualification",
+        ),
+        (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_durable_fixture.py")],
+            ROOT,
+            "durable fixture remains disabled without explicit owned storage/controller qualification",
         ),
         (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_installation_binding.py")],

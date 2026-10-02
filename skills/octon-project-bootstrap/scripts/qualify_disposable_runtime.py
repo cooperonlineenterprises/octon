@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -45,7 +46,9 @@ def run(argv,cwd):
     return result
 
 
-def generate(target, project_name='Disposable Runtime Fixture', *, admission=False, protected=False):
+def generate(target, project_name='Disposable Runtime Fixture', *, admission=False, protected=False, durable=False):
+    if durable and not (admission and protected):
+        raise ValueError('durable successor requires explicit protected and admission fixture dependencies')
     if protected and not admission:
         raise ValueError('protected successor requires explicit admission fixture dependency')
     if not target.is_absolute():
@@ -183,12 +186,75 @@ def main(''')
             if sys.platform != 'linux':raise ValueError('protected fixture execution profile is Linux-only')
             from protected_fixture import install
             install(stage)
+            if durable:
+                from durable_fixture import install as install_durable
+                install_durable(stage)
             run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
             run([sys.executable,'-B',stage/'octon','check'],stage)
         if target.exists():
             target.rmdir()
         stage.rename(target)
     return manifest
+
+
+def seed_source_binding():
+    """Independent exact source binding supplied by the trusted suite owner."""
+    paths=subprocess.check_output(['git','--no-optional-locks','ls-files','-z'],cwd=ROOT).decode().split('\0')
+    return {'revision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+            'inputs':{path:reader.digest(admission_reader.confined(ROOT,path).read_bytes()) for path in paths if path}}
+
+
+def keyless_seed_inventory(root):
+    rows=[]
+    for path in sorted(root.rglob('*')):
+        relative=path.relative_to(root).as_posix()
+        admission_reader.confined(root,relative)
+        if path.is_file():
+            if path.suffix=='.pem' or path.name.startswith(('TASK-','DEC-','EVD-','RCPT-','WCR-')) and '/tests/fixtures/' not in '/'+relative:
+                raise ValueError('keyless seed contains project record or credential')
+            if '/transactions/' in '/'+relative or path.name in {'bootstrap.json','anchor.json','index.json','authority-owner.json','authority.json'}:
+                raise ValueError('keyless seed contains authority/history/currentness state')
+            if relative.endswith('/state/focus.json'):
+                focus=reader.load(path)
+                if focus.get('current_task_id') is not None or focus.get('handoff_summary') is not None or focus.get('updated_by') is not None:raise ValueError('keyless seed contains project operator facts')
+            rows.append({'path':relative,'sha256':reader.digest(path.read_bytes()),'mode':stat.S_IMODE(path.stat().st_mode)})
+    return rows
+
+
+def create_keyless_seed(root,image_binding):
+    """Compile only empty source snapshots; never an authority/recovery cache."""
+    root=Path(root)
+    if any(root.iterdir()):raise ValueError('fresh owned keyless seed required')
+    source=seed_source_binding()
+    generate(root/'plain')
+    generate(root/'admission',admission=True)
+    run([sys.executable,'-B',SCRIPTS/'scaffold_project.py','--target',root/'legacy','--project-name','Synthetic preserved record fixture','--profile','minimal','--layout','compact'],ROOT)
+    record={'schema_version':'octon.keyless-fixture-seed.v1','permission_grant':False,'source':source,'image':image_binding,'files':keyless_seed_inventory(root)}
+    # Returned record is independently retained by the host launch handle, not
+    # recovered from a seed-side manifest. No ticket/key/actor state is here.
+    return record
+
+
+def materialize_keyless_seed(root,name,target,expected,image_binding):
+    root=Path(root);target=Path(target)
+    if set(expected)!={'schema_version','permission_grant','source','image','files'} or expected['schema_version']!='octon.keyless-fixture-seed.v1' or expected['permission_grant'] is not False:
+        raise ValueError('unsupported closed keyless seed binding')
+    if expected['source']!=seed_source_binding() or expected['image']!=image_binding or expected['files']!=keyless_seed_inventory(root):
+        raise ValueError('seed differs from independently retained exact source/image/inventory')
+    mounts=[line.split(' - ',1) for line in Path('/proc/self/mountinfo').read_text().splitlines()]
+    if not any(left.split()[4]==str(root) and 'ro' in left.split()[5].split(',') and right.split()[0] in {'ext4','xfs'} for left,right in mounts):
+        raise ValueError('keyless seed requires readonly owned kernel volume')
+    if name not in {'plain','admission','legacy'} or target.exists():raise ValueError('fresh exact seed destination required')
+    source=admission_reader.confined(root,name)
+    shutil.copytree(source,target,symlinks=False)
+    # Refresh/check current target state through its existing owner, never cache
+    # the live acceptance/authority/fence/postimage evaluation.
+    script='.agent/scripts/refresh.py' if name=='legacy' else '.octon/runtime/scripts/refresh.py'
+    run([sys.executable,'-B',target/script,'--refresh'],target)
+    if name!='legacy':
+        (admission_reader if name=='admission' else reader).inspect(target)
+        run([sys.executable,'-B',target/'octon','check'],target)
+    return target
 
 
 
@@ -297,9 +363,10 @@ def main():
     parser.add_argument('--disposable-qualification',action='store_true',required=True)
     parser.add_argument('--admission-qualification',action='store_true')
     parser.add_argument('--protected-fixture-qualification',action='store_true')
+    parser.add_argument('--durable-fixture-qualification',action='store_true')
     args=parser.parse_args()
     try:
-        result=generate(args.target,admission=args.admission_qualification,protected=args.protected_fixture_qualification)
+        result=generate(args.target,admission=args.admission_qualification,protected=args.protected_fixture_qualification,durable=args.durable_fixture_qualification)
         print(json.dumps({'status':result['status'],'source_revision':result['source_revision'],'assets':len(result['assets'])}))
         return 0
     except (ValueError,OSError,KeyError) as error:

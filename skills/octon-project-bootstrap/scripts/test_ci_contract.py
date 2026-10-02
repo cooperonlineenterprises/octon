@@ -13,12 +13,12 @@ class CIContractTests(unittest.TestCase):
     def issues(self,value):
         issues=[];V.validate_ci_contract(issues,value);return issues
 
-    def test_current_exact_five_job_contract(self):
+    def test_current_exact_six_job_contract(self):
         self.assertEqual(self.issues(self.workflow),[])
 
     def test_mutations_cannot_launder_skips_or_weaken_qualified_profile(self):
         cases=[
-            ('needs: protected-linux-fixture','needs: missing-job'),
+            ('needs: [protected-linux-fixture, durable-linux-fixture]','needs: protected-linux-fixture'),
             ("if: always() && github.event_name == 'pull_request'","if: github.event_name == 'pull_request'"),
             ('run: test "$OCTON_PROTECTED_RESULT" = success','run: test "$OCTON_PROTECTED_RESULT" = skipped'),
             ('run: test "$OCTON_PROTECTED_RESULT" = success','run: test "$OCTON_PROTECTED_RESULT" = success || true'),
@@ -41,6 +41,13 @@ class CIContractTests(unittest.TestCase):
             ('python: ["3.11", "3.12", "3.13", "3.14"]','python: ["3.14"]'),
             ("cancel-in-progress: ${{ github.event_name == 'pull_request' }}",'cancel-in-progress: true'),
             ('branches:\n      - main','branches:\n      - main\n      - qualification/**'),
+            ('OCTON_DURABLE_RESULT: ${{ needs.durable-linux-fixture.result }}','OCTON_DURABLE_RESULT: success'),
+            ('test "$OCTON_DURABLE_RESULT" = success','test "$OCTON_DURABLE_RESULT" = skipped'),
+            ('name: durable protected Linux fixture\n','name: durable protected Linux fixture\n    continue-on-error: true\n'),
+            ('--qualify-owned-durable-fixture --output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence','--output "$RUNNER_TEMP/durable-qualification.json"'),
+            ('--output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence','--output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence || true'),
+            ('--output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence\n','--output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence\n          true\n'),
+            ('--emit-evidence\n\n  main-smoke:','--emit-evidence test_copied_runtime_without_source_siblings_or_plectarium\n\n  main-smoke:'),
         ]
         for before,after in cases:
             with self.subTest(mutation=before):

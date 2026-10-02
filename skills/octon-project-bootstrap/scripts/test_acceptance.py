@@ -510,7 +510,7 @@ def main() -> int:
         "workflow_dispatch:" in ci_workflow
         and (
             "pull-request-gate:\n    name: required\n"
-            "    needs: protected-linux-fixture\n"
+            "    needs: [protected-linux-fixture, durable-linux-fixture]\n"
             "    if: always() && github.event_name == 'pull_request'"
         ) in ci_workflow
         and (

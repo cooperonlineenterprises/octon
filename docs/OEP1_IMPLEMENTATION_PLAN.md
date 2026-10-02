@@ -99,6 +99,18 @@ The runtime/manifest reader, one complete target installation, custom-consumer
 conversion, isolated multi-run coordination and ChangeSet integration gates below
 remain separate. The prototype does not close those milestones.
 
+The protected fixture and its [durable controller-container successor](DURABLE_FIXTURE_QUALIFICATION.md)
+remain bounded source-only evidence. The [assessment evidence projection](AGENT_FIRST_ASSESSMENT_REGISTER.md)
+maps it to original report-local labels; this plan remains the sole sequencing
+owner. Exact qualification/integration reports own each candidate's actual
+disposition, rather than a rendered profile or dated prior PR checks.
+
+| Canonical milestone | Bounded coverage and remaining exit gate |
+|---|---|
+| IMP-1 | Existing evaluator/installation/transaction owners plus explicit fixture successors, worker exclusion, current fencing and declared durable recovery. Consumer adoption, complete module/distribution contracts and live enforcement remain incomplete. |
+| IMP-2 | One exact existing-task handoff, actual committer-container replacement, current recovery, exact history/preservation and copied basic/peer operation in owned Linux fixtures. Complete adopted target slice/consumer conversion remain separate; original keeper/launch handle/boot and unqualified power-loss boundary remain explicit. |
+| IMP-3–6 | No broader profiles/storage rollout, live migration/pilots, ChangeSet integration, release/deployment or general adoption is supplied by this sequence. |
+
 Depends on IMP-1. Produce one minimal OEP-1 project with the pinned runtime and
 selected harness/dossier files. Demonstrate read-only inspection/checking, a real
 task transition, an interrupted local operation, recovery and bounded rollback.

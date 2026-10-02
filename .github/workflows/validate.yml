@@ -17,15 +17,16 @@ permissions:
 jobs:
   pull-request-gate:
     name: required
-    needs: protected-linux-fixture
+    needs: [protected-linux-fixture, durable-linux-fixture]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Require successful protected fixture prerequisite
+      - name: Require successful protected fixture prerequisites
         env:
           OCTON_PROTECTED_RESULT: ${{ needs.protected-linux-fixture.result }}
-        run: test "$OCTON_PROTECTED_RESULT" = success
+          OCTON_DURABLE_RESULT: ${{ needs.durable-linux-fixture.result }}
+        run: test "$OCTON_PROTECTED_RESULT" = success && test "$OCTON_DURABLE_RESULT" = success
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-tags: true
@@ -70,6 +71,23 @@ jobs:
             python@sha256:4d1caded1f729ae443eb803f26ffde7b61e696aeaef62f099abb6dd6b14257c7 \
             python -B skills/octon-project-bootstrap/scripts/test_protected_fixture.py \
             --qualify-linux-container --output /evidence/qualification.json --emit-evidence
+
+  durable-linux-fixture:
+    name: durable protected Linux fixture
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+      - name: Qualify durable protected controller-container replacement
+        run: python -B skills/octon-project-bootstrap/scripts/test_durable_fixture.py --qualify-owned-durable-fixture --output "$RUNNER_TEMP/durable-qualification.json" --emit-evidence
 
   main-smoke:
     name: main-smoke

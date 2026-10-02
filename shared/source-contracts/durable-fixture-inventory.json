@@ -1,0 +1,28 @@
+{
+  "schema_version": "octon.source.durable-fixture-inventory.v1",
+  "permission_grant": false,
+  "status": "source_only_disposable_qualification",
+  "profile_schema": "octon.durable-fixture-profile.v2",
+  "parent_profile_schema": "octon.protected-fixture-profile.v1",
+  "currentness_schema": "octon.durable-fixture-currentness.v3",
+  "required_dependencies": [
+    "python>=3.11",
+    "openssl-ed25519",
+    "linux-named-volume-flock-fsync",
+    "retained-current-fixture-keeper"
+  ],
+  "assets": [
+    {
+      "source": "skills/octon-project-bootstrap/scripts/durable_fixture.py",
+      "target": ".octon/runtime/durable_fixture.py"
+    },
+    {
+      "source": "skills/octon-project-bootstrap/scripts/durable_fixture_worker.py",
+      "target": ".octon/runtime/durable_fixture_worker.py"
+    },
+    {
+      "source": "shared/source-contracts/durable-fixture-v2.schema.json",
+      "target": ".octon/runtime/durable-fixture-v2.schema.json"
+    }
+  ]
+}

@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "octon.durable-fixture.v2",
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "fixture_only",
+        "parent_profile",
+        "source_revision",
+        "host_profile",
+        "retained_dependency",
+        "assets",
+        "source_inputs"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-profile.v2"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "fixture_only": {
+          "const": true
+        },
+        "parent_profile": {
+          "type": "object"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "host_profile": {
+          "const": "linux-durable-controller-replacement-v2"
+        },
+        "retained_dependency": {
+          "const": "live-original-keeper-and-launch-handle-same-kernel-boot"
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/asset"
+          }
+        },
+        "source_inputs": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/asset"
+          }
+        }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "kind",
+        "relative",
+        "sha256",
+        "delete",
+        "status",
+        "generation",
+        "binding",
+        "lineage_digest",
+        "prior_publications"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-publication.v1"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "kind": {
+          "enum": [
+            "consumption",
+            "journal",
+            "receipt",
+            "recovery",
+            "observation",
+            "history",
+            "canonical",
+            "archive"
+          ]
+        },
+        "relative": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "delete": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "prepared",
+            "confirmed",
+            "tombstone"
+          ]
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "binding": {
+          "type": "object"
+        },
+        "lineage_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "prior_publications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/publication_snapshot"
+          }
+        },
+        "archive_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "publication_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "kind",
+        "relative",
+        "sha256",
+        "delete",
+        "status",
+        "generation",
+        "binding",
+        "lineage_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-publication.v1"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "kind": {
+          "enum": [
+            "consumption",
+            "journal",
+            "receipt",
+            "recovery",
+            "observation",
+            "history",
+            "canonical",
+            "archive"
+          ]
+        },
+        "relative": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "delete": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "prepared",
+            "confirmed",
+            "tombstone"
+          ]
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "binding": {
+          "type": "object"
+        },
+        "lineage_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "archive_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "instance",
+        "owner_ref",
+        "authority_ref",
+        "references",
+        "nonces",
+        "boot_id",
+        "clock_origin_wall",
+        "clock_origin_monotonic",
+        "time_floor",
+        "time_available",
+        "fence_identity",
+        "storage_identity"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-reference-index.v1"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "instance": {
+          "$ref": "#/$defs/digest"
+        },
+        "owner_ref": {
+          "$ref": "#/$defs/digest"
+        },
+        "authority_ref": {
+          "$ref": "#/$defs/digest"
+        },
+        "references": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/publication"
+          }
+        },
+        "nonces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "boot_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clock_origin_wall": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "clock_origin_monotonic": {
+          "type": "number",
+          "minimum": 0
+        },
+        "time_floor": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "time_available": {
+          "type": "boolean"
+        },
+        "fence_identity": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "storage_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "/state",
+            "/authority",
+            "/continuity",
+            "/ipc"
+          ],
+          "properties": {
+            "/state": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "/authority": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "/continuity": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "/ipc": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "peer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "command",
+        "actor_ref",
+        "action_digest",
+        "intent_digest",
+        "plan_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-peer.v1"
+        },
+        "command": {
+          "const": "apply"
+        },
+        "actor_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "intent_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "plan_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "instance",
+        "controller_id",
+        "generation",
+        "nonce",
+        "command",
+        "body"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-currentness.v3"
+        },
+        "instance": {
+          "$ref": "#/$defs/digest"
+        },
+        "controller_id": {
+          "type": "string",
+          "pattern": "^(?:trusted-admin|[a-f0-9]{64})$"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonce": {
+          "$ref": "#/$defs/digest"
+        },
+        "command": {
+          "enum": [
+            "enroll",
+            "control",
+            "fault",
+            "inspect",
+            "current",
+            "admit",
+            "prepare",
+            "confirm",
+            "mock-attempt"
+          ]
+        },
+        "body": {
+          "type": "object"
+        }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request",
+        "signature"
+      ],
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "consumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "permission_grant",
+        "binding",
+        "lineage"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.durable-fixture-consumption.v1"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "binding": {
+          "type": "object"
+        },
+        "lineage": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

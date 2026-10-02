@@ -446,14 +446,14 @@
     {
       "id": "LEGACY-0062",
       "path": "docs/OEP1_IMPLEMENTATION_PLAN.md",
-      "file_sha256": "399450a6b43c7ec6b0c4fe02606ca361d182ddc6e917eb77d33dbdc0ac7c8807",
+      "file_sha256": "19f865c26a199d455a9ac4046949068459f670b3c75d22509a6dcf95c569d479",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 2
     },
     {
       "id": "LEGACY-0063",
       "path": "docs/GOVERNANCE_FOUNDATION.md",
-      "file_sha256": "1100eac0b5dcda4ea1a36601fb3c1b1874d43c91b6af97a3f4d06a39be274df3",
+      "file_sha256": "e4448b73a7ca7e5bdf563732ed38d51b3c02c6ee5e68aa7c888db132e2458e55",
       "classification": "breaking_transition_explanation",
       "occurrence_count": 1
     },
@@ -481,7 +481,7 @@
     {
       "id": "LEGACY-0067",
       "path": "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
-      "file_sha256": "a7ce428b4cbd40bbf312e5b5670bfa666822c8aea2249c85d0253d4f899b98bf",
+      "file_sha256": "109d07508f70fb80016265eaf58492dc35836884d4c9bfffc6e0bfa96fd769cd",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
     }
