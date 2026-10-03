@@ -5,7 +5,7 @@ import copy
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import platform
 import shutil
 import subprocess
@@ -512,6 +512,53 @@ class RuntimeBindingTests(unittest.TestCase):
         inapplicable['cases'][0]['actual_host']='unjustified'
         with self.assertRaisesRegex(ValueError,'justification'):R.forward_native_evidence(wrap(inapplicable))
         self.evidence.append({'case':self._testMethodName,'outcome':'passed','contradictory_protocol_cases_refused':10,'simulated_required_unsupported_suite_exit':value.returncode,'truthful_public_report_retained':True})
+
+    def test_actual_producer_canonical_inputs_under_emulated_Windows_path_order(self):
+        original_sorted=sorted;interceptions=[]
+        def windows_source_order(values,*args,**kwargs):
+            if isinstance(values,set) and ROOT/'VERSION' in values:
+                self.assertFalse(args);self.assertFalse(kwargs)
+                ordered=original_sorted(values,key=lambda path:PureWindowsPath(path.relative_to(ROOT).as_posix()))
+                records=[{'path':path.relative_to(ROOT).as_posix(),'sha256':R.sha256(path.read_bytes())} for path in ordered]
+                self.assertNotEqual([row['path'] for row in records],original_sorted(row['path'] for row in records))
+                interceptions.append(records);return ordered
+            return original_sorted(values,*args,**kwargs)
+        target=self.case_area/'emulated-Windows-order-binding';receipt={}
+        with mock.patch.object(Q,'sorted',side_effect=windows_source_order,create=True):
+            parent=Q.generate(target,runtime_binding=True,qualification_evidence=receipt)
+        self.assertEqual(len(interceptions),1);self.assertEqual(len(interceptions[0]),115)
+        self.assertEqual(parent['inputs'],original_sorted(interceptions[0],key=lambda row:row['path']))
+        self.assertEqual(parent['inputs'][0]['path'],'VERSION')
+        actual=R.strict_json((target/'.octon/manifest.json').read_bytes());self.assertEqual(actual['inputs'],parent['inputs'])
+        before=R.tree_inventory(target)
+        result=R.inspect_runtime_binding(target,self.snapshot,expected_source_sha256=self.source_sha,expected_runtime_sha256=receipt['runtime_sha256'],layout_id='oep1_target',state_owner='embedded')
+        self.assertEqual(result['modules'],9);steps=[]
+        for arguments in [['installation','inspect'],['check']]:
+            value=subprocess.run([sys.executable,'-I','-B',str(target/'octon'),*arguments],cwd=self.case_area,capture_output=True,text=True)
+            self.assertEqual(value.returncode,0,value.stderr);steps.append({'argv':arguments,'exit':value.returncode,'stdout_sha256':R.sha256(value.stdout.encode())})
+        self.assertEqual(before,R.tree_inventory(target))
+        # The same injected native comparator must retain old plain-route ordering.
+        old=Q.generate
+        legacy=self.case_area/'emulated-Windows-order-plain';count=len(interceptions)
+        with mock.patch.object(Q,'sorted',side_effect=windows_source_order,create=True):plain=old(legacy)
+        self.assertEqual(len(interceptions),count+1);self.assertEqual(plain['inputs'],interceptions[-1])
+        self.assertNotEqual([row['path'] for row in plain['inputs']],original_sorted(row['path'] for row in plain['inputs']))
+        self.assertFalse((legacy/R.TARGET_PATHS['runtime.manifest']).exists())
+        original_facet=R.strict_json((target/R.TARGET_PATHS['runtime.manifest']).read_bytes())
+        canonical_target=self.target;self.target=target
+        try:
+            for mutation in ['reversed','duplicate','casefold']:
+                (target/'.octon/manifest.json').write_bytes(R.canonical_json(parent))
+                (target/R.TARGET_PATHS['runtime.manifest']).write_bytes(R.canonical_json(original_facet))
+                altered=copy.deepcopy(parent)
+                if mutation=='reversed':altered['inputs'].reverse()
+                elif mutation=='duplicate':altered['inputs'].append(copy.deepcopy(altered['inputs'][0]))
+                else:altered['inputs'].append({**altered['inputs'][0],'path':altered['inputs'][0]['path'].lower()})
+                serialized=R.canonical_json(altered)
+                pin=self.rebind_parent(altered);self.assert_refusal_readonly('parent raw inputs',runtime_sha=pin)
+                self.assertEqual(serialized,(target/'.octon/manifest.json').read_bytes())
+        finally:self.target=canonical_target
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','simulation':'PureWindowsPath comparison order on actual host; no native Windows reproduction claim','actual_runtime_source_set_count':115,'narrow_input_sort_interceptions':1,'actual_binding_inputs':parent['inputs'],'emulated_native_order_inputs':interceptions[0],'same_path_and_raw_hash_multiset':True,'canonical_emitted_order':True,'plain_legacy_native_order_preserved':True,'copied_inspect_check_steps':steps,'strict_full_inspector_negatives':['reversed','duplicate','casefold'],'target_readonly':True})
 
 
 class EvidenceResult(unittest.TextTestResult):

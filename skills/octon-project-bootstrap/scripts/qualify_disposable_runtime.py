@@ -128,6 +128,8 @@ def generate(target, project_name='Disposable Runtime Fixture', *, admission=Fal
             if b'\r' in path.read_bytes():raise ValueError('runtime binding requires exact LF source materialization')
     inputs = [{'path':path.relative_to(ROOT).as_posix(), 'sha256':reader.digest(path.read_bytes())}
               for path in sorted(source_inputs)]
+    if runtime_binding:
+        inputs.sort(key=lambda row:row['path'])
     facet = admission_reader.validate_admission_inventory(reader.load(ROOT/'shared/source-contracts/admission-fixture-inventory.json')) if admission else None
     if admission:
         for item in facet['assets']:

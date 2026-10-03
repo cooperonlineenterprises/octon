@@ -481,7 +481,7 @@
     {
       "id": "LEGACY-0067",
       "path": "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
-      "file_sha256": "d1f2e9ce2fe0de6c7151a96d130578d7b16e340ea8720633fbaddba7e1df5e9f",
+      "file_sha256": "685387abc8dc37c906f4e452316b9ced12b424c9ba13df7fdb996f6f137f96b7",
       "classification": "explicit_legacy_migration_input",
       "occurrence_count": 1
     }
