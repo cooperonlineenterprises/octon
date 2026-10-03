@@ -1,0 +1,658 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:octon:runtime-distribution-manifest:v1",
+  "title": "Source-only caller-pinned runtime distribution metadata",
+  "description": "Integrity/compatibility projection only; no authority, activated target or authenticated publisher claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_role",
+    "permission_grant",
+    "execution_authorized",
+    "status",
+    "layout_id",
+    "state_binding",
+    "source_inventory",
+    "historical_inventory",
+    "parent_installation",
+    "recipe",
+    "reader",
+    "render_inputs",
+    "entry",
+    "modules",
+    "dependency_assets",
+    "non_null_outputs",
+    "excluded_from_parent_initial_inventory",
+    "raw_hash_algorithm",
+    "canonical_payload_algorithm",
+    "schema_inputs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "octon.runtime-distribution-manifest.v1"
+    },
+    "document_role": {
+      "const": "derived_runtime_integrity_and_compatibility_provenance"
+    },
+    "permission_grant": {
+      "const": false
+    },
+    "execution_authorized": {
+      "const": false
+    },
+    "status": {
+      "const": "disposable_qualification_only"
+    },
+    "layout_id": {
+      "const": "oep1_target"
+    },
+    "state_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner_policy",
+        "owner",
+        "path",
+        "external"
+      ],
+      "properties": {
+        "owner_policy": {
+          "const": "exactly_one"
+        },
+        "owner": {
+          "const": "embedded"
+        },
+        "path": {
+          "const": ".octon/agent/state"
+        },
+        "external": {
+          "const": null
+        }
+      }
+    },
+    "source_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "schema_version",
+        "sha256",
+        "source_revision"
+      ],
+      "properties": {
+        "source": {
+          "const": "shared/source-contracts/profile-manifest.json"
+        },
+        "schema_version": {
+          "const": "octon.source.profile-manifest.v4"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        }
+      }
+    },
+    "historical_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "sha256",
+        "schema_version",
+        "document_role",
+        "installed_path"
+      ],
+      "properties": {
+        "source": {
+          "const": "shared/source-contracts/historical/profile-manifest-v3.json"
+        },
+        "sha256": {
+          "const": "d3b9b33d7136d9806b1839ec198929625bd3a4523a72948d43c925f8bc6916d3"
+        },
+        "schema_version": {
+          "const": "octon.source.profile-manifest.v3"
+        },
+        "document_role": {
+          "const": "historical_inventory_data_not_current_owner"
+        },
+        "installed_path": {
+          "const": ".octon/runtime/profile-inventory.json"
+        }
+      }
+    },
+    "parent_installation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "schema_version",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "const": ".octon/manifest.json"
+        },
+        "schema_version": {
+          "const": "octon.disposable-installation.v1"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "sha256",
+        "version",
+        "entry_function",
+        "manifest_function",
+        "serializer"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "version": {
+          "type": "string"
+        },
+        "entry_function": {
+          "const": "runtime_entry_text"
+        },
+        "manifest_function": {
+          "const": "runtime_binding_manifest"
+        },
+        "serializer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "sha256",
+            "function"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "function": {
+              "const": "canonical_json"
+            }
+          }
+        }
+      }
+    },
+    "reader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "sha256",
+        "version"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "version": {
+          "const": "runtime-binding-reader.v1"
+        }
+      }
+    },
+    "render_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "template_variables",
+        "profile",
+        "layout",
+        "admission",
+        "projection_version",
+        "projected_dispatcher_parent_index",
+        "source_encoding",
+        "source_newline",
+        "output_encoding",
+        "output_newline"
+      ],
+      "properties": {
+        "template_variables": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "CURRENT_DISPATCHER_PARENT_INDEX",
+            "DERIVED_OPERATIONAL_FILES_JSON",
+            "PROFILE_OPERATIONAL_FILES_JSON",
+            "KERNEL_FILES_JSON",
+            "GIT_PORTFOLIO_VERSION",
+            "GIT_PORTFOLIO_SHA256"
+          ],
+          "properties": {
+            "CURRENT_DISPATCHER_PARENT_INDEX": {
+              "type": "string"
+            },
+            "DERIVED_OPERATIONAL_FILES_JSON": {
+              "type": "string"
+            },
+            "PROFILE_OPERATIONAL_FILES_JSON": {
+              "type": "string"
+            },
+            "KERNEL_FILES_JSON": {
+              "type": "string"
+            },
+            "GIT_PORTFOLIO_VERSION": {
+              "type": "string"
+            },
+            "GIT_PORTFOLIO_SHA256": {
+              "type": "string"
+            }
+          }
+        },
+        "profile": {
+          "const": "minimal"
+        },
+        "layout": {
+          "const": "compact"
+        },
+        "admission": {
+          "const": false
+        },
+        "projection_version": {
+          "const": "target-path-projection.v1"
+        },
+        "projected_dispatcher_parent_index": {
+          "const": 3
+        },
+        "source_encoding": {
+          "const": "utf-8"
+        },
+        "source_newline": {
+          "const": "lf"
+        },
+        "output_encoding": {
+          "const": "utf-8"
+        },
+        "output_newline": {
+          "const": "lf"
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "source_rule_id",
+        "sha256",
+        "mode"
+      ],
+      "properties": {
+        "id": {
+          "const": "runtime.entry"
+        },
+        "path": {
+          "const": ".octon/runtime/octon"
+        },
+        "source_rule_id": {
+          "const": "qualified-runtime-entry"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mode": {
+          "type": "object",
+          "required": [
+            "model"
+          ],
+          "properties": {
+            "model": {
+              "enum": [
+                "posix_bits",
+                "windows_writable"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "model": {
+                    "const": "posix_bits"
+                  }
+                },
+                "required": [
+                  "model"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model",
+                  "bits"
+                ],
+                "properties": {
+                  "model": {
+                    "const": "posix_bits"
+                  },
+                  "bits": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4095
+                  }
+                }
+              },
+              "else": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model",
+                  "writable"
+                ],
+                "properties": {
+                  "model": {
+                    "const": "windows_writable"
+                  },
+                  "writable": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_rule_id",
+          "source",
+          "raw_sha256",
+          "path",
+          "required",
+          "sha256",
+          "mode",
+          "imports"
+        ],
+        "properties": {
+          "source_rule_id": {
+            "const": "templates-core"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+          },
+          "raw_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+          },
+          "required": {
+            "const": true
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mode": {
+            "type": "object",
+            "required": [
+              "model"
+            ],
+            "properties": {
+              "model": {
+                "enum": [
+                  "posix_bits",
+                  "windows_writable"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "model": {
+                      "const": "posix_bits"
+                    }
+                  },
+                  "required": [
+                    "model"
+                  ]
+                },
+                "then": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "model",
+                    "bits"
+                  ],
+                  "properties": {
+                    "model": {
+                      "const": "posix_bits"
+                    },
+                    "bits": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 4095
+                    }
+                  }
+                },
+                "else": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "model",
+                    "writable"
+                  ],
+                  "properties": {
+                    "model": {
+                      "const": "windows_writable"
+                    },
+                    "writable": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "dependency_assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "mode",
+          "imports"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mode": {
+            "type": "object",
+            "required": [
+              "model"
+            ],
+            "properties": {
+              "model": {
+                "enum": [
+                  "posix_bits",
+                  "windows_writable"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "model": {
+                      "const": "posix_bits"
+                    }
+                  },
+                  "required": [
+                    "model"
+                  ]
+                },
+                "then": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "model",
+                    "bits"
+                  ],
+                  "properties": {
+                    "model": {
+                      "const": "posix_bits"
+                    },
+                    "bits": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 4095
+                    }
+                  }
+                },
+                "else": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "model",
+                    "writable"
+                  ],
+                  "properties": {
+                    "model": {
+                      "const": "windows_writable"
+                    },
+                    "writable": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "non_null_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "excluded_from_parent_initial_inventory": {
+      "const": [
+        ".octon/runtime/manifest.json"
+      ]
+    },
+    "raw_hash_algorithm": {
+      "const": "sha256_file_bytes_v1"
+    },
+    "canonical_payload_algorithm": {
+      "const": "sha256_canonical_json_final_lf_v1"
+    },
+    "schema_inputs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_rule_id",
+          "source",
+          "sha256"
+        ],
+        "properties": {
+          "source_rule_id": {
+            "const": "source-contracts"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "shared/source-contracts/profile-manifest-v4.schema.json",
+              "shared/source-contracts/runtime-binding-v1.schema.json"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "schema_version": "octon.source.profile-manifest.v4",
+  "schema_version": "octon.source.profile-manifest.v3",
   "document_role": "authoritative_profile_inventory_acceptance_and_generation_manifest",
   "permission_grant": false,
   "profiles": [
@@ -96,8 +96,8 @@
       "dispatcher_path": ".agent/scripts/octon.py"
     },
     "target": {
-      "schema_version": "octon.source.target-installation-manifest.v2",
-      "version": "2.0.0",
+      "schema_version": "octon.source.target-installation-manifest.v1",
+      "version": "1.0.0",
       "layout_id": "oep1_target",
       "generation_status": "design_only_not_selectable",
       "manifest_path": ".octon/manifest.json",
@@ -213,7 +213,7 @@
           "information_class": "immutable",
           "tracking": "versioned",
           "minimum_profile": "minimal",
-          "source_rule_id": "qualified-runtime-manifest"
+          "source_rule_id": null
         },
         {
           "id": "runtime.entry",
@@ -223,7 +223,7 @@
           "information_class": "immutable",
           "tracking": "versioned",
           "minimum_profile": "minimal",
-          "source_rule_id": "qualified-runtime-entry"
+          "source_rule_id": null
         },
         {
           "id": "harness.entry",
@@ -398,10 +398,10 @@
       ],
       "inventory_count": 22,
       "inventory_hash_algorithm": "sha256_canonical_json_v1",
-      "inventory_sha256": "1121cf3dbf711f3e734f6b92192f9e62f998240fa493e396c7bc89d6094f78f7",
+      "inventory_sha256": "ade178baff5247131df9d7b2391fd176afac70cf11b1f72d308317b95be3f7b1",
       "limitations": [
-        "Only two runtime entries and the existing nine copied modules have source-only binding qualification.",
-        "Remaining target entries are unqualified; this inventory cannot select ordinary target generation or migration."
+        "Target runtime source assets and content digests are not qualified.",
+        "This inventory is design-only and cannot select target generation or migration."
       ]
     }
   },
@@ -1161,32 +1161,6 @@
       "inventory_paths_sha256": null,
       "output": null,
       "reason": "Migration guides remain in the source bundle until a project deliberately performs an upgrade."
-    },
-    {
-      "id": "qualified-runtime-manifest",
-      "source": "skill:scripts/runtime_binding.py",
-      "match": "exact",
-      "suffix": null,
-      "disposition": "source_only",
-      "profiles": [],
-      "inventory_paths": null,
-      "inventory_count": null,
-      "inventory_paths_sha256": null,
-      "output": null,
-      "reason": "Source-only disposable runtime binding recipe; not ordinary generation or activation."
-    },
-    {
-      "id": "qualified-runtime-entry",
-      "source": "skill:scripts/qualify_disposable_runtime.py",
-      "match": "exact",
-      "suffix": null,
-      "disposition": "source_only",
-      "profiles": [],
-      "inventory_paths": null,
-      "inventory_count": null,
-      "inventory_paths_sha256": null,
-      "output": null,
-      "reason": "Source-only disposable runtime binding recipe; not ordinary generation or activation."
     }
   ],
   "forbidden_outputs": [
@@ -1258,127 +1232,6 @@
       ".octon/runtime/scripts/refresh.py",
       ".octon/runtime/scripts/run_project_checks.py",
       ".octon/runtime/scripts/validate.py"
-    ]
-  },
-  "runtime_binding": {
-    "schema_version": "octon.source.runtime-binding.v1",
-    "status": "qualification_only_not_selectable",
-    "permission_grant": false,
-    "profile": "minimal",
-    "layout": "compact",
-    "parent_schema": "octon.disposable-installation.v1",
-    "projection_version": "target-path-projection.v1",
-    "historical_inventory": {
-      "source": "shared/source-contracts/historical/profile-manifest-v3.json",
-      "sha256": "d3b9b33d7136d9806b1839ec198929625bd3a4523a72948d43c925f8bc6916d3",
-      "schema_version": "octon.source.profile-manifest.v3",
-      "document_role": "historical_inventory_data_not_current_owner"
-    },
-    "recipe": {
-      "source": "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py",
-      "sha256": "685387abc8dc37c906f4e452316b9ced12b424c9ba13df7fdb996f6f137f96b7",
-      "version": "runtime-binding-qualification.v1",
-      "entry_function": "runtime_entry_text",
-      "manifest_function": "runtime_binding_manifest",
-      "serializer": {
-        "source": "skills/octon-project-bootstrap/scripts/runtime_binding.py",
-        "sha256": "124c223c1047251d4c153b6fce2123fdcaa8d3238de5b0791e80cfb960e9f818",
-        "function": "canonical_json"
-      }
-    },
-    "reader": {
-      "source": "skills/octon-project-bootstrap/scripts/runtime_binding.py",
-      "sha256": "124c223c1047251d4c153b6fce2123fdcaa8d3238de5b0791e80cfb960e9f818",
-      "version": "runtime-binding-reader.v1"
-    },
-    "modules": [
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon.py.tmpl",
-        "raw_sha256": "e74bd8209d7f051885b834d7ae0b841d5d9e799c28c05d4443908249e2149602",
-        "path": ".octon/runtime/scripts/octon.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon_autonomous_delivery.py.tmpl",
-        "raw_sha256": "249953ec85b5b9c222449ff90d3fb27b5bde7a124e1bde1ec3513281e40db9c1",
-        "path": ".octon/runtime/scripts/octon_autonomous_delivery.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon_continuation.py.tmpl",
-        "raw_sha256": "73795d9cf476973b94c8e3b47e2f4fc747aa71c0027c8b2f5068c337f51f5070",
-        "path": ".octon/runtime/scripts/octon_continuation.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon_doctor.py.tmpl",
-        "raw_sha256": "1299ab7ff50e18855a0039b43dd0ff65697bd98b913d69edf260954046d46dd1",
-        "path": ".octon/runtime/scripts/octon_doctor.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon_transaction.py.tmpl",
-        "raw_sha256": "f8e022e2d54ab95a93cfce8ee7efa400f7bcaf5a2f4a71df1cc5188aba211251",
-        "path": ".octon/runtime/scripts/octon_transaction.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/octon_work_completion.py.tmpl",
-        "raw_sha256": "6ee679988e88ce440391816447b1a7d06b74050dc5fbc600ac716500d13da793",
-        "path": ".octon/runtime/scripts/octon_work_completion.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/refresh.py.tmpl",
-        "raw_sha256": "7a7e4770ab010e2b8111d029033f42bbbba1f83ce250af9e1165f1ab4594c8c8",
-        "path": ".octon/runtime/scripts/refresh.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/run_project_checks.py.tmpl",
-        "raw_sha256": "3d5b006311c5a4c2ef1c5efcbfd005f0d3a7eb7dbd61a6c1472b9baf2f96343f",
-        "path": ".octon/runtime/scripts/run_project_checks.py",
-        "required": true
-      },
-      {
-        "source_rule_id": "templates-core",
-        "source": "skills/octon-project-bootstrap/assets/templates/core/.agent/scripts/validate.py.tmpl",
-        "raw_sha256": "aa1cb5801a79f9fca0e8585628d7dd93b5397a66c88e1d7c515f1988d04c8074",
-        "path": ".octon/runtime/scripts/validate.py",
-        "required": true
-      }
-    ],
-    "raw_hash_algorithm": "sha256_file_bytes_v1",
-    "canonical_payload_algorithm": "sha256_canonical_json_final_lf_v1",
-    "source_encoding": "utf-8",
-    "source_newline": "lf",
-    "output_encoding": "utf-8",
-    "output_newline": "lf",
-    "allowed_postfacet_refresh": [
-      ".octon/agent/state/current.json",
-      ".octon/dossier/ARTIFACT_CATALOG.json",
-      ".octon/dossier/MANIFEST.json",
-      ".octon/dossier/machine-readable/path-authority.json"
-    ],
-    "schema_inputs": [
-      {
-        "source_rule_id": "source-contracts",
-        "source": "shared/source-contracts/profile-manifest-v4.schema.json",
-        "sha256": "9c9bdf18cbcb8b78b2e89cad4db31e1c483a034abdd8557cfae5ba61895c9864"
-      },
-      {
-        "source_rule_id": "source-contracts",
-        "source": "shared/source-contracts/runtime-binding-v1.schema.json",
-        "sha256": "b8e746d48914aea0b44202a98ce3b26f1e2068ffe3d6c6ded34caf68caad46a2"
-      }
     ]
   }
 }

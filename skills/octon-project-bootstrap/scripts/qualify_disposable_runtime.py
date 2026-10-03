@@ -46,7 +46,58 @@ def run(argv,cwd):
     return result
 
 
-def generate(target, project_name='Disposable Runtime Fixture', *, admission=False, protected=False, durable=False):
+def runtime_entry_text(*,admission=False):
+    """Actual entry serializer; its historical output bytes are unchanged."""
+    entry='#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\nsys.dont_write_bytecode=True\nsys.path.insert(0,str(Path(__file__).resolve().parent))\nfrom installation_runtime import main\nraise SystemExit(main())\n'
+    return entry.replace('from installation_runtime import main','from installation_runtime_v2 import main') if admission else entry
+
+
+def module_render_inputs(policy):
+    """All six actual template parameters plus the explicit target projection."""
+    operational=scaffold.operational_project_paths('minimal',policy,'compact')
+    derived=scaffold.derived_output_paths('minimal',policy)
+    portfolio=scaffold.package_contract(policy,'small-team-git-portfolio')
+    values={'CURRENT_DISPATCHER_PARENT_INDEX':str(scaffold.current_dispatcher_parent_index(policy)),
+            'DERIVED_OPERATIONAL_FILES_JSON':json.dumps(scaffold.canonical_posix_paths(derived & operational),separators=(',',':')),
+            'PROFILE_OPERATIONAL_FILES_JSON':json.dumps(scaffold.canonical_posix_paths(operational),separators=(',',':')),
+            'KERNEL_FILES_JSON':json.dumps(scaffold.canonical_posix_paths(scaffold.kernel_paths(policy)),separators=(',',':')),
+            'GIT_PORTFOLIO_VERSION':str(portfolio['version']),'GIT_PORTFOLIO_SHA256':str(portfolio['sha256'])}
+    return {'template_variables':values,'profile':'minimal','layout':'compact','admission':False,
+            'projection_version':'target-path-projection.v1','projected_dispatcher_parent_index':3,
+            'source_encoding':'utf-8','source_newline':'lf','output_encoding':'utf-8','output_newline':'lf'}
+
+
+def runtime_binding_manifest(stage,current_policy,parent):
+    """Actual source-only facet builder; canonical byte serialization is separate."""
+    import runtime_binding as R
+    definition=R.validate_source_binding(current_policy,source_root=ROOT)
+    historical=scaffold.load_generation_policy(disposable_compatibility=True)
+    def observed(row):
+        path=stage/row['path'];data=path.read_bytes()
+        return {**row,'mode':R.native_mode(path.lstat()),'imports':R.structural_imports(data) if path.suffix=='.py' or row['path'] in {'octon','.octon/runtime/octon'} else []}
+    modules=[{**row,'sha256':R.sha256((stage/row['path']).read_bytes()),
+              'mode':R.native_mode((stage/row['path']).lstat()),'imports':R.structural_imports((stage/row['path']).read_bytes())}
+             for row in definition['modules']]
+    entry_path=R.TARGET_PATHS['runtime.entry']
+    return {'schema_version':R.FACET_SCHEMA,'document_role':'derived_runtime_integrity_and_compatibility_provenance',
+            'permission_grant':False,'execution_authorized':False,'status':'disposable_qualification_only',
+            'layout_id':'oep1_target','state_binding':{'owner_policy':'exactly_one','owner':'embedded','path':'.octon/agent/state','external':None},
+            'source_inventory':{'source':'shared/source-contracts/profile-manifest.json','schema_version':R.SOURCE_SCHEMA,
+                'sha256':R.sha256((ROOT/'shared/source-contracts/profile-manifest.json').read_bytes()),'source_revision':parent['source_revision']},
+            'historical_inventory':{**definition['historical_inventory'],'installed_path':'.octon/runtime/profile-inventory.json'},
+            'parent_installation':{'path':'.octon/manifest.json','schema_version':R.PARENT_SCHEMA,'sha256':R.sha256((stage/'.octon/manifest.json').read_bytes())},
+            'recipe':definition['recipe'],'reader':definition['reader'],'schema_inputs':definition['schema_inputs'],'render_inputs':module_render_inputs(historical),
+            'entry':{'id':'runtime.entry','path':entry_path,'source_rule_id':R.RECIPE_RULES['runtime.entry'],
+                     'sha256':R.sha256((stage/entry_path).read_bytes()),'mode':R.native_mode((stage/entry_path).lstat())},
+            'modules':modules,'dependency_assets':[observed(row) for row in parent['assets']],
+            'non_null_outputs':[row for row in parent['output_inventory'] if row['sha256'] is not None],
+            'excluded_from_parent_initial_inventory':[R.TARGET_PATHS['runtime.manifest']],
+            'raw_hash_algorithm':'sha256_file_bytes_v1','canonical_payload_algorithm':'sha256_canonical_json_final_lf_v1'}
+
+
+def generate(target, project_name='Disposable Runtime Fixture', *, admission=False, protected=False, durable=False, runtime_binding=False, qualification_evidence=None):
+    if runtime_binding and (admission or protected or durable):
+        raise ValueError('runtime binding qualification requires the plain Minimal/compact parent only')
     if durable and not (admission and protected):
         raise ValueError('durable successor requires explicit protected and admission fixture dependencies')
     if protected and not admission:
@@ -54,7 +105,13 @@ def generate(target, project_name='Disposable Runtime Fixture', *, admission=Fal
     if not target.is_absolute():
         raise ValueError('target must be absolute')
     scaffold.validate_target(target)
-    policy = scaffold.load_generation_policy()
+    current_policy = scaffold.load_generation_policy()
+    if runtime_binding:
+        import runtime_binding as binding_reader
+        binding_reader.validate_source_binding(current_policy,source_root=ROOT)
+    compatibility = current_policy['schema_version'] == 'octon.source.profile-manifest.v4'
+    policy = scaffold.load_generation_policy(disposable_compatibility=True) if compatibility else current_policy
+    inventory_source = ROOT/'shared/source-contracts/historical/profile-manifest-v3.json' if compatibility else ROOT/'shared/source-contracts/profile-manifest.json'
     contract = policy['disposable_runtime']
     if contract['status'] != 'qualification_only_not_selectable':
         raise ValueError('qualification contract is inactive or unsupported')
@@ -63,8 +120,16 @@ def generate(target, project_name='Disposable Runtime Fixture', *, admission=Fal
         SCRIPTS/'scaffold_project.py',SCRIPTS/'installation_runtime.py',Path(__file__).resolve(),
         ROOT/'shared/source-contracts/profile-manifest.json',ROOT/'shared/source-contracts/profile-manifest-v3.schema.json',
         ROOT/'dossier/artifact-types.json',ROOT/'octon.json',ROOT/'VERSION'}
+    if runtime_binding:
+        source_inputs |= {SCRIPTS/'runtime_binding.py', *(ROOT/path for path in binding_reader.SCHEMA_SOURCES)}
+    source_inputs.add(inventory_source)  # actual historical locator, not a retagged current file
+    if runtime_binding:
+        for path in source_inputs:
+            if b'\r' in path.read_bytes():raise ValueError('runtime binding requires exact LF source materialization')
     inputs = [{'path':path.relative_to(ROOT).as_posix(), 'sha256':reader.digest(path.read_bytes())}
               for path in sorted(source_inputs)]
+    if runtime_binding:
+        inputs.sort(key=lambda row:row['path'])
     facet = admission_reader.validate_admission_inventory(reader.load(ROOT/'shared/source-contracts/admission-fixture-inventory.json')) if admission else None
     if admission:
         for item in facet['assets']:
@@ -77,7 +142,8 @@ def generate(target, project_name='Disposable Runtime Fixture', *, admission=Fal
         area = Path(temporary)
         legacy = area/'rendered'
         run([sys.executable,'-B',SCRIPTS/'scaffold_project.py','--target',legacy,
-             '--project-name',project_name,'--profile','minimal','--layout','compact'],ROOT)
+             '--project-name',project_name,'--profile','minimal','--layout','compact']+
+            (['--disposable-runtime-compatibility'] if compatibility else []),ROOT)
         stage = area/'target'
         stage.mkdir()
         for path in sorted(legacy.rglob('*')):
@@ -148,7 +214,10 @@ def qualification_recovery_admission(root, record):
 
 
 def main(''')
-                destination.write_text(text,encoding='utf-8')
+                if runtime_binding and (relative.startswith('.agent/schemas/') or relative.startswith('.agent/scripts/') and relative.endswith('.py')):
+                    destination.write_bytes(text.encode('utf-8'))
+                else:
+                    destination.write_text(text,encoding='utf-8')
                 shutil.copymode(path,destination)
         runtime=stage/'.octon/runtime'
         shutil.copy2(SCRIPTS/'installation_runtime.py',runtime/'installation_runtime.py')
@@ -157,11 +226,13 @@ def main(''')
                 destination=stage/item['target']; destination.parent.mkdir(parents=True,exist_ok=True)
                 shutil.copy2(ROOT/item['source'],destination)
             shutil.copy2(ROOT/'shared/source-contracts/admission-fixture-inventory.json',runtime/'admission-inventory.json')
-        (runtime/'profile-inventory.json').write_bytes((ROOT/'shared/source-contracts/profile-manifest.json').read_bytes())
-        entry='#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\nsys.dont_write_bytecode=True\nsys.path.insert(0,str(Path(__file__).resolve().parent))\nfrom installation_runtime import main\nraise SystemExit(main())\n'
-        if admission: entry=entry.replace('from installation_runtime import main','from installation_runtime_v2 import main')
-        (runtime/'octon').write_text(entry)
-        (stage/'octon').write_text('#!/usr/bin/env python3\nimport runpy\nfrom pathlib import Path\nimport sys\nsys.dont_write_bytecode=True\nrunpy.run_path(str(Path(__file__).resolve().parent/".octon/runtime/octon"),run_name="__main__")\n')
+        (runtime/'profile-inventory.json').write_bytes(inventory_source.read_bytes())
+        entry=runtime_entry_text(admission=admission)
+        root_entry='#!/usr/bin/env python3\nimport runpy\nfrom pathlib import Path\nimport sys\nsys.dont_write_bytecode=True\nrunpy.run_path(str(Path(__file__).resolve().parent/".octon/runtime/octon"),run_name="__main__")\n'
+        if runtime_binding:
+            (runtime/'octon').write_bytes(entry.encode('utf-8'));(stage/'octon').write_bytes(root_entry.encode('utf-8'))
+        else:
+            (runtime/'octon').write_text(entry);(stage/'octon').write_text(root_entry)
         (stage/'WORKSPACE.md').write_text('Disposable Octon runtime qualification. Read AGENTS.md and .octon/agent/START_HERE.md.\n')
         manifest={'schema_version':reader.SCHEMA,'permission_grant':False,'status':'disposable_qualification_only',
                   'profile':'minimal','layout':'compact','source_revision':revision,'projection_version':'target-path-projection.v1',
@@ -191,6 +262,23 @@ def main(''')
                 install_durable(stage)
             run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
             run([sys.executable,'-B',stage/'octon','check'],stage)
+        if runtime_binding:
+            R=binding_reader
+            R.verify_parent_bindings(stage,manifest)
+            before_parent=(stage/'.octon/manifest.json').read_bytes()
+            facet=runtime_binding_manifest(stage,current_policy,manifest)
+            facet_path=stage/R.TARGET_PATHS['runtime.manifest']
+            facet_bytes=R.canonical_json(facet);facet_path.write_bytes(facet_bytes)
+            before=R.tree_inventory(stage)
+            run([sys.executable,'-B',runtime/'scripts/refresh.py','--refresh'],stage)
+            after=R.tree_inventory(stage)
+            refresh_proof=R.verify_postfacet_refresh(stage,manifest,before_parent,facet_bytes,before,after)
+            reader.inspect(stage);run([sys.executable,'-B',stage/'octon','check'],stage)
+            R.inspect_runtime_binding(stage,ROOT/'shared/source-contracts/profile-manifest.json',
+                expected_source_sha256=facet['source_inventory']['sha256'],expected_runtime_sha256=R.sha256(facet_bytes),
+                layout_id='oep1_target',state_owner='embedded')
+            if qualification_evidence is not None:
+                qualification_evidence.update(source_sha256=facet['source_inventory']['sha256'],runtime_sha256=R.sha256(facet_bytes),refresh_proof=refresh_proof)
         if target.exists():
             target.rmdir()
         stage.rename(target)
@@ -364,10 +452,19 @@ def main():
     parser.add_argument('--admission-qualification',action='store_true')
     parser.add_argument('--protected-fixture-qualification',action='store_true')
     parser.add_argument('--durable-fixture-qualification',action='store_true')
+    parser.add_argument('--runtime-binding-qualification',action='store_true')
     args=parser.parse_args()
     try:
-        result=generate(args.target,admission=args.admission_qualification,protected=args.protected_fixture_qualification,durable=args.durable_fixture_qualification)
-        print(json.dumps({'status':result['status'],'source_revision':result['source_revision'],'assets':len(result['assets'])}))
+        qualification_receipt={} if args.runtime_binding_qualification else None
+        result=generate(args.target,qualification_evidence=qualification_receipt,admission=args.admission_qualification,protected=args.protected_fixture_qualification,durable=args.durable_fixture_qualification,runtime_binding=args.runtime_binding_qualification)
+        output={'status':result['status'],'source_revision':result['source_revision'],'assets':len(result['assets'])}
+        if args.runtime_binding_qualification:
+            import runtime_binding as R
+            output.update(runtime_binding_qualification=True,permission_grant=False,execution_authorized=False,
+                          source_inventory_sha256=R.sha256((ROOT/'shared/source-contracts/profile-manifest.json').read_bytes()),
+                          runtime_manifest_sha256=R.sha256((args.target/R.TARGET_PATHS['runtime.manifest']).read_bytes()),
+                          runtime_binding_receipt=qualification_receipt)
+        print(json.dumps(output))
         return 0
     except (ValueError,OSError,KeyError) as error:
         print('ERROR: '+str(error),file=sys.stderr)

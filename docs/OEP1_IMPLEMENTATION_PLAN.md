@@ -107,7 +107,7 @@ disposition, rather than a rendered profile or dated prior PR checks.
 
 | Canonical milestone | Bounded coverage and remaining exit gate |
 |---|---|
-| IMP-1 | Existing evaluator/installation/transaction owners plus explicit fixture successors, worker exclusion, current fencing and declared durable recovery. Consumer adoption, complete module/distribution contracts and live enforcement remain incomplete. |
+| IMP-1 | Existing evaluator/installation/transaction owners plus explicit fixture successors, worker exclusion, current fencing and declared durable recovery. The [source-only runtime binding](RUNTIME_BINDING_QUALIFICATION.md) adds exact two-entry/nine-module caller-pinned provenance and complete dependency/native qualification. Consumer adoption, complete distribution contracts and live enforcement remain incomplete. |
 | IMP-2 | One exact existing-task handoff, actual committer-container replacement, current recovery, exact history/preservation and copied basic/peer operation in owned Linux fixtures. Complete adopted target slice/consumer conversion remain separate; original keeper/launch handle/boot and unqualified power-loss boundary remain explicit. |
 | IMP-3–6 | No broader profiles/storage rollout, live migration/pilots, ChangeSet integration, release/deployment or general adoption is supplied by this sequence. |
 

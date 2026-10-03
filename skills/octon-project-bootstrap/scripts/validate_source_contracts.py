@@ -1132,6 +1132,8 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         root / "patterns/architecture-proof/schema.json",
         root / "shared/source-contracts/information-state-semantics.schema.json",
         root / "shared/source-contracts/profile-manifest-v3.schema.json",
+        root / "shared/source-contracts/profile-manifest-v4.schema.json",
+        root / "shared/source-contracts/runtime-binding-v1.schema.json",
         root / "shared/source-contracts/profile-manifest.schema.json",
         root / "shared/source-contracts/long-running-work-benchmark-report.schema.json",
         root / "shared/source-contracts/commands.schema.json",
@@ -1170,7 +1172,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
             root / "shared/source-contracts/profile-manifest.json"
         )
         generation_policy_schema = load_json(
-            root / "shared/source-contracts/profile-manifest-v3.schema.json"
+            root / "shared/source-contracts/profile-manifest-v4.schema.json"
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         errors.append(f"generation policy cannot be loaded: {error}")
@@ -1182,6 +1184,12 @@ def validate_repository(root: Path = ROOT) -> list[str]:
                 "shared/source-contracts/profile-manifest.json",
             )
         )
+        try:
+            import runtime_binding
+            runtime_binding.validate_source_binding(generation_policy, source_root=root)
+            runtime_binding.historical_compatibility_policy(generation_policy, (root / runtime_binding.HISTORICAL_SOURCE).read_bytes())
+        except (ValueError, OSError, KeyError, TypeError, StopIteration) as error:
+            errors.append(f"runtime binding raw source/compatibility contract: {error}")
     for name in (
         "commands",
         "diagnostic-catalog",
@@ -1290,7 +1298,7 @@ def main() -> int:
         f"- decision governance: valid baseline plus {mutation_count} fail-closed mutations"
     )
     print(
-        "- profile manifest: v3 source contract with retained explicit allowlists, derived profile projections, "
+        "- profile manifest: v4 source contract with checked historical-v3 semantics and retained explicit allowlists, derived profile projections, "
         "capability-scoped degradation, and strict repository drift validation"
     )
     guided_mutation_count = len(

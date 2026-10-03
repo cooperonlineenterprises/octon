@@ -130,6 +130,12 @@ REQUIRED_PATHS = (
     "shared/source-contracts/validation-benchmark-report.schema.json",
     "shared/source-contracts/profile-manifest.json",
     "shared/source-contracts/profile-manifest-v3.schema.json",
+    "shared/source-contracts/profile-manifest-v4.schema.json",
+    "shared/source-contracts/historical/profile-manifest-v3.json",
+    "shared/source-contracts/runtime-binding-v1.schema.json",
+    "docs/RUNTIME_BINDING_QUALIFICATION.md",
+    "skills/octon-project-bootstrap/scripts/runtime_binding.py",
+    "skills/octon-project-bootstrap/scripts/test_runtime_binding.py",
     "shared/source-contracts/profile-manifest.schema.json",
     "docs/DISPOSABLE_RUNTIME_QUALIFICATION.md",
     "skills/octon-project-bootstrap/scripts/installation_runtime.py",
@@ -754,7 +760,7 @@ def validate_config_and_schemas(issues: list[str], scaffolder: Any) -> None:
             "octon.json must not duplicate profile or optional-package inventory"
         )
 
-    profile_schema_path = ROOT / "shared/source-contracts/profile-manifest-v3.schema.json"
+    profile_schema_path = ROOT / "shared/source-contracts/profile-manifest-v4.schema.json"
     try:
         profile_schema = load_json(profile_schema_path)
     except (ValueError, json.JSONDecodeError) as error:
@@ -1627,6 +1633,11 @@ def validate_ci_contract(issues: list[str], workflow: str | None = None) -> None
 def validate_executable_contracts(issues: list[str]) -> None:
     commands = (
         (
+            [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_runtime_binding.py")],
+            ROOT,
+            "runtime binding native byte/path/integrity fixtures",
+        ),
+        (
             [sys.executable, "-B", str(SKILL_ROOT / "scripts/test_ci_contract.py")],
             ROOT,
             "source CI prerequisite, full-history and protected host-profile mutation checks",
@@ -1853,6 +1864,14 @@ def validate_executable_contracts(issues: list[str]) -> None:
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(run_fixture, commands))
     for (_command, _cwd, label), result in zip(commands, results):
+        if label == "runtime binding native byte/path/integrity fixtures":
+            try:
+                import runtime_binding
+                native_report = runtime_binding.forward_native_evidence(result.stdout)
+                if runtime_binding.native_qualification_exit(native_report["test_suite_passed"], native_report["native_unsupported"]):
+                    raise ValueError("required runtime native capability is unavailable")
+            except (ValueError, KeyError, TypeError) as error:
+                issues.append(f"runtime binding public native evidence invalid: {error}")
         if result.returncode:
             issues.append(
                 f"{label} failed: {result.stderr.strip() or result.stdout.strip()}"

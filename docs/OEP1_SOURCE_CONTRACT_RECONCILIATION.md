@@ -198,3 +198,29 @@ target core entries to exact source rules and content digests inside this same
 profile manifest. Then add the target installation-manifest reader and catalog
 dependency selection with focused compatibility/recovery checks before making
 the target layout selectable for a complete IMP-2 slice.
+
+
+## Source-only runtime binding increment
+
+The [runtime binding contract](RUNTIME_BINDING_QUALIFICATION.md) supplies the
+bounded next IMP-1 inventory slice. Current source v4 is the sole inventory owner;
+target design v2 remains inactive and only runtime.manifest/runtime.entry acquire
+source-only rules. The nine copied core modules, complete parent helper/schema
+closure and exact actual serializers/render inputs have raw/output byte bindings.
+
+The actual named historical profile-v3 raw file is retained at
+`shared/source-contracts/historical/profile-manifest-v3.json`, SHA-256
+`d3b9b33d7136d9806b1839ec198929625bd3a4523a72948d43c925f8bc6916d3`.
+The adapter verifies full relevant semantic equivalence locally and in the scaffold
+subprocess. Prior checkpoint hashes/results above remain historical observations;
+the current v4 raw digest and exact candidate disposition belong to the new
+external qualification report. No v4 bytes are retagged as historical v3.
+
+The unchanged v1 parent's initial inventory excludes the new facet. Immutable
+parent/assets/non-null outputs precede insertion; the existing explicit refresh
+changes only its four already-null Minimal derived JSONs. Full fingerprint scope
+is preserved. External expected source/final-facet raw hashes are both mandatory;
+the generic stdlib reader executes no inspected-target code or refresh. Actual
+copied known-entry execution is separately qualified after inspection. This is
+integrity/compatibility evidence, not authentication, permission, live consumer
+adoption or completion of the OEP milestones. No accepted DEC identity is added.

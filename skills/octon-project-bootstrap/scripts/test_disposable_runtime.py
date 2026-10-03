@@ -246,7 +246,7 @@ class DisposableRuntimeTests(unittest.TestCase):
 
     def test_profile_v2_schema_preserved_and_mixed_versions_refuse(self):
         prior=json.loads(subprocess.check_output(['git','show','8871095f51a02e12a569d9260a51d0ff55fc1eef:shared/source-contracts/profile-manifest.json'],cwd=qualifier.ROOT,text=True))
-        current=scaffold.load_generation_policy()
+        current=scaffold.load_generation_policy(disposable_compatibility=True)
         self.assertEqual(prior['rules'],current['rules'])
         self.assertEqual(prior['installation_bindings'],current['installation_bindings'])
         for bad in [dict(current,schema_version='octon-mini.source.profile-manifest.v2'),dict(prior,disposable_runtime=current['disposable_runtime'])]:

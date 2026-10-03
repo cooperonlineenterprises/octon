@@ -34,6 +34,7 @@ MIGRATION_TESTS = (
 )
 PACKAGE_SCRIPT = SKILL_ROOT / "scripts/package_project.py"
 ARCHITECTURAL_CONTRACT_TESTS = (
+    SKILL_ROOT / "scripts/test_runtime_binding.py",
     SKILL_ROOT / "scripts/test_ci_contract.py",
     SKILL_ROOT / "scripts/validate_source_contracts.py",
     SKILL_ROOT / "scripts/test_architectural_patterns.py",
@@ -475,6 +476,14 @@ def main() -> int:
             [sys.executable, "-B", str(contract_test)],
             ROOT,
         )
+        if contract_test.name == "test_runtime_binding.py":
+            try:
+                import runtime_binding
+                native_report = runtime_binding.forward_native_evidence(contract_result.stdout)
+                if runtime_binding.native_qualification_exit(native_report["test_suite_passed"], native_report["native_unsupported"]):
+                    raise ValueError("required runtime native capability is unavailable")
+            except (ValueError, KeyError, TypeError) as error:
+                require(False, f"runtime binding native evidence invalid: {error}", failures)
         require(
             contract_result.returncode == 0,
             f"architectural source-contract test failed ({contract_test.name}): "
