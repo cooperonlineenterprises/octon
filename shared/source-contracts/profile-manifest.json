@@ -1282,13 +1282,13 @@
       "manifest_function": "runtime_binding_manifest",
       "serializer": {
         "source": "skills/octon-project-bootstrap/scripts/runtime_binding.py",
-        "sha256": "8e3b463f0dfb61c68fdefbf8e55c16698de1564ddb66695d5ec4fa509a364d9d",
+        "sha256": "124c223c1047251d4c153b6fce2123fdcaa8d3238de5b0791e80cfb960e9f818",
         "function": "canonical_json"
       }
     },
     "reader": {
       "source": "skills/octon-project-bootstrap/scripts/runtime_binding.py",
-      "sha256": "8e3b463f0dfb61c68fdefbf8e55c16698de1564ddb66695d5ec4fa509a364d9d",
+      "sha256": "124c223c1047251d4c153b6fce2123fdcaa8d3238de5b0791e80cfb960e9f818",
       "version": "runtime-binding-reader.v1"
     },
     "modules": [

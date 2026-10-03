@@ -479,7 +479,9 @@ def main() -> int:
         if contract_test.name == "test_runtime_binding.py":
             try:
                 import runtime_binding
-                runtime_binding.forward_native_evidence(contract_result.stdout)
+                native_report = runtime_binding.forward_native_evidence(contract_result.stdout)
+                if runtime_binding.native_qualification_exit(native_report["test_suite_passed"], native_report["native_unsupported"]):
+                    raise ValueError("required runtime native capability is unavailable")
             except (ValueError, KeyError, TypeError) as error:
                 require(False, f"runtime binding native evidence invalid: {error}", failures)
         require(

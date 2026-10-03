@@ -147,15 +147,15 @@ class RuntimeBindingTests(unittest.TestCase):
         path=self.target/'.octon/runtime/scripts/octon.py';saved=path.read_bytes();path.unlink();outside=self.case_area/'outside.py';outside.write_bytes(saved)
         try:path.symlink_to(outside)
         except OSError as error:
-            path.write_bytes(saved);self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'symlink','error':str(error),'protection_claim':False});return
-        self.assert_refusal_readonly('symlink');self.evidence.append({'case':self._testMethodName,'host_capability':'symlink','available':True,'actual_refusal':True})
+            path.write_bytes(saved);self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'symlink','error':str(error),'protection_claim':False,'available':False});return
+        self.assert_refusal_readonly('symlink');self.evidence.append({'case':self._testMethodName,'host_capability':'symlink','available':True,'actual_refusal':True,'outcome':'passed','protection_claim':True})
     def test_native_windows_junction_or_nonwindows_disposition(self):
-        if os.name!='nt':self.evidence.append({'case':self._testMethodName,'outcome':'not applicable','host_capability':'windows junction','actual_host':os.name,'protection_claim':False});return
+        if os.name!='nt':self.evidence.append({'case':self._testMethodName,'outcome':'not applicable','host_capability':'windows junction','actual_host':os.name,'protection_claim':False,'available':False});return
         directory=self.target/'.octon/runtime/scripts';outside=self.case_area/'outside-scripts';directory.rename(outside)
         argv=['cmd','/c','mklink','/J',str(directory),str(outside)];value=subprocess.run(argv,capture_output=True,text=True)
         if value.returncode:
-            outside.rename(directory);self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'windows junction','exit':value.returncode,'error':value.stderr,'protection_claim':False});return
-        try:self.assert_refusal_readonly('reparse');self.evidence.append({'case':self._testMethodName,'host_capability':'windows junction','available':True,'actual_refusal':True})
+            outside.rename(directory);self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'windows junction','exit':value.returncode,'error':value.stderr,'protection_claim':False,'available':False});return
+        try:self.assert_refusal_readonly('reparse');self.evidence.append({'case':self._testMethodName,'host_capability':'windows junction','available':True,'actual_refusal':True,'outcome':'passed','protection_claim':True})
         finally:directory.rmdir();outside.rename(directory)
     def test_special_file_type_refuse(self):
         path=self.target/'.octon/runtime/scripts/octon.py';path.unlink();path.mkdir();self.assert_refusal_readonly('component type')
@@ -349,11 +349,14 @@ class RuntimeBindingTests(unittest.TestCase):
         with self.assertRaises(ValueError):Q.generate(self.target,runtime_binding=True)
         self.assertEqual(self.initial,R.tree_inventory(self.target))
     def test_native_fifo_refusal_or_nonposix_disposition(self):
-        if not hasattr(os,'mkfifo'):
-            self.evidence.append({'case':self._testMethodName,'outcome':'not applicable','host_capability':'POSIX FIFO','actual_host':os.name,'protection_claim':False});return
-        path=self.target/'.octon/runtime/scripts/octon.py';path.unlink();os.mkfifo(path)
+        if os.name!='posix':
+            self.evidence.append({'case':self._testMethodName,'outcome':'not applicable','host_capability':'POSIX FIFO','actual_host':os.name,'protection_claim':False,'available':False});return
+        path=self.target/'.octon/runtime/scripts/octon.py';path.unlink()
+        try:os.mkfifo(path)
+        except (OSError,AttributeError) as error:
+            self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'POSIX FIFO','error':str(error),'protection_claim':False,'available':False});return
         self.assert_refusal_readonly('component type')
-        self.evidence.append({'case':self._testMethodName,'outcome':'passed','native_fifo_type_refused_before_read':True})
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','native_fifo_type_refused_before_read':True,'host_capability':'POSIX FIFO','available':True,'actual_refusal':True,'protection_claim':True})
     def test_closed_facet_schema_and_acyclic_binding_graph(self):
         import validate_source_contracts as contracts
         facet=self.facet();schema=R.strict_json((ROOT/R.SCHEMA_SOURCES[1]).read_bytes())
@@ -429,6 +432,87 @@ class RuntimeBindingTests(unittest.TestCase):
         self.assertEqual(self.initial,R.tree_inventory(self.target))
         self.evidence.append({'case':self._testMethodName,'outcome':'passed','native_root_case_alias_available':aliases,'actual_native_alias_refused':aliases,'reserved_CON_space_refused':True})
 
+    def test_native_reserved_and_forbidden_casefold_occupancy_refuse(self):
+        for name in ['.AGENT','.AGENTS','PROJECT-DOSSIER','.OCTON-MINI-ORIGIN.JSON']:
+            self.restore();path=self.target/name;path.mkdir();self.assert_refusal_readonly('mixed legacy')
+        for name in R.FORBIDDEN_DERIVED:
+            for kind in ['file','directory']:
+                self.restore();parts=Path(name).parts;path=self.target.joinpath(*parts[:-1],parts[-1].swapcase());path.parent.mkdir(parents=True,exist_ok=True)
+                path.mkdir() if kind=='directory' else path.write_bytes(b'{}')
+                self.assert_refusal_readonly('high-assurance')
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','actual_native_casefold_occupants_refused':True,'host':os.name})
+    def test_native_dangling_reserved_and_forbidden_occupancy_refuse(self):
+        available=False
+        for name in ['.agent','.AGENT','.agents','project-dossier','.octon-mini-origin.json',*R.FORBIDDEN_DERIVED]:
+            self.restore();path=self.target/name;path.parent.mkdir(parents=True,exist_ok=True)
+            try:path.symlink_to(self.case_area/'missing-object',target_is_directory=name in ['.agent','.AGENT','.agents','project-dossier'])
+            except OSError as error:
+                self.evidence.append({'case':self._testMethodName,'outcome':'unsupported creation','host_capability':'symlink','error':str(error),'protection_claim':False,'available':False});return
+            available=True;self.assertFalse(path.exists());self.assertTrue(path.is_symlink());self.assert_refusal_readonly()
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','host_capability':'symlink','available':available,'actual_refusal':True,'protection_claim':True,'dangling_mixed_and_forbidden_paths_refused':True})
+    def test_disposable_dependency_closed_shapes_and_actual_source_refusal(self):
+        mutations=['missing_container','container_type','missing_runtime_paths','runtime_paths_type','runtime_path_scalar','duplicate_path','missing_dependencies','dependency_type','dependency_semantics','permission_numeric']
+        for kind in mutations:
+            value=copy.deepcopy(self.policy)
+            if kind=='missing_container':del value['disposable_runtime'];stage='current source shape'
+            else:
+                stage='source disposable'
+                if kind=='container_type':value['disposable_runtime']=[]
+                elif kind=='missing_runtime_paths':del value['disposable_runtime']['runtime_paths']
+                elif kind=='runtime_paths_type':value['disposable_runtime']['runtime_paths']={}
+                elif kind=='runtime_path_scalar':value['disposable_runtime']['runtime_paths'][0]=False
+                elif kind=='duplicate_path':value['disposable_runtime']['runtime_paths'].append(value['disposable_runtime']['runtime_paths'][0])
+                elif kind=='missing_dependencies':del value['disposable_runtime']['required_dependencies']
+                elif kind=='dependency_type':value['disposable_runtime']['required_dependencies']='python'
+                elif kind=='dependency_semantics':value['disposable_runtime']['required_dependencies'].append('plectarium')
+                else:value['disposable_runtime']['permission_grant']=0
+            before=R.canonical_json(value)
+            with self.assertRaisesRegex(ValueError,stage):R.historical_compatibility_policy(value,(ROOT/R.HISTORICAL_SOURCE).read_bytes())
+            source_stage='invalid top-level contract' if kind=='missing_container' else stage
+            with mock.patch.object(Q.scaffold,'load_json',return_value=value),self.assertRaisesRegex(ValueError,source_stage):Q.scaffold.load_generation_policy()
+            self.assertEqual(before,R.canonical_json(value));self.assertEqual(self.initial,R.tree_inventory(self.target))
+        malformed=copy.deepcopy(self.policy);del malformed['disposable_runtime']['runtime_paths'];data=self.case_area/'malformed-source.json';data.write_bytes(R.canonical_json(malformed));script=self.case_area/'source-cli-probe.py';dest=self.case_area/'unpublished-source-target'
+        script.write_bytes(('import sys,json\nfrom pathlib import Path\nsys.dont_write_bytecode=True\nsys.path.insert(0,'+repr(str(HERE))+')\nimport scaffold_project as S\nold=S.load_json\nS.load_json=lambda path:json.loads(Path('+repr(str(data))+').read_bytes()) if path==S.octon_mini_source_root()/S.PROFILE_MANIFEST_RELATIVE else old(path)\nsys.argv=[S.__file__,"--target",'+repr(str(dest))+',"--project-name","Source refusal fixture","--profile","minimal"]\nraise SystemExit(S.main())\n').encode())
+        actual=subprocess.run([sys.executable,'-I','-B',str(script)],cwd=self.case_area,capture_output=True,text=True);self.assertEqual(actual.returncode,2,actual.stdout+actual.stderr);self.assertIn('source disposable dependency shape',actual.stderr);self.assertNotIn('Traceback',actual.stderr);self.assertFalse(dest.exists())
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','actual_source_cli_exit':actual.returncode,'actual_source_cli_diagnostic_sha256':R.sha256(actual.stderr.encode()),'actual_source_loader_valueerror_cases':mutations,'input_and_target_unchanged':True})
+    def test_api_expected_pin_types_are_exact_strings(self):
+        for value in [None,False,1,int('1'*64),[],{}]:
+            self.assert_refusal_readonly('both independent',source_sha=value)
+            self.assert_refusal_readonly('both independent',runtime_sha=value)
+    def test_native_capability_protocol_coherence_and_gate_status(self):
+        base={'schema_version':'octon.runtime-binding-qualification.v1','permission_grant':False,'candidate_qualified':False,'source_subject':{'revision':'a'*40,'status':[],'files':{'octon':'0'*64}},'case_names':['test_native_symlink_or_explicit_unsupported'],'source_revision':'a'*40,'source_status':[],'source_unchanged':True,'test_suite_passed':True,'complete_suite':True,'tests_run':1,'failures':0,'errors':0,'cases':[{'case':'test_native_symlink_or_explicit_unsupported','outcome':'passed','host_capability':'symlink','available':True,'actual_refusal':True,'protection_claim':True},{'case':'test_native_symlink_or_explicit_unsupported','terminal':True,'outcome':'passed'}],'native_unsupported':[],'platform':{'system':platform.system(),'machine':platform.machine(),'version':platform.version(),'os_name':os.name},'python':sys.version,'executable':sys.executable,'qualified':True}
+        wrap=lambda value:'OCTON_RUNTIME_BINDING_EVIDENCE_BEGIN\n'+json.dumps(value)+'\nOCTON_RUNTIME_BINDING_EVIDENCE_END'
+        with contextlib.redirect_stdout(io.StringIO()):R.forward_native_evidence(wrap(base))
+        for kind in ['missing_detail','extra_detail','duplicate_detail','unsupported_empty','unsupported_qualified','unjustified_not_applicable','wrong_capability','conflicting_capability','extra_unsupported','unsupported_without_terminal']:
+            value=copy.deepcopy(base)
+            if kind=='missing_detail':value['cases'].pop(0)
+            elif kind=='extra_detail':value['cases'].append({'case':'test_unknown','host_capability':'symlink'})
+            elif kind=='duplicate_detail':value['cases'].append(copy.deepcopy(value['cases'][0]))
+            elif kind=='unsupported_empty':value['cases'][-1]['outcome']='unsupported'
+            elif kind=='unsupported_qualified':
+                detail={'case':base['case_names'][0],'outcome':'unsupported creation','host_capability':'symlink','available':False,'protection_claim':False};value['cases']=[detail,{'case':base['case_names'][0],'terminal':True,'outcome':'unsupported'}];value['native_unsupported']=[detail]
+            elif kind=='unjustified_not_applicable':value['cases'][-1]['outcome']='not_applicable'
+            elif kind=='wrong_capability':value['cases'][0]['host_capability']='unknown'
+            elif kind=='conflicting_capability':value['cases'][0]['available']=False
+            elif kind=='extra_unsupported':value['native_unsupported']=[value['cases'][0]]
+            else:value['cases'][0]['outcome']='unsupported creation'
+            with self.assertRaises(ValueError):R.forward_native_evidence(wrap(value))
+        detail={'case':base['case_names'][0],'outcome':'unsupported creation','host_capability':'symlink','available':False,'protection_claim':False}
+        unsupported=copy.deepcopy(base);unsupported['cases']=[detail,{'case':base['case_names'][0],'terminal':True,'outcome':'unsupported'}];unsupported['native_unsupported']=[detail];unsupported['qualified']=False
+        with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(R.forward_native_evidence(wrap(unsupported))['native_unsupported'],[detail])
+        self.assertEqual(R.native_qualification_exit(True,[detail]),1);self.assertEqual(R.native_qualification_exit(True,[]),0)
+        # Actual suite entry-point status on a complete simulated unavailable-cap report.
+        path=self.case_area/'unsupported-gate-probe.py'
+        path.write_bytes(('import sys\nfrom pathlib import Path\nsys.dont_write_bytecode=True\nsys.path.insert(0,'+repr(str(HERE))+')\nimport test_runtime_binding as T\nT.unittest.TextTestRunner.run=lambda *args: type("Result",(),{"testsRun":len(T.unittest.defaultTestLoader.getTestCaseNames(T.RuntimeBindingTests)),"wasSuccessful":lambda self:True,"failures":[],"errors":[]})()\nT.RuntimeBindingTests.evidence='+repr([detail])+'\noriginal=T.json.dumps\ndef honest(value,*args,**kwargs):\n    if isinstance(value,dict) and value.get("schema_version")=="octon.runtime-binding-qualification.v1":value={**value,"simulated":True,"qualification_scope":"simulated required unavailable-capability status propagation; no actual suite execution"}\n    return original(value,*args,**kwargs)\nT.json.dumps=honest\nraise SystemExit(T.main())\n').encode())
+        value=subprocess.run([sys.executable,'-I','-B',str(path)],capture_output=True,text=True,cwd=self.case_area);self.assertEqual(value.returncode,1,value.stderr);self.assertIn('OCTON_RUNTIME_BINDING_EVIDENCE_BEGIN',value.stdout)
+        simulated=R.strict_json(value.stdout.split('OCTON_RUNTIME_BINDING_EVIDENCE_BEGIN\n')[1].split('\nOCTON_RUNTIME_BINDING_EVIDENCE_END')[0].encode());self.assertTrue(simulated['simulated']);self.assertFalse(simulated['qualified'])
+        inapplicable=copy.deepcopy(base);name='test_native_fifo_refusal_or_nonposix_disposition' if os.name=='nt' else 'test_native_windows_junction_or_nonwindows_disposition';capability='POSIX FIFO' if os.name=='nt' else 'windows junction'
+        inapplicable['case_names']=[name];inapplicable['cases']=[{'case':name,'host_capability':capability,'outcome':'not applicable','actual_host':os.name,'available':False,'protection_claim':False},{'case':name,'terminal':True,'outcome':'not_applicable'}]
+        with contextlib.redirect_stdout(io.StringIO()):self.assertTrue(R.forward_native_evidence(wrap(inapplicable))['qualified'])
+        inapplicable['cases'][0]['actual_host']='unjustified'
+        with self.assertRaisesRegex(ValueError,'justification'):R.forward_native_evidence(wrap(inapplicable))
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','contradictory_protocol_cases_refused':10,'simulated_required_unsupported_suite_exit':value.returncode,'truthful_public_report_retained':True})
+
 
 class EvidenceResult(unittest.TextTestResult):
     def addSuccess(self,test):
@@ -462,6 +546,6 @@ def main():
         'case_names':names,'cases':RuntimeBindingTests.evidence,'native_unsupported':unsupported,
         'elapsed_seconds':time.monotonic()-started,'meaning':'Caller-pinned integrity/compatibility, not authentication or authority; current fixture tests only'}
     print('OCTON_RUNTIME_BINDING_EVIDENCE_BEGIN\n'+json.dumps(record,sort_keys=True)+'\nOCTON_RUNTIME_BINDING_EVIDENCE_END',flush=True)
-    return 0 if passed else 1
+    return R.native_qualification_exit(passed,unsupported)
 
 if __name__=='__main__':raise SystemExit(main())

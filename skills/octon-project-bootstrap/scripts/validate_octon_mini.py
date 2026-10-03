@@ -1867,7 +1867,9 @@ def validate_executable_contracts(issues: list[str]) -> None:
         if label == "runtime binding native byte/path/integrity fixtures":
             try:
                 import runtime_binding
-                runtime_binding.forward_native_evidence(result.stdout)
+                native_report = runtime_binding.forward_native_evidence(result.stdout)
+                if runtime_binding.native_qualification_exit(native_report["test_suite_passed"], native_report["native_unsupported"]):
+                    raise ValueError("required runtime native capability is unavailable")
             except (ValueError, KeyError, TypeError) as error:
                 issues.append(f"runtime binding public native evidence invalid: {error}")
         if result.returncode:

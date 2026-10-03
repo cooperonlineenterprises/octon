@@ -179,6 +179,24 @@ class ReadOnlyTargetBinding:
             os.close(descriptor)
 
 
+def occupied_casefold(root, relative):
+    """Non-following occupancy: aliases and dangling objects cannot mean absence."""
+    current = Path(root)
+    parts = portable_path(relative)
+    for index, part in enumerate(parts):
+        matches = [entry for entry in current.iterdir() if entry.name.casefold() == part.casefold()]
+        if not matches:
+            return False
+        if index == len(parts)-1:
+            return True
+        if len(matches)!=1 or matches[0].name!=part:
+            return True
+        current = matches[0]; info=current.lstat()
+        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or reparse(info):
+            return True
+    return False
+
+
 def recipe_rule(identifier):
     source = 'skill:scripts/runtime_binding.py' if identifier == RECIPE_RULES['runtime.manifest'] else 'skill:scripts/qualify_disposable_runtime.py'
     return {'id': identifier, 'source': source, 'match': 'exact',
@@ -293,8 +311,14 @@ def validate_source_binding(policy, *, source_root: Path | None = None):
     modules = binding['modules']
     if not isinstance(modules,list) or len(modules)!=9:
         raise ValueError('exact existing nine core modules required')
-    if not isinstance(policy.get('rules'),list) or not isinstance(policy.get('disposable_runtime'),dict):
+    if not isinstance(policy.get('rules'),list):
         raise ValueError('source module/dependency shape differs')
+    disposable=policy.get('disposable_runtime')
+    exact_fields(disposable, {'schema_version','status','permission_grant','profile','layout','projection_version','required_dependencies','runtime_paths'}, 'source disposable dependency shape')
+    if not isinstance(disposable['runtime_paths'],list) or not all(isinstance(path,str) for path in disposable['runtime_paths']) or len(set(disposable['runtime_paths']))!=len(disposable['runtime_paths']):
+        raise ValueError('source disposable runtime paths shape/uniqueness differs')
+    if not same_json({key:value for key,value in disposable.items() if key!='runtime_paths'}, {'schema_version':'octon.source.disposable-runtime.v1','status':'qualification_only_not_selectable','permission_grant':False,'profile':'minimal','layout':'compact','projection_version':'target-path-projection.v1','required_dependencies':['python>=3.11','canonical-minimal-core']}):
+        raise ValueError('source disposable dependency selection/semantics differ')
     for rule in policy['rules']:
         if not isinstance(rule,dict) or not isinstance(rule.get('id'),str):raise ValueError('source rule shape differs')
     matching = [rule for rule in policy['rules'] if rule['id']=='templates-core']
@@ -364,7 +388,7 @@ def verify_parent_bindings(root, parent):
         if sha256(binding.read(row['path'])) != row['sha256']:
             raise ValueError('parent asset/non-null output bytes differ')
     for relative in FORBIDDEN_DERIVED:
-        if os.path.lexists(binding.root / relative):
+        if occupied_casefold(binding.root,relative):
             raise ValueError('unsupported high-assurance derived output')
     return [{'path':row['path'], 'sha256':row['sha256']} for row in rows]
 
@@ -459,8 +483,8 @@ def validate_import_closure(observations):
 
 def inspect_runtime_binding(root: Path, source_snapshot: Path, *, expected_source_sha256: str,
                             expected_runtime_sha256: str, layout_id: str, state_owner: str):
-    if not HEX64.fullmatch(str(expected_source_sha256)) or not HEX64.fullmatch(str(expected_runtime_sha256)):
-        raise ValueError('both independent source and output expectations are required')
+    digest_value(expected_source_sha256,'both independent source and output expectations')
+    digest_value(expected_runtime_sha256,'both independent source and output expectations')
     binding = ReadOnlyTargetBinding(root,layout_id=layout_id,state_owner=state_owner)
     if Path(__file__).resolve().is_relative_to(binding.root):
         raise ValueError('trusted inspection program must be outside inspected target custody')
@@ -497,7 +521,7 @@ def inspect_runtime_binding(root: Path, source_snapshot: Path, *, expected_sourc
         raise ValueError('runtime facet role/version/permission/state differs')
     binding.path('.octon/agent/state',file=False)
     for marker in ['.agent','.agents','project-dossier','.octon-mini-origin.json']:
-        if (binding.root/marker).exists():raise ValueError('mixed legacy installation markers')
+        if occupied_casefold(binding.root,marker):raise ValueError('mixed legacy installation markers')
     historical_raw = binding.read('.octon/runtime/profile-inventory.json')
     historical = historical_compatibility_policy(source,historical_raw)
     parent_raw = binding.read('.octon/manifest.json');parent = strict_json(parent_raw)
@@ -586,7 +610,7 @@ def inspect_runtime_binding(root: Path, source_snapshot: Path, *, expected_sourc
         if sha256(binding.read(row['path']))!=row['sha256']:
             raise ValueError('non-null initial output changed')
     for forbidden in ['.octon/dossier/CHECKSUMS.sha256','.octon/agent/generated/manifest.json','.octon/agent/generated/validation-report.json']:
-        if (binding.root/forbidden).exists():raise ValueError('unsupported high-assurance derived output')
+        if occupied_casefold(binding.root,forbidden):raise ValueError('unsupported high-assurance derived output')
     entry=facet['entry'];exact_fields(entry,{'id','path','source_rule_id','sha256','mode'},'entry')
     if entry['id']!='runtime.entry' or entry['path']!=TARGET_PATHS['runtime.entry'] or entry['source_rule_id']!=RECIPE_RULES['runtime.entry'] or entry['sha256']!=sha256(binding.read(entry['path'])) or not same_json(entry['mode'],native_mode(binding.path(entry['path']).lstat())):
         raise ValueError('runtime entry exact binding differs')
@@ -634,6 +658,57 @@ def main():
             'provenance':'unestablished','error':str(error)},sort_keys=True));return 2
 
 
+
+NATIVE_CAPABILITY_CASES = {
+    'test_native_symlink_or_explicit_unsupported': ('symlink', 'all'),
+    'test_native_dangling_reserved_and_forbidden_occupancy_refuse': ('symlink', 'all'),
+    'test_native_windows_junction_or_nonwindows_disposition': ('windows junction', 'nt'),
+    'test_native_fifo_refusal_or_nonposix_disposition': ('POSIX FIFO', 'posix'),
+}
+
+
+def validate_native_capabilities(data):
+    """Coherent observed/native applicability; unit success cannot invent a cap."""
+    names=data['case_names'];cases=data['cases']
+    expected_unsupported=[]
+    for row in cases:
+        if not isinstance(row,dict) or row.get('case') not in names:
+            raise ValueError('native detail has an unknown case or invalid shape')
+        if 'terminal' in row and type(row['terminal']) is not bool:
+            raise ValueError('native terminal disposition must be explicit boolean')
+    terminals={row['case']:row for row in cases if row.get('terminal') is True}
+    for name in names:
+        terminal=terminals[name]['outcome']
+        details=[row for row in cases if row['case']==name and row.get('terminal') is not True and ('host_capability' in row or row.get('outcome') in {'unsupported creation','not applicable'})]
+        if name not in NATIVE_CAPABILITY_CASES:
+            if terminal!='passed' or details:
+                raise ValueError('native unsupported/inapplicable case lacks declared capability')
+            continue
+        capability,host=NATIVE_CAPABILITY_CASES[name]
+        if len(details)!=1 or details[0].get('host_capability')!=capability:
+            raise ValueError('native capability needs one exact matching detail')
+        detail=details[0];applies=host=='all' or host==data['platform']['os_name']
+        if not applies:
+            if terminal!='not_applicable' or detail.get('outcome')!='not applicable' or detail.get('actual_host')!=data['platform']['os_name'] or detail.get('protection_claim') is not False or detail.get('available') is not False:
+                raise ValueError('native not_applicable disposition lacks actual platform justification')
+        elif terminal=='unsupported':
+            if detail.get('outcome')!='unsupported creation' or detail.get('protection_claim') is not False or detail.get('available') is not False:
+                raise ValueError('native unsupported disposition lacks unavailable capability detail')
+            expected_unsupported.append(detail)
+        elif terminal=='passed':
+            if detail.get('outcome')!='passed' or detail.get('available') is not True or detail.get('actual_refusal') is not True or detail.get('protection_claim') is not True:
+                raise ValueError('native passing capability lacks actual exercised refusal')
+        else:
+            raise ValueError('required native capability cannot be not_applicable')
+    if not same_json(data['native_unsupported'],expected_unsupported):
+        raise ValueError('native unsupported array contradicts capability/terminal details')
+    return expected_unsupported
+
+
+def native_qualification_exit(passed, unsupported):
+    """Required unavailable native capability is a qualification gate failure."""
+    return 0 if passed and not unsupported else 1
+
 def forward_native_evidence(text):
     """Forward only the reviewed bounded strict-JSON block from the known suite."""
     begin='OCTON_RUNTIME_BINDING_EVIDENCE_BEGIN\n';end='\nOCTON_RUNTIME_BINDING_EVIDENCE_END'
@@ -665,6 +740,7 @@ def forward_native_evidence(text):
         raise ValueError('every mandatory native case needs one successful explicit terminal disposition')
     if any(type(data[key]) is not int for key in ['tests_run','failures','errors']) or data['tests_run'] != len(names) or data['failures'] != 0 or data['errors'] != 0 or data['source_unchanged'] is not True or data['test_suite_passed'] is not True or data['complete_suite'] is not True:
         raise ValueError('native suite incomplete, failed or source changed')
+    validate_native_capabilities(data)
     if type(data['qualified']) is not bool or data['qualified'] != (not subject['status'] and not data['native_unsupported']):
         raise ValueError('native qualification cannot erase dirty/unsupported scope')
     print(begin+json.dumps(data,sort_keys=True)+end,flush=True)
