@@ -5,7 +5,7 @@ import copy
 import hashlib
 import json
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PureWindowsPath, PurePosixPath
 import platform
 import shutil
 import subprocess
@@ -64,6 +64,14 @@ finally:
     (area/('cold-'+str(os.getpid())+'.json')).write_bytes((json.dumps(record,sort_keys=True)+'\n').encode())
 raise SystemExit(code)
 '''
+
+
+def actual_refresh_command(argv,cwd,*,path_type=Path):
+    """Exact native command belonging to the owned stage; no basename guessing."""
+    if not isinstance(argv,(list,tuple)) or len(argv)!=4 or argv[0]!=sys.executable or argv[1]!='-B' or argv[3]!='--refresh':
+        return False
+    script=path_type(argv[2]);stage=path_type(cwd)
+    return script.parts[-4:]==('.octon','runtime','scripts','refresh.py') and script==stage/'.octon/runtime/scripts/refresh.py'
 
 
 class RuntimeBindingTests(unittest.TestCase):
@@ -245,25 +253,93 @@ class RuntimeBindingTests(unittest.TestCase):
         self.assertEqual(len(parent['output_inventory']),114);self.assertEqual(len(self.facet()['non_null_outputs']),109)
         self.evidence.append({'case':self._testMethodName,'outcome':'passed','refresh_proof':proof})
     def test_real_final_refresh_parent_non_null_and_residual_faults_refuse_publish(self):
-        original=Q.run
-        for fault in ['parent','non_null','facet','residual','derived_delete','derived_mode']:
-            dest=self.case_area/('unpublished-'+fault);count=0
+        original=Q.run;traces=[]
+        detail={'case':self._testMethodName,'outcome':'running','fault_traces':traces}
+        self.evidence.append(detail)
+        fault_paths={'parent':'.octon/manifest.json','non_null':'AGENTS.md','facet':'.octon/runtime/manifest.json',
+                     'residual':'.octon/agent/refresh-residual.txt','derived_delete':'.octon/agent/state/current.json',
+                     'derived_mode':'.octon/agent/state/current.json'}
+        for fault,relative in fault_paths.items():
+            dest=self.case_area/('unpublished-'+fault)
+            trace={'fault':fault,'fault_path':relative,'refresh_calls':[],'refresh_call_count':0,'injection_count':0,
+                   'before':None,'after':None,'changed_paths':None,'effect_before':None,'effect_after':None,
+                   'refusal':None,'target_root':str(dest),'target_published':None,'cleanup':None}
+            traces.append(trace);before_case_paths=sorted(path.name for path in self.case_area.iterdir())
             def injected(argv,cwd):
-                nonlocal count
                 result=original(argv,cwd)
-                if str(argv[2]).endswith('/scripts/refresh.py'):
-                    count+=1
-                    if count==3:
-                        path=cwd/({'parent':'.octon/manifest.json','non_null':'AGENTS.md','facet':'.octon/runtime/manifest.json','residual':'.octon/agent/refresh-residual.txt','derived_delete':'.octon/agent/state/current.json','derived_mode':'.octon/agent/state/current.json'}[fault])
+                if actual_refresh_command(argv,cwd):
+                    trace['refresh_call_count']+=1;ordinal=trace['refresh_call_count']
+                    facet=cwd/R.TARGET_PATHS['runtime.manifest']
+                    trace['refresh_calls'].append({'ordinal':ordinal,'argv':[str(value) for value in argv],
+                        'cwd':str(cwd),'script_path':Path(argv[2]).relative_to(cwd).as_posix(),
+                        'original_returncode':result.returncode,'facet_present':facet.is_file()})
+                    self.assertEqual(result.returncode,0);self.assertEqual(facet.is_file(),ordinal==3)
+                    if ordinal==3:
+                        trace['before']=R.tree_inventory(cwd);path=cwd/relative
+                        trace['effect_before']=next((row for row in trace['before'] if row['path']==relative),None)
                         if fault=='derived_delete':path.unlink()
-                        elif fault=='derived_mode':path.chmod(stat.S_IREAD if os.name=='nt' else 0o600)
+                        elif fault=='derived_mode':
+                            mode=trace['effect_before']['mode']
+                            desired=(stat.S_IREAD if mode['writable'] else stat.S_IWRITE) if mode['model']=='windows_writable' else mode['bits'] ^ stat.S_IWUSR
+                            path.chmod(desired)
                         else:path.write_bytes(path.read_bytes()+b'\n# injected refresh fault\n' if path.exists() else b'residual')
+                        trace['injection_count']+=1;trace['after']=R.tree_inventory(cwd)
+                        trace['effect_after']=next((row for row in trace['after'] if row['path']==relative),None)
+                        old={row['path']:row for row in trace['before']};new={row['path']:row for row in trace['after']}
+                        trace['changed_paths']=sorted(name for name in set(old)|set(new) if old.get(name)!=new.get(name))
                 return result
+            error=None
             with mock.patch.object(Q,'run',side_effect=injected):
-                with self.assertRaisesRegex(ValueError,'postfacet'):Q.generate(dest,runtime_binding=True)
-            self.assertEqual(count,3);self.assertFalse(dest.exists())
-            self.assertFalse(any(path.name.startswith('octon-disposable-stage-') for path in self.case_area.iterdir()))
-        self.evidence.append({'case':self._testMethodName,'outcome':'passed','actual_refresh_faults':['parent','non_null','facet','residual','derived_delete','derived_mode'],'target_published':False,'temporary_stages_reconciled':True})
+                try:Q.generate(dest,runtime_binding=True)
+                except ValueError as caught:
+                    error=caught;frames=[];current=caught.__traceback__
+                    while current:
+                        filename=Path(current.tb_frame.f_code.co_filename).resolve()
+                        frames.append({'source':filename.relative_to(ROOT).as_posix() if filename.is_relative_to(ROOT) else str(filename),
+                                       'function':current.tb_frame.f_code.co_name})
+                        current=current.tb_next
+                    trace['refusal']={'type':type(caught).__name__,'message':str(caught),
+                        'boundary':'verify_postfacet_refresh' if {'source':R.READER_SOURCE,'function':'verify_postfacet_refresh'} in frames else None,
+                        'source':R.READER_SOURCE,'source_sha256':R.sha256((ROOT/R.READER_SOURCE).read_bytes()),'traceback_frames':frames}
+            trace['target_published']=dest.exists()
+            residues=sorted(path.name for path in self.case_area.iterdir() if path.name.startswith('octon-disposable-stage-'))
+            trace['cleanup']={'stage_residue_names':residues,'target_exists':dest.exists(),
+                'before_case_paths':before_case_paths,'after_case_paths':sorted(path.name for path in self.case_area.iterdir())}
+            # Establish real invocation and mutation first; no harness miss can count as a guard pass.
+            self.assertEqual(trace['refresh_call_count'],3,trace);self.assertEqual(trace['injection_count'],1,trace)
+            self.assertEqual([row['facet_present'] for row in trace['refresh_calls']],[False,False,True],trace)
+            self.assertEqual(trace['changed_paths'],[relative],trace)
+            before=trace['effect_before'];after=trace['effect_after']
+            if fault=='residual':self.assertIsNone(before);self.assertEqual(after['type'],'file')
+            elif fault=='derived_delete':self.assertEqual(before['type'],'file');self.assertIsNone(after)
+            elif fault=='derived_mode':
+                self.assertEqual(before['type'],'file');self.assertEqual(after['type'],'file')
+                self.assertEqual(before['sha256'],after['sha256']);self.assertNotEqual(before['mode'],after['mode'])
+            else:
+                self.assertEqual(before['type'],'file');self.assertEqual(after['type'],'file')
+                self.assertEqual(before['mode'],after['mode']);self.assertNotEqual(before['sha256'],after['sha256'])
+            self.assertIsNotNone(error,trace);self.assertIs(type(error),ValueError);self.assertIn('postfacet',str(error))
+            self.assertEqual(trace['refusal']['boundary'],'verify_postfacet_refresh',trace)
+            self.assertFalse(trace['target_published']);self.assertEqual(residues,[])
+            self.assertEqual(trace['cleanup']['before_case_paths'],trace['cleanup']['after_case_paths'])
+        detail.update(outcome='passed',actual_refresh_faults=list(fault_paths),target_published=False,temporary_stages_reconciled=True)
+    def test_refresh_fault_signature_native_and_portable_vectors(self):
+        vectors=[]
+        for path_type,stage in [(PureWindowsPath,PureWindowsPath('D:/owned/stage')),(PurePosixPath,PurePosixPath('/owned/stage'))]:
+            script=stage/'.octon/runtime/scripts/refresh.py';argv=[sys.executable,'-B',script,'--refresh']
+            self.assertTrue(actual_refresh_command(argv,stage,path_type=path_type))
+            negatives=[[sys.executable,'-B',stage/'elsewhere/refresh.py','--refresh'],
+                       [sys.executable,'-B',stage.parent/'other/.octon/runtime/scripts/refresh.py','--refresh'],
+                       [sys.executable,'-I',script,'--refresh'],[sys.executable,'-B',script,'--check'],
+                       [sys.executable,'-B',script,'--refresh','extra'],['wrong-python','-B',script,'--refresh']]
+            for command in negatives:self.assertFalse(actual_refresh_command(command,stage,path_type=path_type))
+            vectors.append({'path_flavour':path_type.__name__,'script':str(script),'exact_native_match':True,
+                'old_POSIX_suffix_match':str(script).endswith('/scripts/refresh.py'),'negative_vectors_refused':len(negatives)})
+        actual=self.target/'.octon/runtime/scripts/refresh.py'
+        self.assertTrue(actual_refresh_command([sys.executable,'-B',actual,'--refresh'],self.target))
+        self.assertEqual(self.initial,R.tree_inventory(self.target))
+        self.evidence.append({'case':self._testMethodName,'outcome':'passed','vectors':vectors,
+            'scope':'Pure-path vectors only; actual host command match and unchanged target. Real native effects covered separately.'})
     def test_facet_tamper_stales_full_fingerprint_refresh_cannot_replace_pin(self):
         path=self.target/R.TARGET_PATHS['runtime.manifest'];path.write_bytes(path.read_bytes()+b' ')
         command=[sys.executable,'-I','-B',str(self.target/'octon'),'check']
