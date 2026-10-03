@@ -1,0 +1,1367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://octon-mini.local/source-schemas/profile-manifest-v4.schema.json",
+  "title": "Octon Mini Profile and Inventory Manifest",
+  "description": "Authoritative profile, generated inventory, project-path, package, and acceptance-coverage source. It grants no project authority.",
+  "$defs": {
+    "profile_id": {
+      "enum": [
+        "minimal",
+        "standard",
+        "high-assurance"
+      ]
+    },
+    "profiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/profile_id"
+      }
+    },
+    "project_path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rank",
+        "layers",
+        "label",
+        "selection_basis",
+        "collaboration_independent"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/profile_id"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "core",
+              "standard",
+              "high-assurance"
+            ]
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selection_basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "collaboration_independent": {
+          "const": true
+        }
+      }
+    },
+    "owned_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "minimum_profile",
+        "ownership"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/project_path"
+        },
+        "minimum_profile": {
+          "$ref": "#/$defs/profile_id"
+        },
+        "ownership": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "derived_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "minimum_profile",
+        "writer",
+        "ownership"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/project_path"
+        },
+        "minimum_profile": {
+          "$ref": "#/$defs/profile_id"
+        },
+        "writer": {
+          "const": "refresh"
+        },
+        "ownership": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "default",
+        "description",
+        "omit_paths",
+        "template_overrides",
+        "registry_combinations"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "compact",
+            "separated"
+          ]
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "omit_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/project_path"
+          }
+        },
+        "template_overrides": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "output_path",
+              "source"
+            ],
+            "properties": {
+              "output_path": {
+                "$ref": "#/$defs/project_path"
+              },
+              "source": {
+                "type": "string",
+                "pattern": "^(?:skill|octon-mini):[A-Za-z0-9._/-]+$"
+              }
+            }
+          }
+        },
+        "registry_combinations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "retained_representation_id",
+              "absorbed_representation_ids",
+              "artifact_type_ids",
+              "representation_role",
+              "authority",
+              "applicability_rationale",
+              "owner_role",
+              "review_cadence",
+              "update_triggers"
+            ],
+            "properties": {
+              "retained_representation_id": {
+                "type": "string",
+                "pattern": "^REP-[0-9]{4}$"
+              },
+              "absorbed_representation_ids": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^REP-[0-9]{4}$"
+                }
+              },
+              "artifact_type_ids": {
+                "type": "array",
+                "minItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9]*-[0-9]{4}$"
+                }
+              },
+              "representation_role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "authority": {
+                "type": "string",
+                "minLength": 1
+              },
+              "applicability_rationale": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner_role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "review_cadence": {
+                "type": "string",
+                "minLength": 1
+              },
+              "update_triggers": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "version",
+        "sha256",
+        "source",
+        "inventory_paths",
+        "profiles",
+        "installation",
+        "trigger",
+        "permission_grant"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "kind": {
+          "enum": [
+            "scm_portfolio",
+            "domain_extension",
+            "reference_extension",
+            "optional_schema",
+            "workflow_capability"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inventory_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "profiles": {
+          "$ref": "#/$defs/profiles"
+        },
+        "installation": {
+          "enum": [
+            "trigger_installed_transactionally",
+            "locally_bundled_activation_transaction"
+          ]
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "permission_grant": {
+          "const": false
+        }
+      }
+    },
+    "acceptance_criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "release_coverage"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
+        },
+        "release_coverage": {
+          "enum": [
+            "automated_pass",
+            "project_demonstration_required",
+            "not_exercised"
+          ]
+        }
+      }
+    },
+    "documentation_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source",
+        "targets"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "source": {
+          "enum": [
+            "profiles",
+            "acceptance_criteria"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "strip_suffix"
+      ],
+      "properties": {
+        "root": {
+          "type": "string",
+          "pattern": "^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$"
+        },
+        "strip_suffix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\.[A-Za-z0-9._-]+$"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "match": {
+                "const": "recursive_suffix"
+              }
+            },
+            "required": [
+              "match"
+            ]
+          },
+          "then": {
+            "properties": {
+              "suffix": {
+                "type": "string",
+                "pattern": "^\\.[A-Za-z0-9._-]+$"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "suffix": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "source_only"
+              }
+            },
+            "required": [
+              "disposition"
+            ]
+          },
+          "then": {
+            "properties": {
+              "profiles": {
+                "maxItems": 0
+              },
+              "inventory_paths": {
+                "type": "null"
+              },
+              "inventory_count": {
+                "type": "null"
+              },
+              "inventory_paths_sha256": {
+                "type": "null"
+              },
+              "output": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "profiles": {
+                "minItems": 1
+              },
+              "inventory_paths": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+                }
+              },
+              "inventory_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "inventory_paths_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "output": {
+                "$ref": "#/$defs/output"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "profile_optional"
+              }
+            },
+            "required": [
+              "disposition"
+            ]
+          },
+          "then": {
+            "properties": {
+              "match": {
+                "const": "exact"
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "id",
+        "source",
+        "match",
+        "suffix",
+        "disposition",
+        "profiles",
+        "inventory_paths",
+        "inventory_count",
+        "inventory_paths_sha256",
+        "output",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^(?:skill|octon-mini):[A-Za-z0-9._/-]+$"
+        },
+        "match": {
+          "enum": [
+            "exact",
+            "recursive",
+            "recursive_suffix"
+          ]
+        },
+        "suffix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disposition": {
+          "enum": [
+            "source_only",
+            "generated",
+            "profile_optional"
+          ]
+        },
+        "profiles": {
+          "$ref": "#/$defs/profiles"
+        },
+        "inventory_paths": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+          }
+        },
+        "inventory_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "inventory_paths_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "output": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "installation_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "scope",
+        "owner"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/project_path"
+        },
+        "scope": {
+          "enum": [
+            "project",
+            "workspace"
+          ]
+        },
+        "owner": {
+          "enum": [
+            "project",
+            "runtime_release",
+            "package_release",
+            "derived_writer",
+            "workspace"
+          ]
+        }
+      }
+    },
+    "target_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "root_id",
+        "owner",
+        "information_class",
+        "tracking",
+        "minimum_profile",
+        "source_rule_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+        },
+        "path": {
+          "$ref": "#/$defs/project_path"
+        },
+        "root_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "enum": [
+            "project",
+            "runtime_release",
+            "derived_writer"
+          ]
+        },
+        "information_class": {
+          "enum": [
+            "governance",
+            "navigation",
+            "provenance",
+            "immutable",
+            "configuration",
+            "derived",
+            "authored",
+            "local_durable"
+          ]
+        },
+        "tracking": {
+          "enum": [
+            "versioned",
+            "ignored_rebuildable",
+            "ignored_durable"
+          ]
+        },
+        "minimum_profile": {
+          "$ref": "#/$defs/profile_id"
+        },
+        "source_rule_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      }
+    },
+    "installation_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_role",
+        "permission_grant",
+        "current",
+        "target"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.source.installation-bindings.v1"
+        },
+        "document_role": {
+          "const": "source_owned_installation_layout_binding_contract"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "current": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layout_id",
+            "generation_status",
+            "agent_root",
+            "origin_path",
+            "dispatcher_path"
+          ],
+          "properties": {
+            "layout_id": {
+              "const": "current"
+            },
+            "generation_status": {
+              "const": "active_existing_output"
+            },
+            "agent_root": {
+              "$ref": "#/$defs/project_path"
+            },
+            "origin_path": {
+              "$ref": "#/$defs/project_path"
+            },
+            "dispatcher_path": {
+              "$ref": "#/$defs/project_path"
+            }
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "version",
+            "layout_id",
+            "generation_status",
+            "manifest_path",
+            "inventory_scope",
+            "root_bindings",
+            "state_binding",
+            "file_inventory",
+            "inventory_count",
+            "inventory_hash_algorithm",
+            "inventory_sha256",
+            "limitations"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "octon.source.target-installation-manifest.v2"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+              "const": "2.0.0"
+            },
+            "layout_id": {
+              "const": "oep1_target"
+            },
+            "generation_status": {
+              "const": "design_only_not_selectable"
+            },
+            "manifest_path": {
+              "$ref": "#/$defs/project_path"
+            },
+            "inventory_scope": {
+              "const": "mandatory_core_seed_design"
+            },
+            "root_bindings": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "project",
+                "installation",
+                "runtime",
+                "agent",
+                "agents",
+                "dossier",
+                "packages",
+                "generated",
+                "sources",
+                "archive",
+                "local",
+                "workspace_worktrees",
+                "workspace_recovery"
+              ],
+              "properties": {
+                "project": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "installation": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "runtime": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "agent": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "agents": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "dossier": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "packages": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "generated": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "sources": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "archive": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "local": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "workspace_worktrees": {
+                  "$ref": "#/$defs/installation_root"
+                },
+                "workspace_recovery": {
+                  "$ref": "#/$defs/installation_root"
+                }
+              }
+            },
+            "state_binding": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "owner_policy",
+                "embedded_path",
+                "external_policy"
+              ],
+              "properties": {
+                "owner_policy": {
+                  "const": "exactly_one"
+                },
+                "embedded_path": {
+                  "$ref": "#/$defs/project_path"
+                },
+                "external_policy": {
+                  "const": "explicit_project_owned_single_writer_outside_project"
+                }
+              }
+            },
+            "file_inventory": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/target_file"
+              }
+            },
+            "inventory_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inventory_hash_algorithm": {
+              "const": "sha256_canonical_json_v1"
+            },
+            "inventory_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "limitations": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "forbidden_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "match",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._/-]+$"
+        },
+        "match": {
+          "enum": [
+            "exact",
+            "subtree"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_role",
+    "permission_grant",
+    "profiles",
+    "layouts",
+    "installation_bindings",
+    "project_paths",
+    "packages",
+    "acceptance_criteria",
+    "documentation_projections",
+    "default_disposition",
+    "inventory_hash_algorithm",
+    "rules",
+    "forbidden_outputs",
+    "limitations",
+    "disposable_runtime",
+    "runtime_binding"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "octon.source.profile-manifest.v4"
+    },
+    "document_role": {
+      "const": "authoritative_profile_inventory_acceptance_and_generation_manifest"
+    },
+    "permission_grant": {
+      "const": false
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/profile"
+      }
+    },
+    "layouts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/layout"
+      }
+    },
+    "installation_bindings": {
+      "$ref": "#/$defs/installation_bindings"
+    },
+    "project_paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kernel_files",
+        "origin",
+        "project_local_sources",
+        "derived_outputs",
+        "operational_projection"
+      ],
+      "properties": {
+        "kernel_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/project_path"
+          }
+        },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "ownership"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/project_path"
+            },
+            "ownership": {
+              "const": "generated_snapshot_provenance"
+            }
+          }
+        },
+        "project_local_sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/owned_path"
+          }
+        },
+        "derived_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/derived_path"
+          }
+        },
+        "operational_projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "include_exact",
+            "include_subtrees"
+          ],
+          "properties": {
+            "include_exact": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/project_path"
+              }
+            },
+            "include_subtrees": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/project_path"
+              }
+            }
+          }
+        }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/package"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/acceptance_criterion"
+      }
+    },
+    "documentation_projections": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/documentation_projection"
+      }
+    },
+    "default_disposition": {
+      "const": "source_only"
+    },
+    "inventory_hash_algorithm": {
+      "const": "sha256_sorted_relative_posix_paths_newline_v1"
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    },
+    "forbidden_outputs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/forbidden_output"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "disposable_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "permission_grant",
+        "profile",
+        "layout",
+        "projection_version",
+        "required_dependencies",
+        "runtime_paths"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.source.disposable-runtime.v1"
+        },
+        "status": {
+          "const": "qualification_only_not_selectable"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "profile": {
+          "const": "minimal"
+        },
+        "layout": {
+          "const": "compact"
+        },
+        "projection_version": {
+          "const": "target-path-projection.v1"
+        },
+        "required_dependencies": {
+          "const": [
+            "python>=3.11",
+            "canonical-minimal-core"
+          ]
+        },
+        "runtime_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.octon/runtime/scripts/[a-z_]+\\.py$"
+          }
+        }
+      }
+    },
+    "runtime_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "permission_grant",
+        "profile",
+        "layout",
+        "parent_schema",
+        "projection_version",
+        "historical_inventory",
+        "recipe",
+        "reader",
+        "modules",
+        "raw_hash_algorithm",
+        "canonical_payload_algorithm",
+        "source_encoding",
+        "source_newline",
+        "output_encoding",
+        "output_newline",
+        "allowed_postfacet_refresh",
+        "schema_inputs"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "octon.source.runtime-binding.v1"
+        },
+        "status": {
+          "const": "qualification_only_not_selectable"
+        },
+        "permission_grant": {
+          "const": false
+        },
+        "profile": {
+          "const": "minimal"
+        },
+        "layout": {
+          "const": "compact"
+        },
+        "parent_schema": {
+          "const": "octon.disposable-installation.v1"
+        },
+        "projection_version": {
+          "const": "target-path-projection.v1"
+        },
+        "historical_inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "sha256",
+            "schema_version",
+            "document_role"
+          ],
+          "properties": {
+            "source": {
+              "const": "shared/source-contracts/historical/profile-manifest-v3.json"
+            },
+            "sha256": {
+              "const": "d3b9b33d7136d9806b1839ec198929625bd3a4523a72948d43c925f8bc6916d3"
+            },
+            "schema_version": {
+              "const": "octon.source.profile-manifest.v3"
+            },
+            "document_role": {
+              "const": "historical_inventory_data_not_current_owner"
+            }
+          }
+        },
+        "recipe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "sha256",
+            "version",
+            "entry_function",
+            "manifest_function",
+            "serializer"
+          ],
+          "properties": {
+            "source": {
+              "const": "skills/octon-project-bootstrap/scripts/qualify_disposable_runtime.py"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "version": {
+              "const": "runtime-binding-qualification.v1"
+            },
+            "entry_function": {
+              "const": "runtime_entry_text"
+            },
+            "manifest_function": {
+              "const": "runtime_binding_manifest"
+            },
+            "serializer": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source",
+                "sha256",
+                "function"
+              ],
+              "properties": {
+                "source": {
+                  "const": "skills/octon-project-bootstrap/scripts/runtime_binding.py"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "function": {
+                  "const": "canonical_json"
+                }
+              }
+            }
+          }
+        },
+        "reader": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "sha256",
+            "version"
+          ],
+          "properties": {
+            "source": {
+              "const": "skills/octon-project-bootstrap/scripts/runtime_binding.py"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "version": {
+              "const": "runtime-binding-reader.v1"
+            }
+          }
+        },
+        "modules": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_rule_id",
+              "source",
+              "raw_sha256",
+              "path",
+              "required"
+            ],
+            "properties": {
+              "source_rule_id": {
+                "const": "templates-core"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "raw_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "required": {
+                "const": true
+              }
+            }
+          }
+        },
+        "raw_hash_algorithm": {
+          "const": "sha256_file_bytes_v1"
+        },
+        "canonical_payload_algorithm": {
+          "const": "sha256_canonical_json_final_lf_v1"
+        },
+        "source_encoding": {
+          "const": "utf-8"
+        },
+        "source_newline": {
+          "const": "lf"
+        },
+        "output_encoding": {
+          "const": "utf-8"
+        },
+        "output_newline": {
+          "const": "lf"
+        },
+        "allowed_postfacet_refresh": {
+          "const": [
+            ".octon/agent/state/current.json",
+            ".octon/dossier/ARTIFACT_CATALOG.json",
+            ".octon/dossier/MANIFEST.json",
+            ".octon/dossier/machine-readable/path-authority.json"
+          ]
+        },
+        "schema_inputs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_rule_id",
+              "source",
+              "sha256"
+            ],
+            "properties": {
+              "source_rule_id": {
+                "const": "source-contracts"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "shared/source-contracts/profile-manifest-v4.schema.json",
+                  "shared/source-contracts/runtime-binding-v1.schema.json"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

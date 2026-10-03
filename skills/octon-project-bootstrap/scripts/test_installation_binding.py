@@ -37,6 +37,8 @@ class InstallationBindingTests(unittest.TestCase):
         ).hexdigest()
 
     def test_target_manifest_requires_version_and_complete_core_inventory(self) -> None:
+        # Exact v1 diagnostics use the actual named checked historical v3 data.
+        self.manifest = scaffolder.load_generation_policy(disposable_compatibility=True)
         missing = copy.deepcopy(self.manifest)
         del missing["installation_bindings"]
         with self.assertRaises(ValueError):
@@ -70,6 +72,8 @@ class InstallationBindingTests(unittest.TestCase):
             scaffolder.target_installation_contract(unqualified_rule)
 
     def test_target_manifest_rejects_escape_ownership_and_duplicate_state(self) -> None:
+        # Exact v1 diagnostics use the actual named checked historical v3 data.
+        self.manifest = scaffolder.load_generation_policy(disposable_compatibility=True)
         escaped_root = copy.deepcopy(self.manifest)
         escaped_root["installation_bindings"]["target"]["root_bindings"]["agent"]["path"] = "../escape"
         with self.assertRaises(ValueError):

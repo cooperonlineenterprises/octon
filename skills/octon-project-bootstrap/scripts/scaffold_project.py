@@ -821,6 +821,15 @@ TARGET_FILE_KEYS = {
 
 def target_installation_contract(policy: dict[str, object]) -> dict[str, object]:
     """Validate the inactive target inventory in the one source manifest."""
+    if policy.get("schema_version") == "octon.source.profile-manifest.v4":
+        import runtime_binding
+        historical = runtime_binding.historical_compatibility_policy(
+            policy, (octon_mini_source_root() / runtime_binding.HISTORICAL_SOURCE).read_bytes()
+        )
+        # Preserve every old root/ownership/state constraint, while the explicit
+        # v4 successor alone admits the two source-only qualification bindings.
+        target_installation_contract(historical)
+        return policy["installation_bindings"]["target"]
     bindings = policy.get("installation_bindings")
     if not isinstance(bindings, dict) or set(bindings) != {
         "schema_version", "document_role", "permission_grant", "current", "target"
@@ -1061,15 +1070,19 @@ def origin_path(
     return selected.current_origin_path(origin.get("path"), "profile manifest origin")
 
 
-def load_generation_policy() -> dict[str, object]:
+def load_generation_policy(*, disposable_compatibility: bool = False) -> dict[str, object]:
     """Load the authoritative profile manifest and its generation boundary."""
     path = octon_mini_source_root() / PROFILE_MANIFEST_RELATIVE
     value = load_json(path)
-    expected_keys = GENERATION_POLICY_KEYS | ({"disposable_runtime"} if isinstance(value, dict) and value.get("schema_version") == "octon.source.profile-manifest.v3" else set())
+    version = value.get("schema_version") if isinstance(value, dict) else None
+    extra = {"disposable_runtime"} if version in {"octon.source.profile-manifest.v3", "octon.source.profile-manifest.v4"} else set()
+    if version == "octon.source.profile-manifest.v4":
+        extra.add("runtime_binding")
+    expected_keys = GENERATION_POLICY_KEYS | extra
     if not isinstance(value, dict) or set(value) != expected_keys:
         raise ValueError("profile manifest has an invalid top-level contract")
     if (
-        value.get("schema_version") not in {"octon-mini.source.profile-manifest.v2", "octon.source.profile-manifest.v3"}
+        value.get("schema_version") not in {"octon-mini.source.profile-manifest.v2", "octon.source.profile-manifest.v3", "octon.source.profile-manifest.v4"}
         or value.get("document_role")
         != "authoritative_profile_inventory_acceptance_and_generation_manifest"
         or value.get("permission_grant") is not False
@@ -1271,6 +1284,13 @@ def load_generation_policy() -> dict[str, object]:
         isinstance(item, str) and item.strip() for item in limitations
     ):
         raise ValueError("generation policy limitations must be explicit")
+    if disposable_compatibility:
+        if version != "octon.source.profile-manifest.v4":
+            raise ValueError("explicit disposable compatibility route requires current source v4")
+        import runtime_binding
+        return runtime_binding.historical_compatibility_policy(
+            value, (octon_mini_source_root() / runtime_binding.HISTORICAL_SOURCE).read_bytes()
+        )
     return value
 
 
@@ -2235,6 +2255,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
+        "--disposable-runtime-compatibility", action="store_true",
+        help="source qualification only: checked immutable v3 inventory, no arbitrary policy override",
+    )
+    parser.add_argument(
         "--diagnose-generation-policy",
         action="store_true",
         help=(
@@ -2254,7 +2278,9 @@ def main() -> int:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2
     try:
-        generation_policy = load_generation_policy()
+        if args.disposable_runtime_compatibility and (args.profile != "minimal" or args.layout != "compact" or args.diagnose_generation_policy):
+            raise ValueError("disposable compatibility is limited to plain Minimal/compact generation")
+        generation_policy = load_generation_policy(disposable_compatibility=args.disposable_runtime_compatibility)
     except ValueError as error:
         print(
             "ERROR: authority_degradation: generation policy cannot be "

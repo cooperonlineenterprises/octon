@@ -255,7 +255,7 @@ changing this table's contract ownership. The
 [durable protected fixture](DURABLE_FIXTURE_QUALIFICATION.md) extends only declared
 disposable recovery under an independently current retained authority owner.
 It is partial O2/O3/O6 and IMP-1/2 evidence, not real grants, complete rollback
-resistance or consumer activation. The existing OEP plan alone owns sequencing.
+resistance or consumer activation. The [source-only runtime binding](RUNTIME_BINDING_QUALIFICATION.md) adds caller-pinned two-entry/nine-module integrity and dependency/path evidence without changing authority or consumers. The existing OEP plan alone owns sequencing.
 
 | Architecture proposal area | Disposition in this slice |
 |---|---|

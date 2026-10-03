@@ -712,3 +712,26 @@ shape. Only `qualify_disposable_runtime.py --disposable-qualification` projects
 fresh canonical minimal/compact staging assets into actual target paths. It
 neither enables ordinary target generation nor upgrades a live consumer.
 See [qualified scope and recovery boundaries](../docs/DISPOSABLE_RUNTIME_QUALIFICATION.md).
+
+
+## Source-v4 runtime binding qualification
+
+Source v4 keeps the current manifest as the single inventory owner and validates
+its complete legacy generation semantics through the named exact historical-v3
+adapter. Its inactive target-design v2 binds only runtime.manifest/runtime.entry
+and the nine existing core modules for the explicit fresh plain Minimal/compact
+`--runtime-binding-qualification` route. Other target rows remain unbound and
+ordinary target selection remains disabled. Old schemas/readers/templates are
+retained byte-for-byte. Current and historical parent input locators/digests are
+recorded separately.
+
+The additive runtime facet preserves the old parent's initial inventory, binds
+its immutable bytes, and is itself independently pinned outside target custody.
+The existing full fingerprint includes parent and facet. Final packaging refresh
+may change only the four already-null Minimal derived JSONs; complete before/after
+type/mode/byte inventories and every non-null output/asset binding prove that
+boundary. High Assurance outputs and mixed fixture modes refuse this route.
+Both external source and facet raw pins are mandatory for the standalone data-only
+reader. Raw schemas, actual entry/manifest serializers and all render/dependency
+inputs are bound without a source/facet self digest or final candidate SHA.
+See [the exact byte, reader and native qualification contract](../docs/RUNTIME_BINDING_QUALIFICATION.md).
